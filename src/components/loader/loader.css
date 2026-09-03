@@ -174,19 +174,80 @@
 }
 
 .bar-outer {
-    width: 250px;
-    height: 8px;
-    border-radius: 8px;
-    background-color: $ui-white-transparent-default;
+    width: 320px;
+    max-width: 80vw;
+    height: 1.5rem;
+    border-radius: 1rem;
+    /* The empty part of the track needs to read as a track rather than as
+     * more background, which at this size the default transparent white does
+     * not quite manage. */
+    background-color: rgba(255, 255, 255, 0.22);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
     overflow: hidden;
     position: relative;
-    margin: auto;
+    margin: 0.5rem auto 0;
 }
+
 .bar-inner {
     position: absolute;
     top: 0;
     left: 0;
     width: 0;
     height: 100%;
+    border-radius: 1rem;
     background-color: $ui-white-default;
+    /* Assets finish in bursts, so without this the bar jumps in steps. */
+    transition: width 180ms ease-out;
+    overflow: hidden;
+}
+
+/*
+ * The number sits inside the bar, which means it crosses the edge of the
+ * fill as the bar grows. One number in white over the empty part, a second
+ * in the bar colour clipped inside the fill: the two line up exactly, so it
+ * reads as a single number that changes colour where the fill reaches it.
+ */
+.bar-percent,
+.bar-percent-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8125rem;
+    font-weight: bold;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.bar-percent {
+    width: 100%;
+    color: $ui-white-default;
+}
+
+/* Width is set to the whole bar in script, so the two labels sit together. */
+.bar-percent-fill {
+    color: $menu-bar-background;
+}
+
+.asset-line {
+    min-height: 1.25rem;
+    margin-top: 0.6rem;
+    font-size: 0.875rem;
+    opacity: 0.85;
+    max-width: 22rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.asset-sprite {
+    font-weight: bold;
+}
+
+.asset-kind {
+    opacity: 0.7;
 }
