@@ -1,4 +1,6 @@
 import LazyScratchBlocks from './tw-lazy-scratch-blocks';
+import {scriptToText} from './flipwarp/project-text.js';
+import {getSettings} from './flipwarp/settings.js';
 
 /**
  * Connect scratch blocks with the vm
@@ -358,5 +360,75 @@ export default function (vm) {
         return true;
     };
 
+    // Flipwarp: "Copy as text" on the menu you get from right-clicking a
+    // block. Scratch can copy a script to another sprite by dragging, and
+    // nothing else — this puts one script on the clipboard as text, which can
+    // then go into another project, a message, or anywhere else at all.
+    //
+    // Added just before the menu opens rather than by defining
+    // customContextMenu on the prototype: several blocks mix in their own
+    // customContextMenu, and scratch-blocks refuses a mixin that would
+    // overwrite a member that is already there.
+    const originalShowContextMenu = ScratchBlocks.BlockSvg.prototype.showContextMenu_;
+    ScratchBlocks.BlockSvg.prototype.showContextMenu_ = function (e) {
+        if (!getSettings().copyAsText || this.isInFlyout) {
+            return originalShowContextMenu.call(this, e);
+        }
+        const block = this;
+        const existing = this.customContextMenu;
+        this.customContextMenu = function (options) {
+            if (existing) existing.call(block, options);
+            options.push({
+                enabled: true,
+                text: 'Copy as text',
+                callback: () => copyScript(vm, block.id)
+            });
+        };
+        try {
+            return originalShowContextMenu.call(this, e);
+        } finally {
+            // Put the block back exactly as it was, so nothing else that
+            // reads customContextMenu sees ours.
+            if (existing) this.customContextMenu = existing;
+            else delete this.customContextMenu;
+        }
+    };
+
     return ScratchBlocks;
 }
+
+const copyScript = (vm, blockId) => {
+    let text;
+    try {
+        text = scriptToText(vm, blockId);
+    } catch (e) {
+        // A script using a block with no text form cannot be copied this way.
+        // Say so rather than quietly copying nothing.
+        // eslint-disable-next-line no-alert
+        alert(e && e.message ? e.message : String(e));
+        return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => copyTheOldWay(text));
+    } else {
+        copyTheOldWay(text);
+    }
+};
+
+// Browsers only allow the clipboard API on a secure page. Opened from a plain
+// http address — which is how the site runs from a folder — it is not there at
+// all, so this is the fallback rather than a silent failure.
+const copyTheOldWay = text => {
+    const box = document.createElement('textarea');
+    box.value = text;
+    box.style.position = 'fixed';
+    box.style.opacity = '0';
+    document.body.appendChild(box);
+    box.select();
+    try {
+        document.execCommand('copy');
+    } catch (e) {
+        // Nothing more to try.
+    }
+    document.body.removeChild(box);
+};

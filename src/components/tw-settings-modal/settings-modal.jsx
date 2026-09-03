@@ -479,6 +479,78 @@ const FlipwarpSettings = () => {
                     />
                 </p>
             </BooleanSetting>
+            <BooleanSetting
+                value={settings.searchProject}
+                onChange={value => change({searchProject: value})}
+                label={<FormattedMessage
+                    defaultMessage="Search all sprites"
+                    description="Flipwarp setting"
+                    id="flipwarp.settings.searchProject"
+                />}
+            >
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Adds a Tools button beside the Text button, with a search that looks through every sprite at once and jumps to what it finds."
+                        description="Help text for the search setting"
+                        id="flipwarp.settings.searchProjectHelp"
+                    />
+                </p>
+            </BooleanSetting>
+            <BooleanSetting
+                value={settings.findReplace}
+                onChange={value => change({findReplace: value})}
+                label={<FormattedMessage
+                    defaultMessage="Find and replace across sprites"
+                    description="Flipwarp setting"
+                    id="flipwarp.settings.findReplace"
+                />}
+            >
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Renames something everywhere at once. Every line it would change is listed first with a tick box, and nothing is changed until you press the button — and then either every ticked line changes or, if one of them would break a sprite, none of them do."
+                        description="Help text for the find and replace setting"
+                        id="flipwarp.settings.findReplaceHelp"
+                    />
+                </p>
+            </BooleanSetting>
+            <BooleanSetting
+                value={settings.copyAsText}
+                onChange={value => change({copyAsText: value})}
+                label={<FormattedMessage
+                    defaultMessage="Copy a script as text"
+                    description="Flipwarp setting"
+                    id="flipwarp.settings.copyAsText"
+                />}
+            >
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Adds Copy as text to the menu you get when you right-click a script, putting that one script on the clipboard in Flipwarp's text form."
+                        description="Help text for the copy as text setting"
+                        id="flipwarp.settings.copyAsTextHelp"
+                    />
+                </p>
+            </BooleanSetting>
+            <BooleanSetting
+                value={settings.blockSheet}
+                onChange={value => change({blockSheet: value})}
+                label={<FormattedMessage
+                    defaultMessage="Block sheet"
+                    description="Flipwarp setting"
+                    id="flipwarp.settings.blockSheet"
+                />}
+            >
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="A searchable list under Tools of every block and how to write it, built from the editor's own table so it cannot go out of date."
+                        description="Help text for the block sheet setting"
+                        id="flipwarp.settings.blockSheetHelp"
+                    />
+                </p>
+            </BooleanSetting>
             <div className={styles.setting}>
                 <label>
                     <FormattedMessage

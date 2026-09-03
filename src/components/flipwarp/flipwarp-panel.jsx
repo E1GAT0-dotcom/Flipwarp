@@ -13,6 +13,7 @@ import {
 } from '../../lib/flipwarp/vm-bridge.js';
 import {BY_NAME} from '../../lib/flipwarp/phrasebook.js';
 import {getSettings, onSettingsChanged, indentString} from '../../lib/flipwarp/settings.js';
+import FlipwarpTools from './flipwarp-tools.jsx';
 import styles from './flipwarp-panel.css';
 
 // Words that are part of the language rather than a block.
@@ -34,6 +35,7 @@ class FlipwarpPanel extends React.Component {
         super(props);
         bindAll(this, [
             'handleToggle',
+            'handleTools',
             'handleApply',
             'handleRevert',
             'handleChange',
@@ -57,6 +59,7 @@ class FlipwarpPanel extends React.Component {
 
         this.state = {
             open: false,
+            tools: false,
             text: '',
             original: '',
             name: '',
@@ -135,6 +138,10 @@ class FlipwarpPanel extends React.Component {
     // The one button does both directions. Going to text just reads the
     // blocks; coming back converts what you wrote, and refuses to close if
     // the text has a mistake in it, so nothing is lost by switching away.
+    handleTools () {
+        this.setState(old => ({tools: !old.tools}));
+    }
+
     handleToggle () {
         if (this.state.busy) return;
         if (this.state.open) {
@@ -413,10 +420,18 @@ class FlipwarpPanel extends React.Component {
     }
 
     render () {
-        const {open, text, name, error, status, busy, suggestions, suggestIndex} = this.state;
+        const {open, text, name, error, status, busy, suggestions, suggestIndex, settings} = this.state;
+        const anyTool = settings.searchProject || settings.findReplace || settings.blockSheet;
         return (
             <React.Fragment>
                 <div className={styles.toggleContainer}>
+                    {anyTool ? (
+                        <button
+                            className={styles.toolsButton}
+                            title="Search, replace, and the block sheet"
+                            onClick={this.handleTools}
+                        >{'Tools'}</button>
+                    ) : null}
                     <button
                         aria-pressed={open}
                         className={`${styles.toggleButton} ${open ? styles.active : ''}`}
@@ -491,6 +506,14 @@ class FlipwarpPanel extends React.Component {
                             </span>
                         </div>
                     </div>
+                ) : null}
+
+                {this.state.tools && anyTool ? (
+                    <FlipwarpTools
+                        settings={settings}
+                        vm={this.props.vm}
+                        onClose={this.handleTools}
+                    />
                 ) : null}
             </React.Fragment>
         );

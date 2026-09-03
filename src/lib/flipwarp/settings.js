@@ -12,8 +12,17 @@ const DEFAULTS = {
     // Show the @at markers that record where each script sits. Off by
     // default because the positions are kept either way — this only decides
     // whether you have to look at them.
-    showPositions: false
+    showPositions: false,
+    // The project-wide tools. On by default: a tool nobody can find is the
+    // same as a tool that does not exist, and each one is a button that does
+    // nothing until pressed.
+    searchProject: true,
+    findReplace: true,
+    copyAsText: true,
+    blockSheet: true
 };
+
+const bool = (value, fallback) => (typeof value === 'boolean' ? value : fallback);
 
 const listeners = new Set();
 let current = null;
@@ -26,7 +35,11 @@ const read = () => {
         return {
             indentSize: parsed.indentSize === 4 ? 4 : DEFAULTS.indentSize,
             suggestions: typeof parsed.suggestions === 'boolean' ? parsed.suggestions : DEFAULTS.suggestions,
-            showPositions: typeof parsed.showPositions === 'boolean' ? parsed.showPositions : DEFAULTS.showPositions
+            showPositions: typeof parsed.showPositions === 'boolean' ? parsed.showPositions : DEFAULTS.showPositions,
+            searchProject: bool(parsed.searchProject, DEFAULTS.searchProject),
+            findReplace: bool(parsed.findReplace, DEFAULTS.findReplace),
+            copyAsText: bool(parsed.copyAsText, DEFAULTS.copyAsText),
+            blockSheet: bool(parsed.blockSheet, DEFAULTS.blockSheet)
         };
     } catch (e) {
         return {...DEFAULTS};

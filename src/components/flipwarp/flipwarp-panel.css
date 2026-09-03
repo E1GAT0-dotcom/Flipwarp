@@ -6,6 +6,8 @@
    Extension bottom left, and the zoom buttons bottom right. Sits above the
    palette (z-index 40) and below every dialog. */
 .toggle-container {
+    display: flex;
+    align-items: center;
     position: absolute;
     bottom: 1.75rem;
     right: 4.25rem;
@@ -204,4 +206,25 @@
     border-color: $motion-primary;
     color: #ffffff;
     font-weight: bold;
+}
+
+/* Sits beside the Text button. Deliberately plainer than it — the flip is the
+   headline action, these are the occasional ones. */
+.tools-button {
+    height: 2.5rem;
+    margin-right: 0.5rem;
+    padding: 0 0.9rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 1.25rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    box-shadow: 0 0 0 1px $ui-black-transparent, 0 2px 6px rgba(0, 0, 0, 0.12);
+    user-select: none;
+}
+
+.tools-button:hover {
+    background: $ui-primary;
 }
