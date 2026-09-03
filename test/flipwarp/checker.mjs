@@ -1,0 +1,18 @@
+import { launchBrowser, repoPath, SITE } from './launch.mjs';
+const browser = await launchBrowser();
+const page = await browser.newPage({ viewport: { width: 1200, height: 900 } });
+page.on('pageerror', e => console.log('PAGEERROR:', e.message.slice(0,140)));
+await page.goto(`${SITE}/flipwarp-check.html`, { waitUntil: 'domcontentloaded' });
+await page.fill('#listUrl', `${SITE}/fake-list.js`);
+await page.fill('#baseUrl', `${SITE}/`);
+await page.click('#run');
+await page.waitForFunction(() => document.getElementById('phase').textContent === 'done', { timeout: 90000 });
+const rows = await page.$$eval('#results tbody tr', trs => trs.map(tr => [...tr.children].map(td => td.textContent.trim())));
+console.log('--- results table ---');
+rows.forEach(r => console.log(' ', r.join(' | ')));
+console.log('--- counts ---');
+console.log(' ', await page.$$eval('#counts .pill', ps => ps.map(p => p.textContent).join('  ')));
+console.log('--- report ---');
+console.log((await page.$eval('#report', t => t.value)).split('\n').slice(0, 14).join('\n'));
+await page.screenshot({ path: repoPath('shot-checker.png'), fullPage: false });
+await browser.close();
