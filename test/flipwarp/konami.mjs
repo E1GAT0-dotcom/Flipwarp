@@ -21,6 +21,11 @@ const openEditor = async (catBlocks) => {
 };
 
 const konami = async page => {
+    // Click into the workspace first. Blockly moves the selected block with
+    // the arrow keys and stops the event there, so pressing the code with the
+    // page freshly loaded is an easier test than the one people actually run.
+    const canvas = await page.$('.blocklyWorkspace, .blocklySvg');
+    if (canvas) await canvas.click({position: {x: 200, y: 200}}).catch(() => {});
     for (const key of ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
         'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight']) {
         await page.keyboard.press(key);

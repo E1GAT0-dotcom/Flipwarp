@@ -181,7 +181,12 @@ export const installDogeEasterEgg = () => {
     // "up up down down left right left up" leaves the counter part-way
     // through, and the next honest attempt then fails for no visible reason.
     const recent = [];
-    document.addEventListener('keydown', e => {
+    // Listened for on the way down rather than on the way up. Blockly moves
+    // the selected block with the arrow keys and stops the event there, and a
+    // running project is handed them too, so by the time a key reaches
+    // document it may already have been swallowed — which is why this worked
+    // on an empty page and not once you had clicked into the workspace.
+    window.addEventListener('keydown', e => {
         // Arrow keys mean something else while typing, and nudging a block
         // around the workspace with them should not count either.
         const el = e.target;
@@ -195,5 +200,5 @@ export const installDogeEasterEgg = () => {
             recent.length = 0;
             turnCatsIntoDoges();
         }
-    });
+    }, true);
 };
