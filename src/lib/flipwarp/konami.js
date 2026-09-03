@@ -38,11 +38,13 @@ const drawDogeFace = (block, Blockly) => {
     };
 
     // A pale muzzle, the thing that reads as "dog" before any detail does.
+    // Sits low, around the nose and mouth: any higher and it reaches up into
+    // the brows, which makes the whole face look like it has slipped.
     svg('ellipse', {
         'cx': '44.2',
-        'cy': '-1.6',
-        'rx': '13',
-        'ry': '6.4',
+        'cy': '0.4',
+        'rx': '12.5',
+        'ry': '5.8',
         'fill': '#FFFFFF',
         'fill-opacity': '0.22'
     }, block.svgFace_);
