@@ -304,6 +304,11 @@ class LibraryComponent extends React.Component {
                     })}
                     ref={this.setFilteredDataRef}
                 >
+                    {this.props.tagBanners && this.props.tagBanners[this.state.selectedTag] ? (
+                        <div className={styles.tagBanner}>
+                            {this.props.tagBanners[this.state.selectedTag]}
+                        </div>
+                    ) : null}
                     {filteredData && this.getFilteredData().map((dataItem, index) => (
                         dataItem === '---' ? (
                             <Separator key={index} />
@@ -395,6 +400,8 @@ LibraryComponent.propTypes = {
     setStopHandler: PropTypes.func,
     showPlayButton: PropTypes.bool,
     tags: PropTypes.arrayOf(PropTypes.shape(TagButton.propTypes)),
+    // Node to show above the grid when a particular tag is selected.
+    tagBanners: PropTypes.objectOf(PropTypes.node),
     title: PropTypes.string.isRequired,
     removedTrademarks: PropTypes.bool
 };

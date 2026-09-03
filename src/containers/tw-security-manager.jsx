@@ -19,6 +19,21 @@ const manuallyTrustExtension = url => {
 };
 
 /**
+ * Whether a URL points inside this site's own bundled extension folder.
+ * @param {string} url URL as a string.
+ * @returns {boolean} True if it is one of this site's own files
+ */
+const isBundledWithThisEditor = url => {
+    try {
+        const parsed = new URL(url, location.href);
+        const folder = new URL('penguinmod/', document.baseURI);
+        return parsed.origin === location.origin && parsed.href.startsWith(folder.href);
+    } catch (e) {
+        return false;
+    }
+};
+
+/**
  * Trusted extensions are loaded automatically and without a sandbox.
  * @param {string} url URL as a string.
  * @returns {boolean} True if the extension can is trusted
@@ -26,6 +41,13 @@ const manuallyTrustExtension = url => {
 const isTrustedExtension = url => (
     // Always trust our official extension repostiory.
     url.startsWith('https://extensions.turbowarp.org/') ||
+
+    // Flipwarp: the PenguinMod extensions bundled with this copy of the
+    // editor. They are served from the same address as the editor itself, so
+    // whoever put the editor on this site put these there too. Asking
+    // permission to load a file from the site you are already on would be
+    // asking the wrong question.
+    isBundledWithThisEditor(url) ||
 
     // For development.
     url.startsWith('http://localhost:8000/') ||

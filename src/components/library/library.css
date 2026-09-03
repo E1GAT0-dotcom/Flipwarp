@@ -68,3 +68,51 @@
     align-items: center;
     justify-content: center;
 }
+
+/* A note attached to one tag, shown above that tag's items. The list is a
+   wrapping flex row, so the banner takes a whole line of its own — otherwise
+   the first item sits beside it and looks misplaced. */
+.tag-banner {
+    flex: 0 0 100%;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin: 0 0 1rem 0;
+    padding: 1rem 1.25rem;
+    border: 1px solid $ui-black-transparent;
+    border-left: 4px solid $motion-primary;
+    border-radius: 0.5rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.tag-banner-text {
+    flex: 1 1 22rem;
+    min-width: 0;
+}
+
+.tag-banner-title {
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+.tag-banner-link {
+    flex: none;
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    background: $motion-primary;
+    color: #ffffff;
+    font-weight: bold;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.tag-banner-link:hover {
+    background: $looks-secondary;
+}
