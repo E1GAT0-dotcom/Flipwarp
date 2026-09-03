@@ -10,6 +10,7 @@ import tabStyles from 'react-tabs/style/react-tabs.css';
 import VM from 'scratch-vm';
 
 import Blocks from '../../containers/blocks.jsx';
+import FlipwarpPanel from '../flipwarp/flipwarp-panel.jsx';
 import CostumeTab from '../../containers/costume-tab.jsx';
 import TargetPane from '../../containers/target-pane.jsx';
 import SoundTab from '../../containers/sound-tab.jsx';
@@ -401,6 +402,7 @@ const GUIComponent = props => {
                                             vm={vm}
                                         />
                                     </Box>
+                                    <FlipwarpPanel vm={vm} />
                                     <Box className={styles.extensionButtonContainer}>
                                         <button
                                             className={styles.extensionButton}

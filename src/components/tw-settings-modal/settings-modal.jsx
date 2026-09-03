@@ -10,6 +10,7 @@ import Input from '../forms/input.jsx';
 import BufferedInputHOC from '../forms/buffered-input-hoc.jsx';
 import DocumentationLink from '../tw-documentation-link/documentation-link.jsx';
 import styles from './settings-modal.css';
+import {getSettings, setSettings} from '../../lib/flipwarp/settings.js';
 import helpIcon from './help-icon.svg';
 import {APP_NAME} from '../../lib/brand.js';
 
@@ -410,7 +411,7 @@ const StoreProjectOptions = ({onStoreProjectOptions}) => (
             <p>
                 <FormattedMessage
                     // eslint-disable-next-line max-len
-                    defaultMessage="Stores the selected settings in the project so they will be automatically applied when TurboWarp loads this project. Warp timer and disable compiler will not be saved."
+                    defaultMessage="Saves these settings inside the project file, so they are applied automatically the next time Flipwarp opens it. Warp timer and disable compiler are not saved."
                     description="Help text for the store settings in project button"
                     id="tw.settingsModal.storeProjectOptionsHelp"
                 />
@@ -432,6 +433,80 @@ Header.propTypes = {
     children: PropTypes.node
 };
 
+// Flipwarp's own settings live at the top of Advanced Settings, kept apart
+// from TurboWarp's so it is clear which project each one belongs to.
+const FlipwarpSettings = () => {
+    const [settings, setLocal] = React.useState(getSettings());
+    const change = changes => {
+        setSettings(changes);
+        setLocal(getSettings());
+    };
+    return (
+        <React.Fragment>
+            <BooleanSetting
+                value={settings.suggestions}
+                onChange={value => change({suggestions: value})}
+                label={<FormattedMessage
+                    defaultMessage="Suggest blocks while typing"
+                    description="Flipwarp setting"
+                    id="flipwarp.settings.suggestions"
+                />}
+            >
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Offers matching block names as you type in the text editor. Press Tab to fill in the highlighted one."
+                        description="Help text for the suggestions setting"
+                        id="flipwarp.settings.suggestionsHelp"
+                    />
+                </p>
+            </BooleanSetting>
+            <BooleanSetting
+                value={settings.showPositions}
+                onChange={value => change({showPositions: value})}
+                label={<FormattedMessage
+                    defaultMessage="Show where each script sits"
+                    description="Flipwarp setting"
+                    id="flipwarp.settings.showPositions"
+                />}
+            >
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Adds an @at(x, y) line above each script in the text, saying where it sits on the canvas. The positions are kept either way; this only decides whether you see them."
+                        description="Help text for the show positions setting"
+                        id="flipwarp.settings.showPositionsHelp"
+                    />
+                </p>
+            </BooleanSetting>
+            <div className={styles.setting}>
+                <label>
+                    <FormattedMessage
+                        defaultMessage="Indent size"
+                        description="Flipwarp setting"
+                        id="flipwarp.settings.indent"
+                    />
+                    {' '}
+                    <select
+                        value={settings.indentSize}
+                        onChange={e => change({indentSize: Number(e.target.value)})}
+                    >
+                        <option value={2}>{'2 spaces'}</option>
+                        <option value={4}>{'4 spaces'}</option>
+                    </select>
+                </label>
+                <p>
+                    <FormattedMessage
+                        defaultMessage="How far one step of indent goes when Tab and Enter add one."
+                        description="Help text for the indent size setting"
+                        id="flipwarp.settings.indentHelp"
+                    />
+                </p>
+            </div>
+        </React.Fragment>
+    );
+};
+
 const SettingsModalComponent = props => (
     <Modal
         className={styles.modalContent}
@@ -440,6 +515,10 @@ const SettingsModalComponent = props => (
         id="settingsModal"
     >
         <Box className={styles.body}>
+            <Header>
+                {'Flipwarp'}
+            </Header>
+            <FlipwarpSettings />
             <Header>
                 <FormattedMessage
                     defaultMessage="Featured"

@@ -1,0 +1,207 @@
+@import "../../css/colors.css";
+@import "../../css/units.css";
+
+/* Bottom of the code canvas, tucked to the left of Blockly's zoom controls.
+   Every other corner is taken: the sprite watermark sits top right, Add
+   Extension bottom left, and the zoom buttons bottom right. Sits above the
+   palette (z-index 40) and below every dialog. */
+.toggle-container {
+    position: absolute;
+    bottom: 1.75rem;
+    right: 4.25rem;
+    z-index: 60;
+}
+
+.toggle-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.5rem;
+    padding: 0 1rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 1.25rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 0 1px $ui-black-transparent, 0 2px 6px rgba(0, 0, 0, 0.12);
+    user-select: none;
+}
+
+.toggle-button:hover {
+    background: $ui-primary;
+}
+
+.toggle-button:focus-visible {
+    outline: 3px solid $looks-transparent;
+    outline-offset: 2px;
+}
+
+.toggle-button.active {
+    background: $motion-primary;
+    border-color: $motion-primary;
+    color: #ffffff;
+}
+
+.toggle-mark {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+/* The text editor covers the block workspace completely, so the blocks
+   underneath cannot be half-edited while the text is open. */
+.panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    background: $ui-white;
+}
+
+.panel-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid $ui-black-transparent;
+    background: $ui-primary;
+    font-size: 0.8rem;
+    color: $text-primary-transparent;
+    flex: none;
+}
+
+.panel-head .name {
+    font-weight: bold;
+    color: $text-primary;
+}
+
+.panel-head .count {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+}
+
+.editor {
+    flex: 1 1 auto;
+    width: 100%;
+    border: 0;
+    resize: none;
+    padding: 1rem 1.25rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    tab-size: 2;
+    white-space: pre;
+    overflow: auto;
+}
+
+.editor:focus {
+    outline: none;
+}
+
+.panel-foot {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    /* The toggle floats over this strip, so the right end is kept clear of it. */
+    padding: 0.75rem 11rem 0.75rem 1rem;
+    border-top: 1px solid $ui-black-transparent;
+    background: $ui-primary;
+}
+
+.revert-button {
+    height: 2.25rem;
+    padding: 0 1rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.5rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.status {
+    font-size: 0.8rem;
+    color: $text-primary-transparent;
+    margin-left: auto;
+    text-align: right;
+}
+
+/* An error takes the space it needs and never scrolls away from the text
+   it is about. */
+.error {
+    flex: none;
+    padding: 0.75rem 1rem;
+    background: #fdefec;
+    border-top: 3px solid #d4553a;
+    color: #7d2a13;
+    font-size: 0.85rem;
+    max-height: 40%;
+    overflow-y: auto;
+}
+
+.error-line {
+    font-weight: bold;
+}
+
+.error-fix {
+    margin-top: 0.35rem;
+}
+
+.error-snippet {
+    margin: 0.5rem 0 0;
+    font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+    opacity: 0.85;
+}
+
+/* The suggestion strip sits between the text and the footer rather than
+   floating over the caret: it never covers what you are typing, and it is
+   always in the same place, so Tab is predictable. */
+.suggestions {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid $ui-black-transparent;
+    background: $ui-primary;
+}
+
+.suggestions-hint {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: $text-primary-transparent;
+    margin-right: 0.25rem;
+}
+
+.suggestion {
+    font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.75rem;
+    background: $ui-white;
+    color: $text-primary;
+    cursor: pointer;
+}
+
+.suggestion-active {
+    background: $motion-primary;
+    border-color: $motion-primary;
+    color: #ffffff;
+    font-weight: bold;
+}
