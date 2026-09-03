@@ -53,6 +53,12 @@ jobs:
         run: node scripts/flipwarp-bundle-penguinmod.js /tmp/pm-extensions /tmp/pm-images
 
       - uses: actions/configure-pages@v5
+        with:
+          # Switch Pages on if it is not already, and point it at this
+          # workflow. Without this the first run fails with "Get Pages
+          # site failed" and publishes nothing, which looks from the
+          # outside like a 404 rather than a setting nobody set.
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
