@@ -1,0 +1,69 @@
+# Build Flipwarp and put it online, every time the flipwarp branch is pushed.
+#
+# The site ends up at https://<user>.github.io/<repo>/editor.html — which is
+# why ROOT is set below: a project page lives in a subfolder, and the build
+# has to be told that or every link in it points at the wrong place.
+name: Build and deploy
+
+on:
+  push:
+    branches: [flipwarp]
+  # And a button in the Actions tab, for when you want a rebuild without a
+  # change — a new PenguinMod extension, say.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. A second push while the first is still building waits
+# rather than racing it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install
+        run: npm install
+
+      - name: Build the site
+        # ROOT tells the build it will be served from /<repo>/ rather than
+        # from the root of a domain.
+        run: npm run build
+        env:
+          ROOT: /${{ github.event.repository.name }}/
+          NODE_OPTIONS: --max-old-space-size=4096
+
+      - name: Fetch the PenguinMod extensions
+        # Once per build rather than once per visitor: their server is asked
+        # for this a few times a month instead of on every page load.
+        run: node scripts/flipwarp-fetch-penguinmod.js /tmp/pm-extensions /tmp/pm-images
+
+      - name: Bundle them into the site
+        run: node scripts/flipwarp-bundle-penguinmod.js /tmp/pm-extensions /tmp/pm-images
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
