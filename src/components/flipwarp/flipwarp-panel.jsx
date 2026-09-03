@@ -13,6 +13,7 @@ import {
 } from '../../lib/flipwarp/vm-bridge.js';
 import {BY_NAME} from '../../lib/flipwarp/phrasebook.js';
 import {getSettings, onSettingsChanged, indentString} from '../../lib/flipwarp/settings.js';
+import {installDogeEasterEgg} from '../../lib/flipwarp/konami.js';
 import FlipwarpTools from './flipwarp-tools.jsx';
 import styles from './flipwarp-panel.css';
 
@@ -75,6 +76,7 @@ class FlipwarpPanel extends React.Component {
     }
 
     componentDidMount () {
+        installDogeEasterEgg();
         this.props.vm.on('targetsUpdate', this.handleTargetsUpdate);
         this.props.vm.on('workspaceUpdate', this.handleWorkspaceUpdate);
         document.addEventListener('keydown', this.handleGlobalKeyDown, true);
