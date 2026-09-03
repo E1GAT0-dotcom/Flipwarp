@@ -3,7 +3,7 @@ import {isScratchDesktop} from '../../lib/isScratchDesktop';
 import CloseButton from '../close-button/close-button.jsx';
 import styles from './tw-news.css';
 
-const LOCAL_STORAGE_KEY = 'tw:closedNews';
+const LOCAL_STORAGE_KEY = 'flipwarp:closedNews';
 const NEWS_ID = 'scratch-vulnerability';
 
 const newsAppliesToUser = () => false;

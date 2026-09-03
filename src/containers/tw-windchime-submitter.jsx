@@ -5,7 +5,7 @@ import {getIsError} from '../reducers/project-state';
 import {ProjectUnsharedError, ProjectFetchError} from '../lib/tw-load-project-error';
 
 const ENDPOINT = 'https://windchimes.turbowarp.org/api/chime';
-const OPT_OUT_KEY = 'tw:windchime_opt_out';
+const OPT_OUT_KEY = 'flipwarp:windchime_opt_out';
 const submittedViewsThisSession = new Set();
 const submittedErrorsThisSession = new Set();
 

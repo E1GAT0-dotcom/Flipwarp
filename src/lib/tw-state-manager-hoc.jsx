@@ -36,7 +36,7 @@ const messages = defineMessages({
     }
 });
 
-const USERNAME_KEY = 'tw:username';
+const USERNAME_KEY = 'flipwarp:username';
 
 /**
  * The State Manager is responsible for managing persistent state and the URL.

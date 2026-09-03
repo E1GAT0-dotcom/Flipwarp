@@ -4,7 +4,7 @@ const matchMedia = query => (window.matchMedia ? window.matchMedia(query) : null
 const PREFERS_HIGH_CONTRAST_QUERY = matchMedia('(prefers-contrast: more)');
 const PREFERS_DARK_QUERY = matchMedia('(prefers-color-scheme: dark)');
 
-const STORAGE_KEY = 'tw:theme';
+const STORAGE_KEY = 'flipwarp:theme';
 
 /**
  * @returns {Theme} detected theme

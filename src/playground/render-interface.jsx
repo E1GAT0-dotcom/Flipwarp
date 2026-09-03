@@ -128,14 +128,6 @@ const Footer = () => (
                     </a>
                 </div>
                 <div className={styles.footerSection}>
-                    <a href="https://desktop.turbowarp.org/">
-                        {/* Do not translate */}
-                        {'TurboWarp Desktop'}
-                    </a>
-                    <a href="https://packager.turbowarp.org/">
-                        {/* Do not translate */}
-                        {'TurboWarp Packager'}
-                    </a>
                     <a href="https://docs.turbowarp.org/embedding">
                         <FormattedMessage
                             defaultMessage="Embedding"
@@ -159,17 +151,12 @@ const Footer = () => (
                     </a>
                 </div>
                 <div className={styles.footerSection}>
-                    <a href="https://scratch.mit.edu/users/GarboMuffin/#comments">
-                        <FormattedMessage
-                            defaultMessage="Feedback & Bugs"
-                            description="Link to feedback/bugs page"
-                            id="tw.feedback"
-                        />
-                    </a>
                     <a href="https://github.com/TurboWarp/">
+                        {/* Flipwarp is a fork of TurboWarp; the licence requires this credit,
+                            and it is where the underlying editor actually comes from. */}
                         <FormattedMessage
-                            defaultMessage="Source Code"
-                            description="Link to source code"
+                            defaultMessage="Built on TurboWarp"
+                            description="Credit to the project this one is forked from"
                             id="tw.code"
                         />
                     </a>

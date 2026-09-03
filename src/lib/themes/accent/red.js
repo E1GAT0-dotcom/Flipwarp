@@ -1,4 +1,7 @@
 const guiColors = {
+    // The page behind a dialog is dimmed with a dark wash of the accent's own red.
+    'ui-modal-overlay': 'rgba(46, 8, 8, 0.55)',
+
     'motion-primary': '#ff4c4c',
     'motion-primary-transparent': '#ff4c4ce6',
     'motion-tertiary': '#cc3333',

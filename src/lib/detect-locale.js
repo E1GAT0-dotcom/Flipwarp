@@ -6,7 +6,7 @@
 import queryString from 'query-string';
 
 // tw: read language from localStorage
-export const LANGUAGE_KEY = 'tw:language';
+export const LANGUAGE_KEY = 'flipwarp:language';
 
 /**
  * look for language setting in the browser. Check against supported locales.

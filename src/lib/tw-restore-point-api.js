@@ -695,7 +695,7 @@ const deleteLegacyRestorePoint = () => {
 };
 
 const DEFAULT_INTERVAL = 1000 * 60 * 5;
-const INTERVAL_STORAGE_KEY = 'tw:restore-point-interval';
+const INTERVAL_STORAGE_KEY = 'flipwarp:restore-point-interval';
 
 const readInterval = () => {
     try {
@@ -708,7 +708,7 @@ const readInterval = () => {
         }
 
         // TODO: this is temporary, remove it after enough has passed for people that care to have migrated
-        const addonSettings = localStorage.getItem('tw:addons');
+        const addonSettings = localStorage.getItem('flipwarp:addons');
         if (addonSettings) {
             const parsedAddonSettings = JSON.parse(addonSettings);
             const addonObject = parsedAddonSettings['tw-disable-restore-points'];

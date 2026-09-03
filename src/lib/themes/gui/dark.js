@@ -5,7 +5,6 @@ const guiColors = {
     'ui-secondary': '#1e1e1e',
     'ui-tertiary': '#2e2e2e',
 
-    'ui-modal-overlay': '#333333aa',
     'ui-modal-background': '#111111',
     'ui-modal-foreground': '#eeeeee',
     'ui-modal-header-background': '#333333',
@@ -16,8 +15,6 @@ const guiColors = {
     'ui-black-transparent': '#ffffff26',
 
     'text-primary': '#eeeeee',
-
-    'menu-bar-background': '#333333',
 
     'assets-background': '#111111',
 

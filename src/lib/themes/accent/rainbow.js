@@ -1,4 +1,7 @@
 const guiColors = {
+    // The page behind a dialog is dimmed with plain dark, because a rainbow wash over the page would be unreadable.
+    'ui-modal-overlay': 'rgba(14, 14, 16, 0.62)',
+
     'motion-primary': '#ff4c4c',
     'motion-primary-transparent': '#ff4c4ce6',
     'motion-tertiary': '#cc3333',

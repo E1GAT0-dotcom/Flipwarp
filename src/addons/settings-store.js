@@ -18,7 +18,7 @@ import addons from './generated/addon-manifests';
 import upstreamMeta from './generated/upstream-meta.json';
 import EventTargetShim from './event-target';
 
-const SETTINGS_KEY = 'tw:addons';
+const SETTINGS_KEY = 'flipwarp:addons';
 const VERSION = 5;
 
 const migrateSettings = settings => {

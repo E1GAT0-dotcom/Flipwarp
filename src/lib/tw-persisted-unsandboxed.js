@@ -2,7 +2,7 @@
 // User still has to manually confirm loading the extension and has
 // every opportunity to uncheck the box.
 
-const PERSISTED_UNSANDBOXED_KEY = 'tw:persisted_unsandboxed';
+const PERSISTED_UNSANDBOXED_KEY = 'flipwarp:persisted_unsandboxed';
 
 /**
  * @returns {boolean} True if persistence enabled
