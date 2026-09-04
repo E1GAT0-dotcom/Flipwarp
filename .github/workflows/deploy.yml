@@ -52,6 +52,14 @@ jobs:
       - name: Bundle them into the site
         run: node scripts/flipwarp-bundle-penguinmod.js /tmp/pm-extensions /tmp/pm-images
 
+      # The featured projects, read straight from Scratch here rather than
+      # through TurboWarp's trampoline in the browser. A build runs on a
+      # server, so Scratch will answer it; a browser on another website it
+      # will not. If this step cannot reach Scratch it says so and carries
+      # on — the page then falls back to the old way.
+      - name: Fetch the featured projects studio
+        run: node scripts/flipwarp-fetch-studio.js 51937931 build/studio-51937931.json
+
       - uses: actions/configure-pages@v5
         with:
           # Switch Pages on if it is not already, and point it at this

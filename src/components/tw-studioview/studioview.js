@@ -260,7 +260,7 @@ StudioView.prototype.loadNextPage = function () {
         }
         this.cleanupPlaceholders();
 
-        if (rawProjects.length === 40) {
+        if (!local && rawProjects.length === 40) {
             if (this.loadNextPageObserver) {
                 this.loadNextPageObserver.observe(this.projectList.lastChild);
             }
@@ -277,13 +277,36 @@ StudioView.prototype.loadNextPage = function () {
     }.bind(this);
 
     xhr.onerror = function () {
+        // No list in the site means it was built without the fetch step, or
+        // run straight from a folder. Rather than show an error, ask the way
+        // the editor used to — which still works, just through somebody
+        // else's server.
+        if (!this.useFallbackApi) {
+            this.useFallbackApi = true;
+            this.loadingPage = false;
+            this.loadNextPage();
+            return;
+        }
         this.root.setAttribute('error', '');
         this.cleanupPlaceholders();
         this.addErrorElement();
         this.ended = true;
     }.bind(this);
 
-    var url = StudioView.STUDIO_API
+    // The list is written into this site at build time, so it is asked for
+    // here rather than from anybody else's server. The whole studio is in
+    // that one file, so there is never a second page of it.
+    var local = !this.useFallbackApi;
+    if (local && this.offset > 0) {
+        this.ended = true;
+        this.loadingPage = false;
+        this.root.removeAttribute('loading');
+        this.cleanupPlaceholders();
+        this.onend();
+        return;
+    }
+    var template = local ? StudioView.STUDIO_FILE : StudioView.STUDIO_API;
+    var url = template
         .replace('$id', this.studioId)
         .replace('$offset', '' + this.offset);
     xhr.open('GET', url);
@@ -298,15 +321,29 @@ StudioView.prototype.onselect = function (id, el) { };
 StudioView.prototype.onpageload = function () { };
 StudioView.prototype.onend = function () { };
 
+// The studio's projects, written into this site when it is built. Relative,
+// so it works wherever the site is put — including in a subfolder, which is
+// where GitHub Pages puts it.
+StudioView.STUDIO_FILE = 'studio-$id.json';
+
+// Where the list used to come from, and still does if the file above is not
+// there. Scratch's own API will not answer another website directly, which is
+// why this middleman exists at all.
 StudioView.STUDIO_API = 'https://trampoline.turbowarp.org/api/studios/$id/projects?offset=$offset';
 
-// The URL to download thumbnails from.
+// The URL to download thumbnails from. Scratch's own pictures: an image tag
+// may load from anywhere, so no middleman is needed for these either.
 // $id is replaced with the project's ID.
-StudioView.THUMBNAIL_SRC = 'https://trampoline.turbowarp.org/thumbnails/$id?width=144&height=108';
+StudioView.THUMBNAIL_SRC = 'https://cdn2.scratch.mit.edu/get_image/project/$id_144x108.png';
 
-// The URL for project pages.
+// Where a featured project's link goes. Clicking a card opens the project
+// inside Flipwarp and never uses this; it is what a middle-click or "open in
+// new tab" gets, so it has to be an address that works on its own. This site
+// has no per-project address of its own — GitHub Pages cannot route one — so
+// it points at the project on Scratch, which also puts the person who made it
+// one click away.
 // $id is replaced with the project ID.
-StudioView.PROJECT_PAGE = 'https://turbowarp.org/$id';
+StudioView.PROJECT_PAGE = 'https://scratch.mit.edu/projects/$id/';
 
 // The URL for studio pages.
 // $id is replaced with the studio ID.
