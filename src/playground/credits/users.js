@@ -8,9 +8,12 @@ const shuffle = list => {
     return list;
 };
 
+// Avatars come straight from Scratch's own image server rather than through
+// TurboWarp's proxy. It is the same picture, from the place it actually lives,
+// and it does not ask TurboWarp to serve an image for every visitor here.
 const fromHardcoded = ({userID = '0', username}) => {
     const result = {
-        image: `https://trampoline.turbowarp.org/avatars/${userID}`,
+        image: `https://cdn2.scratch.mit.edu/get_image/user/${userID}_60x60.png`,
         text: username
     };
     if (username && userID !== '0') {
@@ -20,6 +23,14 @@ const fromHardcoded = ({userID = '0', username}) => {
 };
 
 // The lists below are in no particular order.
+
+// Flipwarp itself. Not shuffled, because there is nothing to shuffle.
+const flipwarp = [
+    {
+        userID: '162548264',
+        username: 'E1GAT0_'
+    }
+];
 
 const contributors = [
     {
@@ -382,6 +393,7 @@ const docs = [
 ].map(fromHardcoded);
 
 export default {
+    flipwarp: flipwarp.map(fromHardcoded),
     contributors: shuffle(contributors),
     addonDevelopers: shuffle(addonDevelopers),
     extensionDevelopers: shuffle(extensionDevelopers),

@@ -64,6 +64,10 @@ const Credits = () => (
                 The {APP_NAME} project is made possible by the work of many volunteers.
             </p>
         </section>
+        <section>
+            <h2>{APP_NAME}</h2>
+            <UserList users={UserData.flipwarp} />
+        </section>
         {APP_NAME !== 'TurboWarp' && (
             // Be kind and considerate. Don't remove this :)
             <section>
@@ -95,6 +99,13 @@ const Credits = () => (
         <section>
             <h2>TurboWarp Extension Gallery</h2>
             <UserList users={UserData.extensionDevelopers} />
+        </section>
+        <section>
+            <h2>PenguinMod Extensions</h2>
+            <p>
+                The extensions under the PenguinMod tab were written by their individual authors and are used
+                under the MIT licence. Each one is named in <a href="penguinmod/CREDITS.txt">penguinmod/CREDITS.txt</a>.
+            </p>
         </section>
         <section>
             <h2>Documentation</h2>

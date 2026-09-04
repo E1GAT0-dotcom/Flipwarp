@@ -128,29 +128,33 @@ const Footer = () => (
                     </a>
                 </div>
                 <div className={styles.footerSection}>
+                    {/* These describe features Flipwarp inherits unchanged, and they are
+                        TurboWarp's documentation rather than ours — which the wording now
+                        says, instead of quietly passing them off as this site's own. */}
                     <a href="https://docs.turbowarp.org/embedding">
                         <FormattedMessage
-                            defaultMessage="Embedding"
+                            defaultMessage="Embedding (TurboWarp docs)"
                             description="Link in footer to embedding documentation for embedding link"
                             id="tw.footer.embed"
                         />
                     </a>
                     <a href="https://docs.turbowarp.org/url-parameters">
                         <FormattedMessage
-                            defaultMessage="URL Parameters"
+                            defaultMessage="URL Parameters (TurboWarp docs)"
                             description="Link in footer to URL parameters documentation"
                             id="tw.footer.parameters"
                         />
                     </a>
-                    <a href="https://docs.turbowarp.org/">
-                        <FormattedMessage
-                            defaultMessage="Documentation"
-                            description="Link in footer to additional documentation"
-                            id="tw.footer.documentation"
-                        />
-                    </a>
                 </div>
                 <div className={styles.footerSection}>
+                    <a href="https://github.com/E1GAT0-dotcom/Flipwarp">
+                        <FormattedMessage
+                            defaultMessage="{APP_NAME} on GitHub"
+                            description="Link to this project's own source code"
+                            id="flipwarp.footer.source"
+                            values={{APP_NAME}}
+                        />
+                    </a>
                     <a href="https://github.com/TurboWarp/">
                         {/* Flipwarp is a fork of TurboWarp; the licence requires this credit,
                             and it is where the underlying editor actually comes from. */}
@@ -328,7 +332,10 @@ class Interface extends React.Component {
                                 </p>
                             </div>
                             <div className={styles.section}>
-                                <FeaturedProjects studio="27205657" />
+                                {/* Flipwarp's own studio. A studio has no idea which of its projects
+    are the best ones, so what shows here is what has been added to it:
+    the studio is the curation. */}
+                                <FeaturedProjects studio="51936709" />
                             </div>
                         </React.Fragment>
                     ) : null}
