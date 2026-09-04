@@ -49,7 +49,11 @@ let list = await items();
 await list[0].click();
 await page.waitForTimeout(500);
 const afterPlain = await selectedCount();
-const barAfterPlain = await bar();
+// The strip is there for one costume too, because that is where a folder is
+// chosen — but it carries no count and none of the act-on-all-of-them
+// buttons, which belong to the item itself when there is only one.
+const plainBarText = await page.$eval('[class*="selector_batch-bar"]',
+    el => el.textContent.trim()).catch(() => null);
 
 // --- ctrl+click adds ------------------------------------------------------
 list = await items();
@@ -95,7 +99,9 @@ await browser.close();
 const checks = [
     ['six costumes to start with', startNames.length === 6, startNames],
     ['a plain click selects one', afterPlain === 1, afterPlain],
-    ['and shows no batch strip', barAfterPlain === null],
+    ['with one, the strip offers only a folder',
+        plainBarText !== null && /Folder/.test(plainBarText) && !/Delete|selected/.test(plainBarText),
+        plainBarText],
     ['ctrl+click adds them up', afterCtrl === 3, afterCtrl],
     ['the strip says how many', /3 selected/.test(ctrlBar || ''), ctrlBar],
     ['ctrl+click again takes one off', afterCtrlOff === 2, afterCtrlOff],

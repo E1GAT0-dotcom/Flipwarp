@@ -122,3 +122,59 @@ $fade-out-distance: 100px;
 .batch-delete {
     color: #d4553a;
 }
+
+/* A folder's line in the list. Placed by CSS order, like the costumes are,
+   so the real order of the sprite's costumes is never disturbed. */
+.folder-header {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.4rem;
+    margin: 0.15rem 0.25rem 0;
+    border-radius: 0.25rem;
+    background: $ui-tertiary;
+    color: $text-primary;
+    font-size: 0.7rem;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+}
+
+.folder-header:hover {
+    background: $ui-black-transparent;
+}
+
+.folder-arrow {
+    flex: 0 0 auto;
+    font-size: 0.6rem;
+    opacity: 0.7;
+}
+
+.folder-name {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.folder-count {
+    flex: 0 0 auto;
+    opacity: 0.6;
+    font-weight: normal;
+}
+
+/* Inside a folder that is closed. Kept in the list rather than removed from
+   it so nothing about the costume's number changes while it is out of sight. */
+.tucked {
+    display: none;
+}
+
+.folder-input {
+    flex: 1 1 6rem;
+    min-width: 0;
+    padding: 0.2rem 0.3rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.25rem;
+    font-family: inherit;
+    font-size: 0.7rem;
+}

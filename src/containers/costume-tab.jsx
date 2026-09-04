@@ -11,6 +11,7 @@ import {handleFileUpload, costumeUpload} from '../lib/file-uploader.js';
 import errorBoundaryHOC from '../lib/error-boundary-hoc.jsx';
 import DragConstants from '../lib/drag-constants';
 import {emptyCostume} from '../lib/empty-assets';
+import {setFolder, folderOf, foldersIn, groupedOrder, installCostumeFolders} from '../lib/flipwarp/costume-folders.js';
 import sharedMessages from '../lib/shared-messages';
 import downloadBlob from '../lib/download-blob';
 
@@ -80,6 +81,8 @@ class CostumeTab extends React.Component {
             'handleDeleteSelected',
             'handleDuplicateSelected',
             'handleExportSelected',
+            'handleToggleFolder',
+            'handleMoveToFolder',
             'handleDeleteCostume',
             'handleDuplicateCostume',
             'handleExportCostume',
@@ -112,6 +115,10 @@ class CostumeTab extends React.Component {
         // calls back with the number alone — the keys never survive the trip.
         // Watching in the capture phase means this runs before anything that
         // could swallow the event, whoever ends up handling it.
+        // Folders the person has closed, by name. Kept per sprite and only
+        // while the editor is open: which folders are shut is a view, not
+        // something about the project.
+        this.collapsed = {};
         this.lastKeys = {ctrl: false, shift: false, at: 0};
         this.rememberKeys = e => {
             this.lastKeys = {
@@ -131,6 +138,9 @@ class CostumeTab extends React.Component {
     }
     componentDidMount () {
         document.addEventListener('mousedown', this.rememberKeys, true);
+        // Makes folders survive being saved and opened again. Safe to call
+        // more than once; only the first does anything.
+        installCostumeFolders(this.props.vm);
     }
 
     componentWillUnmount () {
@@ -236,6 +246,31 @@ class CostumeTab extends React.Component {
         }
         this.anchorIndex = null;
         this.setState({selectedIndices: []});
+    }
+
+    handleToggleFolder (name) {
+        const target = this.props.vm.editingTarget;
+        const key = `${target ? target.id : ''}:${name}`;
+        this.collapsed[key] = !this.collapsed[key];
+        this.forceUpdate();
+    }
+
+    isCollapsed (name) {
+        const target = this.props.vm.editingTarget;
+        return !!this.collapsed[`${target ? target.id : ''}:${name}`];
+    }
+
+    // Move everything picked out into a folder, or out of one when the name
+    // is empty. The costumes themselves do not move: a folder is a label, so
+    // the sprite's order is left exactly as it was.
+    handleMoveToFolder (name) {
+        const costumes = this.props.vm.editingTarget.getCostumes();
+        for (const index of this.state.selectedIndices) {
+            if (costumes[index]) setFolder(costumes[index], name);
+        }
+        this.props.vm.emitTargetsUpdate();
+        this.props.vm.runtime.emitProjectChanged();
+        this.forceUpdate();
     }
 
     handleExportSelected () {
@@ -386,6 +421,32 @@ class CostumeTab extends React.Component {
             details: costume.size ? this.formatCostumeDetails(costume.size, costume.bitmapResolution) : null,
             dragPayload: costume
         })) : [];
+
+        // Where each costume sits on screen once folders are taken into
+        // account, and where each folder's own line goes. The costumes are
+        // not moved — only shown in a different order.
+        const costumes = target.costumes || [];
+        const rows = groupedOrder(costumes);
+        const displayOrder = new Array(costumes.length).fill(0);
+        const headerAt = {};
+        let position = 0;
+        let lastFolder;
+        for (const row of rows) {
+            if (row.folder && row.folder !== lastFolder) headerAt[row.folder] = position++;
+            lastFolder = row.folder;
+            displayOrder[row.index] = position++;
+        }
+        const folderHeaders = foldersIn(costumes).map(name => ({
+            name,
+            position: headerAt[name],
+            count: costumes.filter(c => folderOf(c) === name).length,
+            collapsed: this.isCollapsed(name)
+        }));
+        const hiddenIndices = costumes
+            .map((costume, index) => ({costume, index}))
+            .filter(({costume}) => folderOf(costume) && this.isCollapsed(folderOf(costume)))
+            .map(({index}) => index);
+
         return (
             <AssetPanel
                 buttons={[
@@ -422,6 +483,10 @@ class CostumeTab extends React.Component {
                 dragType={DragConstants.COSTUME}
                 isRtl={isRtl}
                 items={costumeData}
+                displayOrder={displayOrder}
+                folderHeaders={folderHeaders}
+                folders={foldersIn(costumes)}
+                hiddenIndices={hiddenIndices}
                 selectedIndices={this.state.selectedIndices}
                 selectedItemIndex={this.state.selectedCostumeIndex}
                 onDeleteClick={target && target.costumes && target.costumes.length > 1 ?
@@ -434,6 +499,8 @@ class CostumeTab extends React.Component {
                 onDuplicateSelected={this.handleDuplicateSelected}
                 onExportSelected={this.handleExportSelected}
                 onItemClick={this.handleSelectCostume}
+                onMoveToFolder={this.handleMoveToFolder}
+                onToggleFolder={this.handleToggleFolder}
             >
                 {target.costumes ?
                     <PaintEditorWrapper
