@@ -7,6 +7,7 @@ import GreenFlag from '../green-flag/green-flag.jsx';
 import StopAll from '../stop-all/stop-all.jsx';
 import TurboMode from '../turbo-mode/turbo-mode.jsx';
 import FramerateIndicator from '../tw-framerate-indicator/framerate-indicator.jsx';
+import RadioControl from '../flipwarp/radio-control.jsx';
 
 import styles from './controls.css';
 
@@ -60,6 +61,9 @@ const Controls = function (props) {
                     interpolation={interpolation}
                 />
             )}
+            {/* Shows itself or not according to its own setting, so the
+                controls bar does not have to be told about it. */}
+            {!isSmall && <RadioControl running={active} />}
         </div>
     );
 };

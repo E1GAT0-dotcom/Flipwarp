@@ -552,6 +552,51 @@ const FlipwarpSettings = () => {
                     />
                 </p>
             </BooleanSetting>
+            <BooleanSetting
+                value={settings.musicPlayer}
+                onChange={value => change({musicPlayer: value})}
+                label={<FormattedMessage
+                    defaultMessage="Background radio"
+                    description="Flipwarp setting"
+                    id="flipwarp.settings.musicPlayer"
+                />}
+            >
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Adds play and pause beside the green flag, with stations from the Radio Browser directory. It is a public directory anyone can add to, so what a station plays is up to whoever runs it. Nothing is fetched until you open the list."
+                        description="Help text for the background radio setting"
+                        id="flipwarp.settings.musicPlayerHelp"
+                    />
+                </p>
+            </BooleanSetting>
+            {settings.musicPlayer ? (
+                <div className={styles.setting}>
+                    <label>
+                        <FormattedMessage
+                            defaultMessage="While a project is running"
+                            description="Flipwarp setting"
+                            id="flipwarp.settings.musicWhileRunning"
+                        />
+                        {' '}
+                        <select
+                            value={settings.musicWhileRunning}
+                            onChange={e => change({musicWhileRunning: e.target.value})}
+                        >
+                            <option value="duck">{'Turn the radio down'}</option>
+                            <option value="mute">{'Silence the radio'}</option>
+                            <option value="nothing">{'Leave the radio alone'}</option>
+                        </select>
+                    </label>
+                    <p>
+                        <FormattedMessage
+                            defaultMessage="So a project's own sounds can be heard over the music. The radio goes back to normal when the project stops."
+                            description="Help text for what the radio does while a project runs"
+                            id="flipwarp.settings.musicWhileRunningHelp"
+                        />
+                    </p>
+                </div>
+            ) : null}
             <div className={styles.setting}>
                 <label>
                     <FormattedMessage

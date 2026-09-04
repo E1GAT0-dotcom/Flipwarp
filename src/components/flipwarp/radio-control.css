@@ -1,0 +1,177 @@
+@import "../../css/colors.css";
+@import "../../css/units.css";
+
+/* Sits in the controls bar beside the green flag and the stop sign, so it
+   borrows their height rather than setting its own. */
+.radio {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 0.75rem;
+}
+
+.play,
+.name {
+    display: flex;
+    align-items: center;
+    height: 1.9rem;
+    padding: 0 0.5rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.95rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.play {
+    width: 1.9rem;
+    padding: 0;
+    justify-content: center;
+}
+
+.play:hover,
+.name:hover {
+    background: $ui-primary;
+}
+
+.name {
+    gap: 0.3rem;
+    max-width: 9rem;
+}
+
+/* The station name comes from a public directory, so it is given a fixed
+   amount of room and cut off rather than allowed to push the stop button off
+   the bar. */
+.name-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.caret {
+    font-size: 0.6rem;
+    opacity: 0.6;
+}
+
+.problem {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    background: #d4553a;
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-weight: bold;
+    cursor: help;
+}
+
+.spinner {
+    animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.picker {
+    position: absolute;
+    top: calc(100% + 0.4rem);
+    left: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    width: 17rem;
+    max-height: 20rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.5rem;
+    background: $ui-white;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.picker-head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid $ui-black-transparent;
+    background: $ui-primary;
+}
+
+.genre {
+    flex: 0 0 auto;
+    font-family: inherit;
+    font-size: 0.75rem;
+}
+
+.mute {
+    flex: 0 0 auto;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.3rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: inherit;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.volume {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+}
+
+.station {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    border: none;
+    border-bottom: 1px solid $ui-black-transparent;
+    background: transparent;
+    color: $text-primary;
+    font-family: inherit;
+    font-size: 0.78rem;
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.station:hover {
+    background: $ui-primary;
+}
+
+.current {
+    font-weight: bold;
+    color: $motion-primary;
+}
+
+.note {
+    padding: 0.7rem 0.6rem;
+    font-size: 0.78rem;
+    color: $text-primary;
+    opacity: 0.8;
+}
+
+.foot {
+    flex: none;
+    padding: 0.45rem 0.6rem;
+    border-top: 1px solid $ui-black-transparent;
+    background: $ui-primary;
+    color: $text-primary;
+    font-size: 0.68rem;
+    opacity: 0.75;
+    line-height: 1.35;
+}

@@ -18,6 +18,12 @@ const DEFAULTS = {
     // default because the positions are kept either way — this only decides
     // whether you have to look at them.
     showPositions: false,
+    // Background radio beside the green flag. Off by default: it reaches out
+    // to another website the moment it is opened, which should be something
+    // you asked for rather than something that happens.
+    musicPlayer: false,
+    // What the radio does while a project is running: duck | mute | nothing.
+    musicWhileRunning: 'duck',
     // The project-wide tools. On by default: a tool nobody can find is the
     // same as a tool that does not exist, and each one is a button that does
     // nothing until pressed.
@@ -42,6 +48,9 @@ const read = () => {
             indentSize: parsed.indentSize === 4 ? 4 : DEFAULTS.indentSize,
             suggestions: typeof parsed.suggestions === 'boolean' ? parsed.suggestions : DEFAULTS.suggestions,
             showPositions: typeof parsed.showPositions === 'boolean' ? parsed.showPositions : DEFAULTS.showPositions,
+            musicPlayer: bool(parsed.musicPlayer, DEFAULTS.musicPlayer),
+            musicWhileRunning: ['duck', 'mute', 'nothing'].includes(parsed.musicWhileRunning) ?
+                parsed.musicWhileRunning : DEFAULTS.musicWhileRunning,
             searchProject: bool(parsed.searchProject, DEFAULTS.searchProject),
             findReplace: bool(parsed.findReplace, DEFAULTS.findReplace),
             copyAsText: bool(parsed.copyAsText, DEFAULTS.copyAsText),
