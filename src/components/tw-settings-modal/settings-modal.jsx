@@ -452,7 +452,7 @@ const FlipwarpSettings = () => {
         <React.Fragment>
             <BooleanSetting
                 value={settings.suggestions}
-                onChange={value => change({suggestions: value})}
+                onChange={e => change({suggestions: e.target.checked})}
                 label={<FormattedMessage
                     defaultMessage="Suggest blocks while typing"
                     description="Flipwarp setting"
@@ -470,7 +470,7 @@ const FlipwarpSettings = () => {
             </BooleanSetting>
             <BooleanSetting
                 value={settings.showPositions}
-                onChange={value => change({showPositions: value})}
+                onChange={e => change({showPositions: e.target.checked})}
                 label={<FormattedMessage
                     defaultMessage="Show where each script sits"
                     description="Flipwarp setting"
@@ -488,7 +488,7 @@ const FlipwarpSettings = () => {
             </BooleanSetting>
             <BooleanSetting
                 value={settings.searchProject}
-                onChange={value => change({searchProject: value})}
+                onChange={e => change({searchProject: e.target.checked})}
                 label={<FormattedMessage
                     defaultMessage="Search all sprites"
                     description="Flipwarp setting"
@@ -506,7 +506,7 @@ const FlipwarpSettings = () => {
             </BooleanSetting>
             <BooleanSetting
                 value={settings.findReplace}
-                onChange={value => change({findReplace: value})}
+                onChange={e => change({findReplace: e.target.checked})}
                 label={<FormattedMessage
                     defaultMessage="Find and replace across sprites"
                     description="Flipwarp setting"
@@ -524,7 +524,7 @@ const FlipwarpSettings = () => {
             </BooleanSetting>
             <BooleanSetting
                 value={settings.copyAsText}
-                onChange={value => change({copyAsText: value})}
+                onChange={e => change({copyAsText: e.target.checked})}
                 label={<FormattedMessage
                     defaultMessage="Copy a script as text"
                     description="Flipwarp setting"
@@ -542,7 +542,7 @@ const FlipwarpSettings = () => {
             </BooleanSetting>
             <BooleanSetting
                 value={settings.pasteAsBlocks}
-                onChange={value => change({pasteAsBlocks: value})}
+                onChange={e => change({pasteAsBlocks: e.target.checked})}
                 label={<FormattedMessage
                     defaultMessage="Paste text as blocks"
                     description="Flipwarp setting"
@@ -560,7 +560,7 @@ const FlipwarpSettings = () => {
             </BooleanSetting>
             <BooleanSetting
                 value={settings.blockSheet}
-                onChange={value => change({blockSheet: value})}
+                onChange={e => change({blockSheet: e.target.checked})}
                 label={<FormattedMessage
                     defaultMessage="Block sheet"
                     description="Flipwarp setting"
@@ -578,7 +578,7 @@ const FlipwarpSettings = () => {
             </BooleanSetting>
             <BooleanSetting
                 value={settings.musicPlayer}
-                onChange={value => change({musicPlayer: value})}
+                onChange={e => change({musicPlayer: e.target.checked})}
                 label={<FormattedMessage
                     defaultMessage="Background radio"
                     description="Flipwarp setting"
