@@ -18,6 +18,11 @@ const Selector = props => {
         isRtl,
         items,
         selectedItemIndex,
+        selectedIndices,
+        onClearSelection,
+        onDeleteSelected,
+        onDuplicateSelected,
+        onExportSelected,
         draggingIndex,
         draggingType,
         ordering,
@@ -30,6 +35,11 @@ const Selector = props => {
     } = props;
 
     const isRelevantDrag = draggingType === dragType;
+    // More than one picked out means the buttons act on all of them, so a
+    // strip appears saying so. One is the ordinary case and needs no strip:
+    // the one you clicked is the one you are editing.
+    const chosen = selectedIndices || [];
+    const many = chosen.length > 1;
 
     let newButtonSection = null;
 
@@ -54,6 +64,31 @@ const Selector = props => {
             className={styles.wrapper}
             componentRef={containerRef}
         >
+            {many ? (
+                <Box className={styles.batchBar}>
+                    <span className={styles.batchCount}>{`${chosen.length} selected`}</span>
+                    <button
+                        className={styles.batchButton}
+                        title="Duplicate all of them"
+                        onClick={onDuplicateSelected}
+                    >{'Duplicate'}</button>
+                    <button
+                        className={styles.batchButton}
+                        title="Save all of them to your computer"
+                        onClick={onExportSelected}
+                    >{'Export'}</button>
+                    <button
+                        className={classNames(styles.batchButton, styles.batchDelete)}
+                        title="Delete all of them"
+                        onClick={onDeleteSelected}
+                    >{'Delete'}</button>
+                    <button
+                        className={styles.batchButton}
+                        title="Stop selecting several"
+                        onClick={onClearSelection}
+                    >{'Cancel'}</button>
+                </Box>
+            ) : null}
             <Box className={styles.listArea}>
                 {items.map((item, index) => (
                     <SortableAsset
@@ -76,7 +111,7 @@ const Selector = props => {
                             index={index}
                             name={item.name}
                             number={index + 1 /* 1-indexed */}
-                            selected={index === selectedItemIndex}
+                            selected={many ? chosen.includes(index) : index === selectedItemIndex}
                             onClick={onItemClick}
                             onDeleteButtonClick={onDeleteClick}
                             onDuplicateButtonClick={onDuplicateClick}
@@ -110,8 +145,13 @@ Selector.propTypes = {
     onDuplicateClick: PropTypes.func,
     onExportClick: PropTypes.func,
     onItemClick: PropTypes.func.isRequired,
+    onClearSelection: PropTypes.func,
+    onDeleteSelected: PropTypes.func,
+    onDuplicateSelected: PropTypes.func,
+    onExportSelected: PropTypes.func,
     onRemoveSortable: PropTypes.func,
     ordering: PropTypes.arrayOf(PropTypes.number),
+    selectedIndices: PropTypes.arrayOf(PropTypes.number),
     selectedItemIndex: PropTypes.number.isRequired
 };
 

@@ -87,7 +87,13 @@ class SpriteSelectorItem extends React.PureComponent {
     handleClick (e) {
         e.preventDefault();
         if (!this.noClick) {
-            this.props.onClick(this.props.id);
+            // The modifier keys go with the click. A list that supports
+            // picking several at once needs to know which kind of click this
+            // was, and everything else simply ignores the second argument.
+            this.props.onClick(this.props.id, {
+                ctrl: e.ctrlKey || e.metaKey,
+                shift: e.shiftKey
+            });
         }
     }
     handleDelete (e) {

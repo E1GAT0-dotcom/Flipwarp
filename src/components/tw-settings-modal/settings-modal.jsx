@@ -89,7 +89,11 @@ class UnwrappedSetting extends React.Component {
                 </div>
                 {this.state.helpVisible && (
                     <div className={styles.detail}>
-                        {this.props.help}
+                        {/* Written either way: TurboWarp's own settings pass
+                            their help as a prop, Flipwarp's put it inside the
+                            setting. Only the prop was ever read, so every "?"
+                            in the Flipwarp section opened an empty box. */}
+                        {this.props.help || this.props.children}
                         {this.props.slug && <LearnMore slug={this.props.slug} />}
                     </div>
                 )}
@@ -101,6 +105,7 @@ class UnwrappedSetting extends React.Component {
 UnwrappedSetting.propTypes = {
     intl: intlShape,
     active: PropTypes.bool,
+    children: PropTypes.node,
     help: PropTypes.node,
     primary: PropTypes.node,
     secondary: PropTypes.node,
@@ -125,6 +130,7 @@ const BooleanSetting = ({value, onChange, label, ...props}) => (
     />
 );
 BooleanSetting.propTypes = {
+    children: PropTypes.node,
     onChange: PropTypes.func.isRequired,
     value: PropTypes.bool.isRequired,
     label: PropTypes.node.isRequired

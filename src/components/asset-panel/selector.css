@@ -82,3 +82,43 @@ $fade-out-distance: 100px;
     background: white;
     filter: opacity(15%) brightness(0%);
 }
+
+/* Shown only while several are picked out, because the buttons on a single
+   item already act on that one. */
+.batch-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.4rem;
+    border-bottom: 1px solid $ui-black-transparent;
+    background: $ui-primary;
+}
+
+.batch-count {
+    flex: 1 1 100%;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: $text-primary;
+    text-align: center;
+}
+
+.batch-button {
+    flex: 1 1 auto;
+    padding: 0.25rem 0.3rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.25rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: inherit;
+    font-size: 0.68rem;
+    cursor: pointer;
+}
+
+.batch-button:hover {
+    background: $ui-tertiary;
+}
+
+.batch-delete {
+    color: #d4553a;
+}

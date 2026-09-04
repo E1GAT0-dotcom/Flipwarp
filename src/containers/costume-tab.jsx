@@ -76,6 +76,10 @@ class CostumeTab extends React.Component {
         super(props);
         bindAll(this, [
             'handleSelectCostume',
+            'handleClearSelection',
+            'handleDeleteSelected',
+            'handleDuplicateSelected',
+            'handleExportSelected',
             'handleDeleteCostume',
             'handleDuplicateCostume',
             'handleExportCostume',
@@ -95,11 +99,44 @@ class CostumeTab extends React.Component {
         } = props;
         const target = editingTarget && sprites[editingTarget] ? sprites[editingTarget] : stage;
         if (target && target.currentCostume) {
-            this.state = {selectedCostumeIndex: target.currentCostume};
+            this.state = {selectedCostumeIndex: target.currentCostume, selectedIndices: []};
         } else {
-            this.state = {selectedCostumeIndex: 0};
+            this.state = {selectedCostumeIndex: 0, selectedIndices: []};
         }
+        // Where a shift-click measures from: the last one picked on its own.
+        this.anchorIndex = null;
+        // Which modifier keys were down for the click being handled.
+        //
+        // Read from the click itself rather than taken from whoever forwards
+        // it, because the Folders addon replaces the costume list's items and
+        // calls back with the number alone — the keys never survive the trip.
+        // Watching in the capture phase means this runs before anything that
+        // could swallow the event, whoever ends up handling it.
+        this.lastKeys = {ctrl: false, shift: false, at: 0};
+        this.rememberKeys = e => {
+            this.lastKeys = {
+                ctrl: e.ctrlKey || e.metaKey,
+                shift: e.shiftKey,
+                at: Date.now()
+            };
+        };
     }
+
+    // The keys from the click happening now. Anything older than a moment ago
+    // belongs to a different click and is ignored, so a stale ctrl can never
+    // turn an ordinary click into an adding one.
+    heldKeys () {
+        const fresh = Date.now() - this.lastKeys.at < 1000;
+        return fresh ? this.lastKeys : {ctrl: false, shift: false};
+    }
+    componentDidMount () {
+        document.addEventListener('mousedown', this.rememberKeys, true);
+    }
+
+    componentWillUnmount () {
+        document.removeEventListener('mousedown', this.rememberKeys, true);
+    }
+
     componentWillReceiveProps (nextProps) {
         const {
             editingTarget,
@@ -121,16 +158,92 @@ class CostumeTab extends React.Component {
             // https://github.com/LLK/scratch-vm/issues/967
             // Right now, you can land on the wrong costume if a costume changing script is running.
             if (oldTarget.costumeCount !== target.costumeCount) {
-                this.setState({selectedCostumeIndex: target.currentCostume});
+                this.setState({selectedCostumeIndex: target.currentCostume, selectedIndices: []});
             }
         } else {
             // If switching editing targets, update the costume index
-            this.setState({selectedCostumeIndex: target.currentCostume});
+            // A different sprite has different costumes, so anything picked
+            // out in the old one means nothing here.
+            this.anchorIndex = null;
+            this.setState({selectedCostumeIndex: target.currentCostume, selectedIndices: []});
         }
     }
-    handleSelectCostume (costumeIndex) {
+    // Clicking a costume. Plain click picks that one and forgets any others;
+    // ctrl or cmd adds and removes one at a time; shift takes everything
+    // between it and the last one you picked. Those are the rules every file
+    // list uses, so nobody has to be told them.
+    //
+    // The costume being edited follows the click either way: picking several
+    // to delete should still show you the one you last touched.
+    handleSelectCostume (costumeIndex, modifiers) {
+        const held = modifiers && (modifiers.ctrl || modifiers.shift) ? modifiers : this.heldKeys();
+        const costumes = this.props.vm.editingTarget.getCostumes();
+        const chosen = this.state.selectedIndices;
+
+        let next;
+        if (held.shift && this.anchorIndex !== null) {
+            const from = Math.min(this.anchorIndex, costumeIndex);
+            const to = Math.max(this.anchorIndex, costumeIndex);
+            next = [];
+            for (let i = from; i <= to; i++) next.push(i);
+        } else if (held.ctrl) {
+            next = chosen.includes(costumeIndex) ?
+                chosen.filter(i => i !== costumeIndex) :
+                [...chosen, costumeIndex];
+            this.anchorIndex = costumeIndex;
+        } else {
+            next = [costumeIndex];
+            this.anchorIndex = costumeIndex;
+        }
+
+        // Anything that scrolled off the end of a shorter list is dropped, so
+        // a stale number can never be acted on.
+        next = next.filter(i => i >= 0 && i < costumes.length);
+
         this.props.vm.editingTarget.setCostume(costumeIndex);
-        this.setState({selectedCostumeIndex: costumeIndex});
+        this.setState({selectedCostumeIndex: costumeIndex, selectedIndices: next});
+    }
+
+    handleClearSelection () {
+        this.setState(old => ({selectedIndices: [old.selectedCostumeIndex]}));
+    }
+
+    // The chosen ones, newest index first. Deleting or duplicating from the
+    // end means the numbers of the ones still to come cannot shift underneath
+    // us — which is the whole reason a batch delete goes wrong when it does.
+    selectedDescending () {
+        return [...new Set(this.state.selectedIndices)].sort((a, b) => b - a);
+    }
+
+    handleDeleteSelected () {
+        const target = this.props.vm.editingTarget;
+        const total = target.getCostumes().length;
+        const doomed = this.selectedDescending();
+        // A sprite must keep one. Rather than refuse the whole thing, the
+        // first costume is kept back and everything else goes.
+        const keeping = doomed.length >= total ? doomed.slice(0, total - 1) : doomed;
+        for (const index of keeping) {
+            const restore = this.props.vm.deleteCostume(index);
+            this.props.dispatchUpdateRestore({restoreFun: restore, deletedItem: 'Costume'});
+        }
+        this.anchorIndex = null;
+        this.setState({selectedIndices: [], selectedCostumeIndex: 0});
+    }
+
+    handleDuplicateSelected () {
+        for (const index of this.selectedDescending()) {
+            this.props.vm.duplicateCostume(index);
+        }
+        this.anchorIndex = null;
+        this.setState({selectedIndices: []});
+    }
+
+    handleExportSelected () {
+        // Oldest first here, so the files arrive in the order they appear in
+        // the list rather than backwards.
+        for (const index of [...this.state.selectedIndices].sort((a, b) => a - b)) {
+            this.handleExportCostume(index);
+        }
     }
     handleDeleteCostume (costumeIndex) {
         const restoreCostumeFun = this.props.vm.deleteCostume(costumeIndex);
@@ -309,12 +422,17 @@ class CostumeTab extends React.Component {
                 dragType={DragConstants.COSTUME}
                 isRtl={isRtl}
                 items={costumeData}
+                selectedIndices={this.state.selectedIndices}
                 selectedItemIndex={this.state.selectedCostumeIndex}
                 onDeleteClick={target && target.costumes && target.costumes.length > 1 ?
                     this.handleDeleteCostume : null}
                 onDrop={this.handleDrop}
                 onDuplicateClick={this.handleDuplicateCostume}
                 onExportClick={this.handleExportCostume}
+                onClearSelection={this.handleClearSelection}
+                onDeleteSelected={this.handleDeleteSelected}
+                onDuplicateSelected={this.handleDuplicateSelected}
+                onExportSelected={this.handleExportSelected}
                 onItemClick={this.handleSelectCostume}
             >
                 {target.costumes ?

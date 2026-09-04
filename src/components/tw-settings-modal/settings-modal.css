@@ -61,6 +61,28 @@
     margin-right: 0.5rem;
 }
 
+/* The help a "?" opens. There was no style for this at all, so it came out as
+   bare text run straight on from the setting's name, which read as part of the
+   label rather than as an answer to the question you just asked. */
+.detail {
+    margin: 0.3rem 0 0.1rem 1.85rem;
+    padding: 0.4rem 0.6rem;
+    border-left: 3px solid $motion-primary;
+    border-radius: 0.25rem;
+    background: $ui-white-transparent;
+    color: $text-primary;
+    font-size: 0.75rem;
+    line-height: 1.5;
+}
+
+.detail p {
+    margin: 0 0 0.4rem;
+}
+
+.detail p:last-child {
+    margin-bottom: 0;
+}
+
 .help-icon {
     position: relative;
     border: 0;
