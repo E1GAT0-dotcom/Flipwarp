@@ -1,0 +1,194 @@
+@import "../../css/colors.css";
+@import "../../css/units.css";
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $ui-modal-overlay;
+}
+
+.window {
+    width: min(26rem, 92%);
+    border-radius: 0.75rem;
+    background: $ui-white;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.head {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    background: $motion-primary;
+    color: $ui-white;
+}
+
+.title {
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.close {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: $ui-white;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.85rem;
+}
+
+/* The two numbers side by side: the whole point of the panel is the
+   difference between them, so they are put where it cannot be missed. */
+.sizes {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem;
+    border-radius: 0.5rem;
+    background: $ui-primary;
+}
+
+.size-box {
+    display: flex;
+    flex-direction: column;
+}
+
+.size-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.7;
+    color: $text-primary;
+}
+
+.size-value {
+    font-size: 1rem;
+    font-weight: bold;
+    color: $text-primary;
+    font-variant-numeric: tabular-nums;
+}
+
+.smaller {
+    color: $motion-primary;
+}
+
+.arrow {
+    opacity: 0.5;
+    color: $text-primary;
+}
+
+.saved {
+    margin-left: auto;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.75rem;
+    background: $motion-primary;
+    color: $ui-white;
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+.row,
+.check-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: $text-primary;
+}
+
+.row-label {
+    flex: 0 0 4.5rem;
+}
+
+.select {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-family: inherit;
+    font-size: 0.78rem;
+    padding: 0.25rem;
+}
+
+.check-row {
+    line-height: 1.35;
+}
+
+.listen {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.listen-button {
+    flex: 1 1 0;
+    padding: 0.45rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.4rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.listen-button:hover:not(:disabled) {
+    background: $ui-primary;
+}
+
+.listen-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.error {
+    padding: 0.5rem 0.6rem;
+    border-radius: 0.4rem;
+    border-left: 3px solid #d4553a;
+    background: #fdefec;
+    color: #7d2a13;
+    font-size: 0.78rem;
+}
+
+.foot {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.note {
+    flex: 1 1 auto;
+    font-size: 0.7rem;
+    opacity: 0.75;
+    line-height: 1.35;
+    color: $text-primary;
+}
+
+.apply {
+    flex: 0 0 auto;
+    padding: 0.5rem 0.9rem;
+    border: none;
+    border-radius: 0.4rem;
+    background: $motion-primary;
+    color: $ui-white;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.apply:disabled {
+    opacity: 0.5;
+    cursor: default;
+}

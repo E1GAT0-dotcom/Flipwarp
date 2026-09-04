@@ -280,3 +280,22 @@ $border-radius: 0.25rem;
     background-color: rgba(255, 119, 0, 0.3);
     border-color: rgb(255, 119, 0);
 }
+
+/* Sits with the size it is about, because that number is the reason anyone
+   would press it. */
+.shrink-button {
+    margin-left: 0.4rem;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.6rem;
+    background: $ui-white;
+    color: $motion-primary;
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.shrink-button:hover {
+    background: $ui-primary;
+}

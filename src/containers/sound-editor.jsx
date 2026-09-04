@@ -5,6 +5,8 @@ import WavEncoder from 'wav-encoder';
 import VM from 'scratch-vm';
 
 import {connect} from 'react-redux';
+import {mixToMono, channelsOf} from '../lib/flipwarp/sound-shrink.js';
+import SoundShrink from '../components/flipwarp/sound-shrink.jsx';
 
 import {
     computeChunkedRMS,
@@ -25,6 +27,9 @@ class SoundEditor extends React.Component {
     constructor (props) {
         super(props);
         bindAll(this, [
+            'handleOpenShrink',
+            'handleCloseShrink',
+            'handleShrunk',
             'copy',
             'copyCurrentBuffer',
             'handleCopyToNew',
@@ -48,6 +53,7 @@ class SoundEditor extends React.Component {
             'resampleBufferToRate'
         ]);
         this.state = {
+            shrinking: false,
             copyBuffer: null,
             chunkLevels: computeChunkedRMS(this.props.samples),
             playhead: null, // null is not playing, [0 -> 1] is playing percent
@@ -434,45 +440,79 @@ class SoundEditor extends React.Component {
             this.handleUpdateTrim(null, null);
         }
     }
+    handleOpenShrink () {
+        this.setState({shrinking: true});
+    }
+
+    handleCloseShrink () {
+        this.setState({shrinking: false});
+    }
+
+    // A shrink replaces the sound outright, so the editor is started again
+    // from what is now there — the waveform, the trim handles and the undo
+    // history all refer to audio that no longer exists.
+    handleShrunk () {
+        const buffer = this.props.vm.getSoundBuffer(this.props.soundIndex);
+        this.undoStack = [];
+        this.redoStack = [];
+        this.setState({shrinking: false});
+        this.resetState(mixToMono(channelsOf(buffer)), buffer.sampleRate);
+    }
+
     render () {
         const {effectTypes} = AudioEffects;
+        const buffer = this.props.vm.getSoundBuffer(this.props.soundIndex);
         return (
-            <SoundEditorComponent
-                isStereo={this.props.isStereo}
-                duration={this.props.duration}
-                size={this.props.size}
-                canPaste={this.state.copyBuffer !== null}
-                canRedo={this.redoStack.length > 0}
-                canUndo={this.undoStack.length > 0}
-                chunkLevels={this.state.chunkLevels}
-                name={this.props.name}
-                playhead={this.state.playhead}
-                setRef={this.setRef}
-                tooLoud={this.tooLoud()}
-                trimEnd={this.state.trimEnd}
-                trimStart={this.state.trimStart}
-                onChangeName={this.handleChangeName}
-                onContainerClick={this.handleContainerClick}
-                onCopy={this.handleCopy}
-                onCopyToNew={this.handleCopyToNew}
-                onDelete={this.handleDelete}
-                onEcho={this.effectFactory(effectTypes.ECHO)}
-                onFadeIn={this.effectFactory(effectTypes.FADEIN)}
-                onFadeOut={this.effectFactory(effectTypes.FADEOUT)}
-                onFaster={this.effectFactory(effectTypes.FASTER)}
-                onLouder={this.effectFactory(effectTypes.LOUDER)}
-                onMute={this.effectFactory(effectTypes.MUTE)}
-                onPaste={this.handlePaste}
-                onPlay={this.handlePlay}
-                onRedo={this.handleRedo}
-                onReverse={this.effectFactory(effectTypes.REVERSE)}
-                onRobot={this.effectFactory(effectTypes.ROBOT)}
-                onSetTrim={this.handleUpdateTrim}
-                onSlower={this.effectFactory(effectTypes.SLOWER)}
-                onSofter={this.effectFactory(effectTypes.SOFTER)}
-                onStop={this.handleStopPlaying}
-                onUndo={this.handleUndo}
-            />
+            <React.Fragment>
+                {this.state.shrinking ? (
+                    <SoundShrink
+                        before={this.props.size}
+                        channels={buffer ? buffer.numberOfChannels : 1}
+                        name={this.props.name}
+                        soundIndex={this.props.soundIndex}
+                        vm={this.props.vm}
+                        onClose={this.handleCloseShrink}
+                        onDone={this.handleShrunk}
+                    />
+                ) : null}
+                <SoundEditorComponent
+                    onShrink={this.handleOpenShrink}
+                    isStereo={this.props.isStereo}
+                    duration={this.props.duration}
+                    size={this.props.size}
+                    canPaste={this.state.copyBuffer !== null}
+                    canRedo={this.redoStack.length > 0}
+                    canUndo={this.undoStack.length > 0}
+                    chunkLevels={this.state.chunkLevels}
+                    name={this.props.name}
+                    playhead={this.state.playhead}
+                    setRef={this.setRef}
+                    tooLoud={this.tooLoud()}
+                    trimEnd={this.state.trimEnd}
+                    trimStart={this.state.trimStart}
+                    onChangeName={this.handleChangeName}
+                    onContainerClick={this.handleContainerClick}
+                    onCopy={this.handleCopy}
+                    onCopyToNew={this.handleCopyToNew}
+                    onDelete={this.handleDelete}
+                    onEcho={this.effectFactory(effectTypes.ECHO)}
+                    onFadeIn={this.effectFactory(effectTypes.FADEIN)}
+                    onFadeOut={this.effectFactory(effectTypes.FADEOUT)}
+                    onFaster={this.effectFactory(effectTypes.FASTER)}
+                    onLouder={this.effectFactory(effectTypes.LOUDER)}
+                    onMute={this.effectFactory(effectTypes.MUTE)}
+                    onPaste={this.handlePaste}
+                    onPlay={this.handlePlay}
+                    onRedo={this.handleRedo}
+                    onReverse={this.effectFactory(effectTypes.REVERSE)}
+                    onRobot={this.effectFactory(effectTypes.ROBOT)}
+                    onSetTrim={this.handleUpdateTrim}
+                    onSlower={this.effectFactory(effectTypes.SLOWER)}
+                    onSofter={this.effectFactory(effectTypes.SOFTER)}
+                    onStop={this.handleStopPlaying}
+                    onUndo={this.handleUndo}
+                />
+            </React.Fragment>
         );
     }
 }
@@ -502,7 +542,13 @@ const mapStateToProps = (state, {soundIndex}) => {
         size: sound.asset ? sound.asset.data.byteLength : 0,
         soundId: sound.soundId,
         sampleRate: audioBuffer.sampleRate,
-        samples: audioBuffer.getChannelData(0),
+        // Mixed rather than picked. Editing any sound turns it mono, and
+        // Scratch does that by keeping the left channel and discarding the
+        // right — so anything panned right went quiet or vanished the moment
+        // you touched an effect. Reported in 2019 and never fixed upstream.
+        // This adds the channels and halves, which is what mixing to mono
+        // means.
+        samples: mixToMono(channelsOf(audioBuffer)),
         isFullScreen: state.scratchGui.mode.isFullScreen,
         name: sound.name,
         vm: state.scratchGui.vm

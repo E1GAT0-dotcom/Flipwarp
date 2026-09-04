@@ -375,6 +375,13 @@ const SoundEditor = props => (
                     />
                 )}
                 {` (${formatSoundSize(props.size)})`}
+                {props.onShrink ? (
+                    <button
+                        className={styles.shrinkButton}
+                        title="Make this sound take up less room"
+                        onClick={props.onShrink}
+                    >{'Shrink…'}</button>
+                ) : null}
             </div>
         </div>
         {/* TODO: don't know whether this should be > or >=. Using >= for now to be safe */}
@@ -390,7 +397,10 @@ const SoundEditor = props => (
         {props.isStereo && (
             <div className={classNames(styles.alert, styles.stereo)}>
                 <FormattedMessage
-                    defaultMessage="Editing this stereo sound will irreversibly convert it to mono."
+                    // Reworded: editing does mix it down, but it now mixes the
+                    // two channels together rather than keeping one and
+                    // dropping the other, and Shrink does it deliberately.
+                    defaultMessage="Editing this stereo sound mixes it down to one channel. Use Shrink to do that on purpose."
                     description="Message that appears when editing a stereo sound."
                     id="tw.stereoAlert"
                 />
@@ -401,6 +411,7 @@ const SoundEditor = props => (
 
 SoundEditor.propTypes = {
     isStereo: PropTypes.bool.isRequired,
+    onShrink: PropTypes.func,
     duration: PropTypes.number.isRequired,
     size: PropTypes.number.isRequired,
     canPaste: PropTypes.bool.isRequired,
