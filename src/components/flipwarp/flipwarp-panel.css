@@ -113,10 +113,17 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    /* The toggle floats over this strip, so the right end is kept clear of it. */
-    padding: 0.75rem 11rem 0.75rem 1rem;
+    padding: 0.75rem 1rem;
     border-top: 1px solid $ui-black-transparent;
     background: $ui-primary;
+}
+
+/* In the footer the buttons sit in the strip rather than floating above it,
+   so they line up with Undo my edits at the other end. */
+.foot-buttons {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
 }
 
 .revert-button {
@@ -132,11 +139,12 @@
     cursor: pointer;
 }
 
+/* Left of centre, beside Undo my edits. Two auto margins in one row would
+   split the free space between them and leave the status drifting, so only
+   the button group claims it. */
 .status {
     font-size: 0.8rem;
     color: $text-primary-transparent;
-    margin-left: auto;
-    text-align: right;
 }
 
 /* An error takes the space it needs and never scrolls away from the text

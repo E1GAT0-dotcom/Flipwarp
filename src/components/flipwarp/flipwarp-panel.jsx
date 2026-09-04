@@ -421,35 +421,48 @@ class FlipwarpPanel extends React.Component {
         }
     }
 
+    // The same two buttons wherever they are standing. Over the workspace they
+    // float in the corner; over the text they belong in the strip at the
+    // bottom, in line with Undo my edits, rather than hovering just above it.
+    renderButtons (anyTool, open) {
+        return (
+            <React.Fragment>
+                {anyTool ? (
+                    <button
+                        className={styles.toolsButton}
+                        title="Search, replace, and the block sheet"
+                        onClick={this.handleTools}
+                    >
+                        <Wrench />
+                        {'Tools'}
+                    </button>
+                ) : null}
+                <button
+                    aria-pressed={open}
+                    className={`${styles.toggleButton} ${open ? styles.active : ''}`}
+                    title={open ? 'Convert this back into blocks' : 'See these blocks as text'}
+                    onClick={this.handleToggle}
+                >
+                    <span
+                        aria-hidden="true"
+                        className={styles.toggleMark}
+                    >{'⇄'}</span>
+                    {open ? 'Blocks' : 'Text'}
+                </button>
+            </React.Fragment>
+        );
+    }
+
     render () {
         const {open, text, name, error, status, busy, suggestions, suggestIndex, settings} = this.state;
         const anyTool = settings.searchProject || settings.findReplace || settings.blockSheet;
         return (
             <React.Fragment>
-                <div className={styles.toggleContainer}>
-                    {anyTool ? (
-                        <button
-                            className={styles.toolsButton}
-                            title="Search, replace, and the block sheet"
-                            onClick={this.handleTools}
-                        >
-                            <Wrench />
-                            {'Tools'}
-                        </button>
-                    ) : null}
-                    <button
-                        aria-pressed={open}
-                        className={`${styles.toggleButton} ${open ? styles.active : ''}`}
-                        title={open ? 'Convert this back into blocks' : 'See these blocks as text'}
-                        onClick={this.handleToggle}
-                    >
-                        <span
-                            aria-hidden="true"
-                            className={styles.toggleMark}
-                        >{'⇄'}</span>
-                        {open ? 'Blocks' : 'Text'}
-                    </button>
-                </div>
+                {open ? null : (
+                    <div className={styles.toggleContainer}>
+                        {this.renderButtons(anyTool, open)}
+                    </div>
+                )}
 
                 {open ? (
                     <div className={styles.panel}>
@@ -506,9 +519,10 @@ class FlipwarpPanel extends React.Component {
                                 disabled={busy}
                                 onClick={this.handleRevert}
                             >{'Undo my edits'}</button>
-                            <span className={styles.status}>
-                                {status || 'Press Blocks to put this back in the workspace.'}
-                            </span>
+                            <span className={styles.status}>{status}</span>
+                            <div className={styles.footButtons}>
+                                {this.renderButtons(anyTool, open)}
+                            </div>
                         </div>
                     </div>
                 ) : null}
