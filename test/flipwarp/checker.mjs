@@ -1,4 +1,7 @@
 import { launchBrowser, repoPath, SITE } from './launch.mjs';
+import { writeFixture } from './fixture.mjs';
+
+writeFixture();
 const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1200, height: 900 } });
 page.on('pageerror', e => console.log('PAGEERROR:', e.message.slice(0,140)));

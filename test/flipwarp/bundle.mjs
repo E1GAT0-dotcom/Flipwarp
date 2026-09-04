@@ -1,4 +1,7 @@
 import { launchBrowser, repoPath, SITE } from './launch.mjs';
+import { writeFixture } from './fixture.mjs';
+
+writeFixture();
 const b = await launchBrowser();
 const ctx = await b.newContext({ acceptDownloads: true, viewport: {width:1200,height:900} });
 const p = await ctx.newPage();

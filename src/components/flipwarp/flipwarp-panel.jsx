@@ -432,7 +432,10 @@ class FlipwarpPanel extends React.Component {
                             className={styles.toolsButton}
                             title="Search, replace, and the block sheet"
                             onClick={this.handleTools}
-                        >{'Tools'}</button>
+                        >
+                            <Wrench />
+                            {'Tools'}
+                        </button>
                     ) : null}
                     <button
                         aria-pressed={open}
@@ -521,6 +524,27 @@ class FlipwarpPanel extends React.Component {
         );
     }
 }
+
+// Drawn here rather than kept as a file, because it is four strokes and
+// belongs next to the button it labels. Takes the button's colour, so it
+// follows the theme without anything else being told about it.
+const Wrench = () => (
+    <svg
+        aria-hidden="true"
+        height="15"
+        viewBox="0 0 24 24"
+        width="15"
+    >
+        <path
+            d="M20.3 5.4a5.5 5.5 0 0 1-7.1 7.1L6 19.7a2.1 2.1 0 0 1-3-3l7.2-7.2a5.5 5.5 0 0 1 7.1-7.1l-3.4 3.4 2.9 2.9z"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+        />
+    </svg>
+);
 
 const describe = e => (e && e.message ? e.message : String(e));
 

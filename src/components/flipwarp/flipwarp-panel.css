@@ -211,9 +211,13 @@
 /* Sits beside the Text button. Deliberately plainer than it — the flip is the
    headline action, these are the occasional ones. */
 .tools-button {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
     height: 2.5rem;
     margin-right: 0.5rem;
     padding: 0 0.9rem;
+    font-weight: bold;
     border: 1px solid $ui-black-transparent;
     border-radius: 1.25rem;
     background: $ui-white;

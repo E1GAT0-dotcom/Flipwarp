@@ -2,7 +2,10 @@
 // rather than beside the code, packs no program files at all, and writes a
 // list that names the pictures it actually got.
 import { launchBrowser, repoPath, SITE } from './launch.mjs';
+import { writeFixture } from './fixture.mjs';
 import { execSync } from 'node:child_process';
+
+writeFixture();
 
 const b = await launchBrowser();
 const ctx = await b.newContext({ acceptDownloads: true, viewport: { width: 1200, height: 900 } });

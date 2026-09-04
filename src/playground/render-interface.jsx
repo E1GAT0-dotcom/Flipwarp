@@ -335,7 +335,7 @@ class Interface extends React.Component {
                                 {/* Flipwarp's own studio. A studio has no idea which of its projects
     are the best ones, so what shows here is what has been added to it:
     the studio is the curation. */}
-                                <FeaturedProjects studio="51936709" />
+                                <FeaturedProjects studio="51937931" />
                             </div>
                         </React.Fragment>
                     ) : null}
