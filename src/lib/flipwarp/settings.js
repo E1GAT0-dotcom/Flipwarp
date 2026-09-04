@@ -30,6 +30,9 @@ const DEFAULTS = {
     searchProject: true,
     findReplace: true,
     copyAsText: true,
+    // The other half of Copy as text: right-click the workspace to turn text
+    // back into blocks.
+    pasteAsBlocks: true,
     blockSheet: true
 };
 
@@ -54,6 +57,7 @@ const read = () => {
             searchProject: bool(parsed.searchProject, DEFAULTS.searchProject),
             findReplace: bool(parsed.findReplace, DEFAULTS.findReplace),
             copyAsText: bool(parsed.copyAsText, DEFAULTS.copyAsText),
+            pasteAsBlocks: bool(parsed.pasteAsBlocks, DEFAULTS.pasteAsBlocks),
             blockSheet: bool(parsed.blockSheet, DEFAULTS.blockSheet)
         };
     } catch (e) {

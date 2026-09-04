@@ -16,6 +16,7 @@ import {getSettings, onSettingsChanged, indentString, textOptions} from '../../l
 import {getStyle} from '../../lib/flipwarp/styles.js';
 import {installDogeEasterEgg} from '../../lib/flipwarp/konami.js';
 import FlipwarpTools from './flipwarp-tools.jsx';
+import PasteBlocks from './paste-blocks.jsx';
 import styles from './flipwarp-panel.css';
 
 // Words that are part of the language rather than a block. The spelling of
@@ -56,6 +57,9 @@ class FlipwarpPanel extends React.Component {
             'handleKeyDown',
             'handleGlobalKeyDown',
             'handleSelect',
+            'handlePasteRequest',
+            'handlePasteClose',
+            'handlePasteDone',
             'setTextarea'
         ]);
 
@@ -72,6 +76,7 @@ class FlipwarpPanel extends React.Component {
         this.state = {
             open: false,
             tools: false,
+            paste: null,
             text: '',
             original: '',
             name: '',
@@ -95,6 +100,7 @@ class FlipwarpPanel extends React.Component {
         this.props.vm.on('targetsUpdate', this.handleTargetsUpdate);
         this.props.vm.on('workspaceUpdate', this.handleWorkspaceUpdate);
         document.addEventListener('keydown', this.handleGlobalKeyDown, true);
+        window.addEventListener('FLIPWARP_PASTE', this.handlePasteRequest);
         this.stopWatchingSettings = onSettingsChanged(settings => this.setState({settings}));
     }
 
@@ -102,6 +108,7 @@ class FlipwarpPanel extends React.Component {
         this.props.vm.off('targetsUpdate', this.handleTargetsUpdate);
         this.props.vm.off('workspaceUpdate', this.handleWorkspaceUpdate);
         document.removeEventListener('keydown', this.handleGlobalKeyDown, true);
+        window.removeEventListener('FLIPWARP_PASTE', this.handlePasteRequest);
         if (this.stopWatchingSettings) this.stopWatchingSettings();
     }
 
@@ -156,6 +163,29 @@ class FlipwarpPanel extends React.Component {
 
     setTextarea (el) {
         this.textarea = el;
+    }
+
+    // Asked for from the workspace's right-click menu, which cannot reach a
+    // React component directly.
+    handlePasteRequest (e) {
+        this.setState({paste: {at: (e.detail && e.detail.at) || null}});
+    }
+
+    handlePasteClose () {
+        this.setState({paste: null});
+    }
+
+    handlePasteDone (scripts, created) {
+        // Anything the workspace does now supersedes the last conversion, so
+        // undoing that conversion would no longer mean what it says.
+        this.blockUndo = null;
+        const made = created.length ?
+            `, and made ${created.length === 1 ? created[0] : `${created.length} new names`}` :
+            '';
+        this.setState({
+            paste: null,
+            status: `Added ${scripts} ${scripts === 1 ? 'script' : 'scripts'}${made}.`
+        });
     }
 
     // The one button does both directions. Going to text just reads the
@@ -567,6 +597,15 @@ class FlipwarpPanel extends React.Component {
                             </div>
                         </div>
                     </div>
+                ) : null}
+
+                {this.state.paste ? (
+                    <PasteBlocks
+                        at={this.state.paste.at}
+                        vm={this.props.vm}
+                        onClose={this.handlePasteClose}
+                        onDone={this.handlePasteDone}
+                    />
                 ) : null}
 
                 {this.state.tools && anyTool ? (

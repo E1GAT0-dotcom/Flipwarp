@@ -394,8 +394,65 @@ export default function (vm) {
         }
     };
 
+    // Flipwarp: "Paste as blocks" on the menu you get from right-clicking the
+    // workspace itself — the other half of Copy as text.
+    //
+    // The workspace builds its whole menu and hands it straight to
+    // ContextMenu.show, so there is nothing to add an entry to the way a block
+    // has. ContextMenu.show is borrowed for the length of one menu instead,
+    // which is the same trick and just as short-lived.
+    const originalWorkspaceMenu = ScratchBlocks.WorkspaceSvg.prototype.showContextMenu_;
+    ScratchBlocks.WorkspaceSvg.prototype.showContextMenu_ = function (e) {
+        if (!getSettings().pasteAsBlocks || this.options.readOnly) {
+            return originalWorkspaceMenu.call(this, e);
+        }
+        const workspace = this;
+        const show = ScratchBlocks.ContextMenu.show;
+        ScratchBlocks.ContextMenu.show = function (event, options, rtl) {
+            options.push({
+                enabled: true,
+                text: 'Paste as blocks',
+                callback: () => askForPaste(workspace, e)
+            });
+            return show.call(this, event, options, rtl);
+        };
+        try {
+            return originalWorkspaceMenu.call(this, e);
+        } finally {
+            ScratchBlocks.ContextMenu.show = show;
+        }
+    };
+
     return ScratchBlocks;
 }
+
+// Where on the canvas the click was, so a pasted script lands where the
+// person was pointing. Every part of this can be missing in a workspace that
+// is mid-teardown, and landing under the existing scripts instead is a fine
+// answer, so nothing here is worth an exception.
+const workspacePoint = (workspace, e) => {
+    try {
+        const svg = workspace.getParentSvg();
+        const point = window.ScratchBlocks.utils.mouseToSvg(e, svg, workspace.getInverseScreenCTM());
+        const origin = workspace.getOriginOffsetInPixels();
+        const scale = workspace.scale || 1;
+        const x = (point.x - origin.x) / scale;
+        const y = (point.y - origin.y) / scale;
+        if (!isFinite(x) || !isFinite(y)) return null;
+        return {x, y};
+    } catch (err) {
+        return null;
+    }
+};
+
+// The panel owns the box, because it owns the text side of everything else.
+// Asked for by event rather than by a direct call: this file runs long before
+// any React component exists, and cannot hold a reference to one.
+const askForPaste = (workspace, e) => {
+    window.dispatchEvent(new CustomEvent('FLIPWARP_PASTE', {
+        detail: {at: workspacePoint(workspace, e)}
+    }));
+};
 
 const copyScript = (vm, blockId) => {
     let text;

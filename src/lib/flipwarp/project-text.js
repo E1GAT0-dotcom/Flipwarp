@@ -380,3 +380,151 @@ export const scriptToText = (vm, blockId) => {
         .join('\n')
         .trim();
 };
+
+// -------------------------------------------------------------- pasting in
+
+// Every id in a freshly built set of blocks, swapped for one that is not
+// already in the sprite. Two conversions in the same sprite both number their
+// blocks from zero, so pasting without this would land one script on top of
+// another and lose both.
+const withFreshIds = (built, target) => {
+    const taken = new Set(Object.keys(target.blocks || {}));
+    for (const id of Object.keys(target.comments || {})) taken.add(id);
+
+    const stamp = Date.now().toString(36);
+    let n = 0;
+    const fresh = new Map();
+    const idFor = old => {
+        if (!fresh.has(old)) {
+            let id;
+            do {
+                id = `fwp${stamp}${(n++).toString(36)}`;
+            } while (taken.has(id));
+            taken.add(id);
+            fresh.set(old, id);
+        }
+        return fresh.get(old);
+    };
+
+    // Only a string that names one of the new blocks is an id. The other
+    // strings in an input are values — a message name, a dropdown choice —
+    // and renaming one of those would quietly change what the script does.
+    const isBlockId = v => typeof v === 'string' && Object.prototype.hasOwnProperty.call(built.blocks, v);
+    const remap = value => {
+        if (isBlockId(value)) return idFor(value);
+        if (Array.isArray(value)) return value.map(remap);
+        return value;
+    };
+
+    const blocks = {};
+    for (const [oldId, block] of Object.entries(built.blocks)) {
+        const inputs = {};
+        for (const [name, input] of Object.entries(block.inputs || {})) inputs[name] = remap(input);
+        blocks[idFor(oldId)] = {
+            ...block,
+            inputs,
+            parent: block.parent ? idFor(block.parent) : null,
+            next: block.next ? idFor(block.next) : null,
+            comment: block.comment ? idFor(block.comment) : undefined
+        };
+    }
+
+    const comments = {};
+    for (const [oldId, comment] of Object.entries(built.comments || {})) {
+        comments[idFor(oldId)] = {
+            ...comment,
+            blockId: comment.blockId ? idFor(comment.blockId) : null
+        };
+    }
+    return {blocks, comments};
+};
+
+// Where the pasted scripts land. Under everything already there by default,
+// so nothing is buried; at the mouse when the paste came from a right-click,
+// because that is where the person was pointing.
+const place = (blocks, target, at) => {
+    const tops = Object.values(blocks).filter(b => b.topLevel);
+    let x = at ? Math.round(at.x) : 0;
+    let y = at ? Math.round(at.y) : 0;
+    if (!at) {
+        for (const block of Object.values(target.blocks || {})) {
+            if (block && block.topLevel) y = Math.max(y, Math.round(block.y || 0) + 220);
+        }
+    }
+    for (const block of tops) {
+        block.x = x;
+        block.y = y;
+        // Stagger, so pasting several scripts at once does not stack them.
+        y += 220;
+    }
+    return tops.length;
+};
+
+// A script that uses a variable this sprite has not got would paste as a
+// block pointing at nothing, which looks like a block with an empty slot and
+// is very hard to work out. The names the text declares are made first.
+const ensureNames = (vm, liveTarget, decls) => {
+    const stage = vm.runtime.getTargetForStage();
+    const made = [];
+    let n = 0;
+    for (const decl of decls || []) {
+        const type = decl.kind === 'list' ? 'list' : decl.kind === 'broadcast' ? 'broadcast_msg' : '';
+        // A local name shadows a global one, so both places are checked
+        // before anything is made.
+        const found = liveTarget.lookupVariableByNameAndType(decl.name, type) ||
+            (stage && stage.lookupVariableByNameAndType(decl.name, type));
+        if (found) continue;
+        // Messages are the whole project's, never one sprite's. Everything
+        // else goes where the text said it should.
+        const owner = (decl.global || decl.kind === 'broadcast') ? stage : liveTarget;
+        if (!owner) continue;
+        owner.createVariable(`fwpv${Date.now().toString(36)}${n++}`, decl.name, type);
+        made.push(decl.name);
+    }
+    return made;
+};
+
+/**
+ * Add text to the sprite that is open, as blocks, keeping what is already
+ * there.
+ *
+ * The other direction of Copy as text. Unlike the Text button this does not
+ * replace the sprite: the scripts in the text are added alongside the ones
+ * already in it.
+ *
+ * @param {VirtualMachine} vm the running VM
+ * @param {string} text the text to add
+ * @param {{x: number, y: number}} at where to put it, in workspace coordinates
+ * @returns {{scripts: number, created: Array}} what was added
+ */
+export const pasteText = (vm, text, at) => {
+    const liveTarget = vm.editingTarget;
+    if (!liveTarget) throw new Error('No sprite is selected.');
+
+    const style = textOptions().style;
+    // Read the text before anything at all is created. If it has a mistake in
+    // it this throws, and the project is exactly as it was.
+    const ast = parse(text, style);
+    if (!ast.scripts.length) throw new Error('There is nothing here to add.');
+
+    const created = ensureNames(vm, liveTarget, ast.decls);
+
+    // Serialized after the names are made, so the builder finds them and
+    // points the new blocks at the real variables rather than inventing ids.
+    const project = projectOf(vm);
+    const target = project.targets.find(t => t.name === liveTarget.getName());
+    const built = buildTarget(ast, target, contextOf(project), style);
+
+    const {blocks, comments} = withFreshIds(built, target);
+    const scripts = place(blocks, target, at);
+
+    replaceTargetBlocks(
+        liveTarget,
+        {...target.blocks, ...blocks},
+        {...(target.comments || {}), ...comments}
+    );
+    vm.emitWorkspaceUpdate();
+    vm.runtime.emitProjectChanged();
+
+    return {scripts, created};
+};

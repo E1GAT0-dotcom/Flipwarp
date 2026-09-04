@@ -535,6 +535,24 @@ const FlipwarpSettings = () => {
                 </p>
             </BooleanSetting>
             <BooleanSetting
+                value={settings.pasteAsBlocks}
+                onChange={value => change({pasteAsBlocks: value})}
+                label={<FormattedMessage
+                    defaultMessage="Paste text as blocks"
+                    description="Flipwarp setting"
+                    id="flipwarp.settings.pasteAsBlocks"
+                />}
+            >
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Adds Paste as blocks to the menu you get when you right-click the workspace — the other half of Copy as text. The scripts are added to the sprite you are in; nothing already there is removed."
+                        description="Help text for the paste as blocks setting"
+                        id="flipwarp.settings.pasteAsBlocksHelp"
+                    />
+                </p>
+            </BooleanSetting>
+            <BooleanSetting
                 value={settings.blockSheet}
                 onChange={value => change({blockSheet: value})}
                 label={<FormattedMessage
