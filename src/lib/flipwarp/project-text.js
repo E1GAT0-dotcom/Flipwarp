@@ -14,6 +14,7 @@ import {parse} from './parse.js';
 import {buildTarget} from './build.js';
 import {canonTarget} from './canon.js';
 import {replaceTargetBlocks} from './sb3-to-runtime.js';
+import {textOptions} from './settings.js';
 
 const AT_LINE = /^@at\((-?\d+),\s*(-?\d+)\)$/;
 
@@ -41,7 +42,7 @@ export const readAllTargets = vm => {
     for (const target of project.targets) {
         let full;
         try {
-            full = targetToText(target, context).text;
+            full = targetToText(target, context, textOptions()).text;
         } catch (e) {
             // A sprite using an extension block has no text form. It is
             // listed as unreadable rather than silently skipped, so a search
@@ -64,8 +65,12 @@ export const readAllTargets = vm => {
 
 // "variable speed;", "global list history as \"my history\";" — the line that
 // names a variable rather than one that merely uses it.
+//
+// The terminator is optional because a style that ends statements with the end
+// of the line has none to write. Nothing else can match this shape, so
+// accepting both spellings costs no precision.
 const DECLARATION =
-    /^\s*(global\s+)?(variable|list|broadcast)\s+([A-Za-z_$][\w$]*)\s*(?:as\s+"((?:[^"\\]|\\.)*)")?\s*;\s*$/;
+    /^\s*(global\s+)?(variable|list|broadcast)\s+([A-Za-z_$][\w$]*)\s*(?:as\s+"((?:[^"\\]|\\.)*)")?\s*;?\s*$/;
 
 const declarationOf = line => {
     const m = DECLARATION.exec(line);
@@ -194,7 +199,7 @@ export const applyReplacements = (vm, query, replacement, chosen, options = {}) 
     let lines = 0;
 
     for (const target of project.targets) {
-        const full = targetToText(target, context).text;
+        const full = targetToText(target, context, textOptions()).text;
         const sourceLines = full.split('\n');
         let visibleIndex = 0;
         let touched = false;
@@ -223,7 +228,8 @@ export const applyReplacements = (vm, query, replacement, chosen, options = {}) 
 
         // Throws here if the replacement made the text invalid, before
         // anything at all has been applied.
-        const rebuilt = buildTarget(parse(edited.join('\n')), target, context);
+        const style = textOptions().style;
+        const rebuilt = buildTarget(parse(edited.join('\n'), style), target, context, style);
         const changed = JSON.stringify(canonTarget(target.blocks, target.comments)) !==
             JSON.stringify(canonTarget(rebuilt.blocks, rebuilt.comments));
         if (changed) rebuilds.push({name: target.name, rebuilt});
@@ -253,7 +259,7 @@ const renameDeclarations = (vm, re, replacement, wanted) => {
     const jobs = [];
 
     for (const target of project.targets) {
-        const lines = targetToText(target, context).text.split('\n');
+        const lines = targetToText(target, context, textOptions()).text.split('\n');
         let visibleIndex = 0;
         for (const line of lines) {
             if (AT_LINE.test(line.trim())) continue;
@@ -368,7 +374,7 @@ export const scriptToText = (vm, blockId) => {
     const root = {...wanted[topId], topLevel: true, parent: null, x: 0, y: 0};
     const only = {...wanted, [topId]: root};
 
-    return targetToText({...target, blocks: only}, contextOf(project)).text
+    return targetToText({...target, blocks: only}, contextOf(project), textOptions()).text
         .split('\n')
         .filter(line => !AT_LINE.test(line.trim()))
         .join('\n')

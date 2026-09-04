@@ -1,5 +1,6 @@
 // A parsed tree -> Scratch blocks, ready to drop into a target.
-import { BLOCKS, BY_NAME, GETTERS } from './phrasebook.js';
+import { BLOCKS, nameIndexFor, GETTERS } from './phrasebook.js';
+import { getStyle } from './styles.js';
 import { primitiveFor } from './input-shadows.js';
 import { ParseError } from './hints.js';
 
@@ -26,9 +27,13 @@ const menuFieldFor = opcode => MENU_FIELD[opcode] ||
   (opcode.includes('_menu_') ? opcode.slice(opcode.indexOf('_menu_') + 6) : null);
 
 export class Builder {
-  constructor(names) {
+  constructor(names, style) {
     this.blocks = {};
     this.n = 0;
+    this.style = getStyle(style);
+    // Block names are spelled the active style's way, so the lookup that turns
+    // a written name back into a block has to be the matching one.
+    this.byName = nameIndexFor(this.style);
     this.names = names;      // ident -> { id, name, kind }
     this.procs = new Map();  // ident -> { proccode, argIds, argNames, argTypes }
     // Hats and defines swallow the rest of the stack as their body, so the
@@ -116,7 +121,10 @@ export class Builder {
     return id;
   }
 
-  buildDefine(node) {
+  // What a custom block looks like from the outside, worked out from its
+  // define alone. Nothing is built here, so this can run over the whole text
+  // before any block exists.
+  procSignatureOf(node) {
     const params = node.params;
     const proccode = node.proccode || [node.ident, ...params.map(() => '%s')].join(' ');
     const argIds = params.map((_, i) => `${node.ident}-arg-${i}`);
@@ -124,6 +132,25 @@ export class Builder {
     // %b slots are boolean parameters; everything else is a text/number slot.
     const slots = (proccode.match(/%[sbn]/g) || []);
     const argTypes = params.map((_, i) => (slots[i] === '%b' ? 'boolean' : 'string'));
+    return { proccode, argIds, argNames, argTypes };
+  }
+
+  // Every custom block the text defines, known before anything is built.
+  // Scripts come out in the order they sit on the canvas, not the order
+  // somebody would write them in, so a call very often appears above the
+  // define it belongs to — and without this that call has no block to be.
+  registerProcs(scripts) {
+    for (const script of scripts) {
+      for (const stmt of script.stmts) {
+        if (stmt.k === 'define') this.procs.set(stmt.ident, this.procSignatureOf(stmt));
+      }
+    }
+  }
+
+  buildDefine(node) {
+    const params = node.params;
+    const { proccode, argIds, argNames, argTypes } =
+      this.procs.get(node.ident) || this.procSignatureOf(node);
     const argDefaults = argTypes.map(t => (t === 'boolean' ? 'false' : ''));
 
     const protoInputs = {};
@@ -148,7 +175,7 @@ export class Builder {
     const def = this.put('procedures_definition', { inputs: { custom_block: [1, proto] } });
     this.blocks[proto].parent = def;
 
-    this.procs.set(node.ident, { proccode, argIds, argTypes });
+    this.procs.set(node.ident, { proccode, argIds, argNames, argTypes });
     // Parameters are visible as bare names inside the body.
     const saved = {};
     params.forEach((p, i) => { saved[p.slug] = this.names[p.slug]; this.names[p.slug] = { kind: 'param', name: p.real, type: argTypes[i] }; });
@@ -165,7 +192,7 @@ export class Builder {
     // A call to a custom block the text defined.
     if (this.procs.has(node.name)) return this.buildProcCall(node);
 
-    const opcode = BY_NAME.get(node.name);
+    const opcode = this.byName.get(node.name);
     if (!opcode) {
       this.err(node, `There is no block called "${node.name}".`,
         'Check the spelling, or switch back to blocks and find the block you want in the palette.', 'unknown-block');
@@ -254,8 +281,12 @@ export class Builder {
     if (field === 'BROADCAST_OPTION') {
       if (arg.k !== 'ref') this.err(arg, 'This slot needs the name of a message.', 'Write the message name without quotes.', 'field-needs-name');
       const rec = this.resolve(arg.name, arg, 'broadcast');
-      const mid = this.put(menuOpcode, { fields: { [field]: [rec.name, rec.id] }, shadow: true, parent: parentId });
-      return [1, mid];
+      // Written as a primitive rather than as a shadow block, because that is
+      // how Scratch itself saves a message slot. Building the shadow instead
+      // works, but it does not match what was read, so every project using
+      // broadcast looked edited the moment it was converted — which threw
+      // away the "nothing changed" path and the undo that goes with it.
+      return [1, [11, rec.name, rec.id]];
     }
     if (arg.k !== 'str' && arg.k !== 'num') {
       this.err(arg, 'This slot is a dropdown, so it needs one of its choices in quotes.', 'Switch to blocks to see the choices, then copy one exactly.', 'dropdown-needs-choice');
@@ -346,7 +377,7 @@ export class Builder {
           this.err(node, `"${node.name}" is a custom block, and custom blocks do not report a value.`,
             'Set a variable inside the custom block, then read that variable here.', 'proc-as-value');
         }
-        const opcode = BY_NAME.get(node.name);
+        const opcode = this.byName.get(node.name);
         if (!opcode) this.err(node, `There is no block called "${node.name}".`, 'Check the spelling against the palette.', 'unknown-block');
         const def = BLOCKS[opcode];
         if (def.kind !== 'reporter' && def.kind !== 'boolean') {
@@ -368,7 +399,7 @@ function defaultValueFor(ptype) {
 
 // ------------------------------------------------------------------ entry
 
-export function buildTarget(ast, target, ctx) {
+export function buildTarget(ast, target, ctx, style) {
   // ident -> the real Scratch variable/list/broadcast it points at
   const names = {};
   const findByName = (tables, name) => {
@@ -386,7 +417,8 @@ export function buildTarget(ast, target, ctx) {
     names[d.ident] = { id, name: d.name, kind: d.kind };
   }
 
-  const b = new Builder(names);
+  const b = new Builder(names, style);
+  b.registerProcs(ast.scripts);
   const tops = [];
   for (const script of ast.scripts) {
     const head = b.buildScript(script.stmts, null);

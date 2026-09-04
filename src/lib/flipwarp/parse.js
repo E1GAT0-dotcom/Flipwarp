@@ -1,17 +1,19 @@
 // Text -> a tree. Nothing Scratch-specific happens here; that is build.mjs.
 import { tokenize } from './tokenize.js';
 import { ParseError, hintFor } from './hints.js';
-import { BY_NAME, BLOCKS } from './phrasebook.js';
+import { getStyle } from './styles.js';
 
 const BIN_PREC = { '||': 1, '&&': 2, '==': 3, '<': 4, '>': 4, '+': 6, '-': 6, '*': 7, '/': 7, '%': 7 };
 
-export function parse(text) {
-  return new Parser(tokenize(text), text.split('\n')).program();
+export function parse(text, style) {
+  const st = getStyle(style);
+  return new Parser(tokenize(text, st), text.split('\n'), st).program();
 }
 
 class Parser {
-  constructor(tokens, lines) {
+  constructor(tokens, lines, style) {
     this.toks = tokens; this.i = 0; this.lines = lines;
+    this.style = getStyle(style);
     // Comments with nothing under them belong to the canvas rather than to a
     // block, so they are collected here and hung on the target, not on a
     // statement.
@@ -48,7 +50,10 @@ class Parser {
   expect(t, v, what) {
     if (!this.at(t, v)) {
       const tok = this.peek();
-      this.fail(tok, `Expected ${what || `"${v}"`} here.`, 'Check for a missing bracket, comma or semicolon on this line.');
+      const missing = this.style.terminator
+        ? 'a missing bracket, comma or semicolon'
+        : 'a missing bracket or comma, or a line that should be indented';
+      this.fail(tok, `Expected ${what || `"${v}"`} here.`, `Check for ${missing} on this line.`);
     }
     return this.next();
   }
@@ -90,12 +95,14 @@ class Parser {
     const kwTok = this.next();
     const kind = kwTok.v;
     if (!['variable', 'list', 'broadcast'].includes(kind)) {
-      this.fail(kwTok, `"${kind}" is not something Flipwarp can declare.`, 'Declarations look like: variable score;  or  global list history as "my history";');
+      const e = this.style.terminator;
+      this.fail(kwTok, `"${kind}" is not something Flipwarp can declare.`,
+        `Declarations look like: variable score${e}  or  global list history as "my history"${e}`);
     }
     const ident = this.expect('ident', undefined, 'a name').v;
     let name = ident;
     if (this.at('ident', 'as')) { this.next(); name = this.expect('str', undefined, 'the real Scratch name in quotes').v; }
-    this.expect('punct', ';', 'a semicolon');
+    this.endStatement();
     return { kind, ident, name, global: isGlobal, line: start.line };
   }
 
@@ -155,7 +162,7 @@ class Parser {
       const ident = this.next().v;
       const op = this.next().v;
       const value = this.expression();
-      this.expect('punct', ';', 'a semicolon');
+      this.endStatement();
       return { k: 'assign', ident, op, value, line: tok.line };
     }
 
@@ -175,22 +182,29 @@ class Parser {
       return { k: 'call', name, args, bodies: [body], line: tok.line };
     }
 
-    this.expect('punct', ';', 'a semicolon');
+    this.endStatement();
     return { k: 'call', name, args, bodies: null, line: tok.line };
+  }
+
+  // The end of a statement. Written by hand in a bracket-based style, and
+  // put there by the end of the line in an indentation-based one — either way
+  // the token is the same by the time it gets here.
+  endStatement() {
+    this.expect('punct', ';', this.style.terminator ? 'a semicolon' : 'the end of the line');
   }
 
   ifStatement() {
     const tok = this.next();
-    this.expect('punct', '(');
+    if (this.style.ifCondParens) this.expect('punct', '(');
     const cond = this.expression();
-    this.expect('punct', ')');
+    if (this.style.ifCondParens) this.expect('punct', ')');
     const body = this.block();
     let elseBody = null;
     if (this.at('ident', 'else')) {
       const elseTok = this.next();
       if (this.at('ident', 'if')) {
         this.fail(elseTok, 'Scratch has no "else if" block.',
-          'Put a whole new if inside the else, the way the blocks nest: } else { if (...) { ... } }', 'else-if');
+          'Put a whole new if inside the else, the way the blocks nest.', 'else-if');
       }
       elseBody = this.block();
     }

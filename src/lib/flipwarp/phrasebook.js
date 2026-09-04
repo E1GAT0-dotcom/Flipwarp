@@ -15,6 +15,7 @@
 // infix:     operator symbol, for blocks written as infix instead of a call
 
 import {EXTENSION_BLOCKS} from './extension-blocks.js';
+import {camelToSnake, STYLE_KEYWORDS} from './styles.js';
 
 const CORE_BLOCKS = {
   // ---------------------------------------------------------------- motion
@@ -221,7 +222,33 @@ export const BY_NAME = (() => {
   return m;
 })();
 
+// The same index for whichever style is being read or written. A style spells
+// the block names its own way (turnRight / turn_right), so the lookup has to
+// follow it, and the collision check has to be made again per style — a pair
+// of names that are distinct in one spelling could in principle collide in
+// another, and that would break the round trip silently.
+const NAME_INDEXES = new Map([['js', BY_NAME]]);
+
+export function nameIndexFor(style) {
+  const id = (style && style.id) || 'js';
+  if (NAME_INDEXES.has(id)) return NAME_INDEXES.get(id);
+  const m = new Map();
+  for (const [opcode, def] of Object.entries(BLOCKS)) {
+    const name = style.blockName(def.name);
+    if (m.has(name)) {
+      throw new Error(`phrasebook collision in the ${id} style: "${name}" used by ${m.get(name)} and ${opcode}`);
+    }
+    m.set(name, opcode);
+  }
+  NAME_INDEXES.set(id, m);
+  return m;
+}
+
+// Every spelling of every block, in every style, plus the words that are part
+// of the language. Reserved as one set rather than per style, so a variable
+// never has to be renamed just because you switched how the text is written.
 export const RESERVED = new Set([
   ...BY_NAME.keys(),
-  'if', 'else', 'repeat', 'forever', 'while', 'define', 'true', 'false',
+  ...Object.values(BLOCKS).map(def => camelToSnake(def.name)),
+  ...STYLE_KEYWORDS,
 ]);

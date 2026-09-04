@@ -2,33 +2,26 @@
 // identifiers. This builds a stable, collision-free two-way mapping and
 // emits declarations so the real names are never lost.
 
-const KEYWORDS = new Set(['if', 'else', 'while', 'repeat', 'forever', 'define',
-  'true', 'false', 'variable', 'list', 'broadcast', 'global', 'null', 'undefined',
-  'return', 'function', 'var', 'let', 'const', 'for', 'do', 'switch', 'case', 'new']);
+import {getStyle, STYLE_KEYWORDS} from './styles.js';
 
-export function slugify(name) {
-  let s = String(name)
-    .replace(/[^A-Za-z0-9_ ]+/g, ' ')
-    .trim()
-    .split(/[\s_]+/)
-    .filter(Boolean)
-    .map((w, i) => (i === 0 ? w[0].toLowerCase() + w.slice(1) : w[0].toUpperCase() + w.slice(1)))
-    .join('');
-  if (!s || /^[0-9]/.test(s)) s = '_' + s;
-  return s;
+const KEYWORDS = STYLE_KEYWORDS;
+
+export function slugify(name, style) {
+  return getStyle(style).slug(name);
 }
 
 // Assign unique identifiers within one namespace.
 export class NameTable {
-  constructor(reserved = new Set()) {
+  constructor(reserved = new Set(), style) {
     this.reserved = reserved;
+    this.style = getStyle(style);
     this.byId = new Map();    // scratch id -> { ident, name, kind, global }
     this.byIdent = new Map(); // ident -> scratch id
   }
 
   add(id, name, kind, isGlobal = false) {
     if (this.byId.has(id)) return this.byId.get(id).ident;
-    let base = slugify(name);
+    let base = this.style.slug(name);
     if (this.reserved.has(base) || KEYWORDS.has(base)) base = base + '_';
     let ident = base;
     let n = 2;
@@ -51,9 +44,12 @@ export function quote(s) {
 
 // Declaration line for one name, e.g.  variable score;
 //                                      global list inventory as "my inventory";
-export function declLine(rec) {
+//
+// The terminator is the style's, and in an indentation-based style there is
+// none — the end of the line is what ends the declaration.
+export function declLine(rec, style) {
   const kw = rec.kind === 'list' ? 'list' : rec.kind === 'broadcast' ? 'broadcast' : 'variable';
   const scope = rec.global ? 'global ' : '';
   const alias = rec.ident !== rec.name ? ` as ${quote(rec.name)}` : '';
-  return `${scope}${kw} ${rec.ident}${alias};`;
+  return `${scope}${kw} ${rec.ident}${alias}${getStyle(style).terminator}`;
 }

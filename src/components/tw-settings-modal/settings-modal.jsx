@@ -11,6 +11,7 @@ import BufferedInputHOC from '../forms/buffered-input-hoc.jsx';
 import DocumentationLink from '../tw-documentation-link/documentation-link.jsx';
 import styles from './settings-modal.css';
 import {getSettings, setSettings} from '../../lib/flipwarp/settings.js';
+import {STYLES, STYLE_IDS} from '../../lib/flipwarp/styles.js';
 import helpIcon from './help-icon.svg';
 import {APP_NAME} from '../../lib/brand.js';
 
@@ -554,6 +555,35 @@ const FlipwarpSettings = () => {
             <div className={styles.setting}>
                 <label>
                     <FormattedMessage
+                        defaultMessage="Text style"
+                        description="Flipwarp setting"
+                        id="flipwarp.settings.textStyle"
+                    />
+                    {' '}
+                    <select
+                        value={settings.textStyle}
+                        onChange={e => change({textStyle: e.target.value})}
+                    >
+                        {STYLE_IDS.map(id => (
+                            <option
+                                key={id}
+                                value={id}
+                            >{STYLES[id].label}</option>
+                        ))}
+                    </select>
+                </label>
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="How the text is written. The blocks are the same either way — only the spelling changes, and Blocks turns either one back into the same project."
+                        description="Help text for the text style setting"
+                        id="flipwarp.settings.textStyleHelp"
+                    />
+                </p>
+            </div>
+            <div className={styles.setting}>
+                <label>
+                    <FormattedMessage
                         defaultMessage="Indent size"
                         description="Flipwarp setting"
                         id="flipwarp.settings.indent"
@@ -569,7 +599,7 @@ const FlipwarpSettings = () => {
                 </label>
                 <p>
                     <FormattedMessage
-                        defaultMessage="How far one step of indent goes when Tab and Enter add one."
+                        defaultMessage="How far one step of indent goes, both in the text you are shown and when Tab and Enter add one."
                         description="Help text for the indent size setting"
                         id="flipwarp.settings.indentHelp"
                     />

@@ -11,25 +11,39 @@ import VM from 'scratch-vm';
 
 import {findInProject, planReplace, applyReplacements, openSprite} from '../../lib/flipwarp/project-text.js';
 import {BLOCKS} from '../../lib/flipwarp/phrasebook.js';
+import {currentStyle} from '../../lib/flipwarp/settings.js';
 import styles from './flipwarp-tools.css';
 
 // The block sheet is built from the phrasebook itself, so it cannot fall out
-// of step with what the editor actually accepts.
-const SHEET = Object.entries(BLOCKS)
-    .filter(([, block]) => !block.hidden)
-    .map(([opcode, block]) => ({
-        opcode,
-        name: block.name,
-        kind: block.kind,
-        // How you would write it: the name, then its inputs in order.
-        form: block.infix ?
-            `a ${block.infix} b` :
-            `${block.name}(${(block.args || []).join(', ')})${block.substack ? ' { … }' : ''}`,
-        category: opcode.split('_')[0]
-    }))
-    .sort((a, b) => (a.category === b.category ?
-        a.name.localeCompare(b.name) :
-        a.category.localeCompare(b.category)));
+// of step with what the editor actually accepts — and it is built per style,
+// because a sheet showing a spelling the editor would reject is worse than no
+// sheet at all.
+const sheetCache = new Map();
+const sheetFor = style => {
+    if (sheetCache.has(style.id)) return sheetCache.get(style.id);
+    const spell = op => (op === '&&' ? style.andWord : op === '||' ? style.orWord : op);
+    const body = style.indentBased ? ':' : ' { … }';
+    const sheet = Object.entries(BLOCKS)
+        .filter(([, block]) => !block.hidden)
+        .map(([opcode, block]) => {
+            const name = style.blockName(block.name);
+            return {
+                opcode,
+                name,
+                kind: block.kind,
+                // How you would write it: the name, then its inputs in order.
+                form: block.infix ?
+                    `a ${spell(block.infix)} b` :
+                    `${name}(${(block.args || []).join(', ')})${block.substack ? body : ''}`,
+                category: opcode.split('_')[0]
+            };
+        })
+        .sort((a, b) => (a.category === b.category ?
+            a.name.localeCompare(b.name) :
+            a.category.localeCompare(b.category)));
+    sheetCache.set(style.id, sheet);
+    return sheet;
+};
 
 const describe = e => (e && e.message ? e.message : String(e));
 
@@ -218,11 +232,12 @@ class FlipwarpTools extends React.Component {
 
     renderSheet () {
         const q = this.state.sheetQuery.trim().toLowerCase();
+        const sheet = sheetFor(currentStyle());
         const rows = q ?
-            SHEET.filter(row => row.name.toLowerCase().includes(q) ||
+            sheet.filter(row => row.name.toLowerCase().includes(q) ||
                 row.opcode.toLowerCase().includes(q) ||
                 row.form.toLowerCase().includes(q)) :
-            SHEET;
+            sheet;
         return (
             <React.Fragment>
                 <div className={styles.row}>
@@ -232,7 +247,7 @@ class FlipwarpTools extends React.Component {
                         value={this.state.sheetQuery}
                         onChange={e => this.setState({sheetQuery: e.target.value})}
                     />
-                    <span className={styles.status}>{`${rows.length} of ${SHEET.length}`}</span>
+                    <span className={styles.status}>{`${rows.length} of ${sheet.length}`}</span>
                 </div>
                 <div className={styles.results}>
                     {rows.map(row => (

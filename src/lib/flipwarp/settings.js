@@ -2,9 +2,14 @@
 // the browser under Flipwarp's own key so nothing here is shared with
 // TurboWarp's saved settings on the same address.
 
+import {STYLES, getStyle} from './styles.js';
+
 const STORAGE_KEY = 'flipwarp:settings';
 
 const DEFAULTS = {
+    // How the text is written. The blocks are the same either way — this only
+    // decides the spelling.
+    textStyle: 'js',
     // How far one step of indent goes. Two reads well in a narrow panel.
     indentSize: 2,
     // Offer block names as you type, completed with Tab.
@@ -33,6 +38,7 @@ const read = () => {
         if (!raw) return {...DEFAULTS};
         const parsed = JSON.parse(raw);
         return {
+            textStyle: STYLES[parsed.textStyle] ? parsed.textStyle : DEFAULTS.textStyle,
             indentSize: parsed.indentSize === 4 ? 4 : DEFAULTS.indentSize,
             suggestions: typeof parsed.suggestions === 'boolean' ? parsed.suggestions : DEFAULTS.suggestions,
             showPositions: typeof parsed.showPositions === 'boolean' ? parsed.showPositions : DEFAULTS.showPositions,
@@ -78,3 +84,17 @@ export const onSettingsChanged = fn => {
 };
 
 export const indentString = () => ' '.repeat(getSettings().indentSize);
+
+/**
+ * The style the text is currently written in.
+ * @returns {object} the style
+ */
+export const currentStyle = () => getStyle(getSettings().textStyle);
+
+/**
+ * Everything the converter needs to know about how to write the text, read
+ * once so that changing a setting mid-edit cannot leave half a document in one
+ * style and half in the other.
+ * @returns {{style: object, indent: string}} the options
+ */
+export const textOptions = () => ({style: currentStyle(), indent: indentString()});

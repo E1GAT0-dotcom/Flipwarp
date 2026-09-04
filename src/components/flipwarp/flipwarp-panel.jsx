@@ -12,14 +12,25 @@ import {
     ParseError
 } from '../../lib/flipwarp/vm-bridge.js';
 import {BY_NAME} from '../../lib/flipwarp/phrasebook.js';
-import {getSettings, onSettingsChanged, indentString} from '../../lib/flipwarp/settings.js';
+import {getSettings, onSettingsChanged, indentString, textOptions} from '../../lib/flipwarp/settings.js';
+import {getStyle} from '../../lib/flipwarp/styles.js';
 import {installDogeEasterEgg} from '../../lib/flipwarp/konami.js';
 import FlipwarpTools from './flipwarp-tools.jsx';
 import styles from './flipwarp-panel.css';
 
-// Words that are part of the language rather than a block.
-const KEYWORDS = ['if', 'else', 'define', 'variable', 'list', 'broadcast', 'global', 'as', 'fast'];
-const ALL_NAMES = [...BY_NAME.keys()];
+// Words that are part of the language rather than a block. The spelling of
+// two of them follows the style; the rest are the same either way.
+const keywordsFor = style => [
+    'if', 'else', style.defineWord, 'variable', 'list', 'broadcast', 'global', 'as', 'fast',
+    style.trueWord, style.falseWord
+];
+// Worked out once per style rather than on every keystroke: there are 226 of
+// them and this runs while somebody is typing.
+const nameCache = new Map();
+const namesFor = style => {
+    if (!nameCache.has(style.id)) nameCache.set(style.id, [...BY_NAME.keys()].map(n => style.blockName(n)));
+    return nameCache.get(style.id);
+};
 
 const MAX_SUGGESTIONS = 8;
 // Typing runs together into one undo step until you pause this long or move
@@ -70,9 +81,13 @@ class FlipwarpPanel extends React.Component {
             status: '',
             busy: false,
             settings: getSettings(),
+            style: getStyle(getSettings().textStyle),
             suggestions: [],
             suggestIndex: 0
         };
+        // The style this document was written in, which is the one it has to
+        // be read back in.
+        this.style = getStyle(getSettings().textStyle);
     }
 
     componentDidMount () {
@@ -110,7 +125,12 @@ class FlipwarpPanel extends React.Component {
 
     readTarget () {
         try {
-            const read = readCurrentTarget(this.props.vm, this.state.settings.showPositions);
+            // The style is read once, here, and used for both directions of
+            // this edit. Changing the setting while the text is open must not
+            // leave a document written in one spelling and read in the other.
+            const options = textOptions();
+            this.style = options.style;
+            const read = readCurrentTarget(this.props.vm, this.state.settings.showPositions, options);
             this.history = [{text: read.text, caret: 0}];
             this.historyIndex = 0;
             this.setState({
@@ -121,7 +141,8 @@ class FlipwarpPanel extends React.Component {
                 blocks: read.blocks,
                 error: null,
                 status: '',
-                suggestions: []
+                suggestions: [],
+                style: options.style
             });
         } catch (e) {
             this.setState({
@@ -220,14 +241,14 @@ class FlipwarpPanel extends React.Component {
         // from the header, and any custom block the text defines.
         const local = [];
         const declRe = /^\s*(?:global\s+)?(?:variable|list|broadcast)\s+([A-Za-z_$][\w$]*)/gm;
-        const defRe = /^\s*define\s+(?:fast\s+)?([A-Za-z_$][\w$]*)/gm;
+        const defRe = new RegExp(`^\\s*${this.style.defineWord}\\s+(?:fast\\s+)?([A-Za-z_$][\\w$]*)`, 'gm');
         let m;
         while ((m = declRe.exec(text))) local.push(m[1]);
         while ((m = defRe.exec(text))) local.push(m[1]);
 
         const lower = word.toLowerCase();
         const seen = new Set();
-        return [...local, ...ALL_NAMES, ...KEYWORDS]
+        return [...local, ...namesFor(this.style), ...keywordsFor(this.style)]
             .filter(n => {
                 if (n === word || seen.has(n)) return false;
                 if (!n.toLowerCase().startsWith(lower)) return false;
@@ -245,7 +266,7 @@ class FlipwarpPanel extends React.Component {
         const before = el.value.slice(0, caret);
         const word = (/[A-Za-z_$][\w$.]*$/.exec(before) || [''])[0];
         const start = caret - word.length;
-        const needsCall = BY_NAME.has(name) && !KEYWORDS.includes(name);
+        const needsCall = namesFor(this.style).includes(name) && !keywordsFor(this.style).includes(name);
         const inserted = needsCall ? `${name}(` : name;
         const next = `${el.value.slice(0, start)}${inserted}${el.value.slice(el.selectionEnd)}`;
         this.pushHistory(next, start + inserted.length, true);
@@ -344,17 +365,19 @@ class FlipwarpPanel extends React.Component {
         }
 
         // Enter carries the current line's indent down with it, and adds a
-        // step after an opening brace, so a nested line does not start back
-        // at the left margin.
+        // step after whatever starts a body, so a nested line does not start
+        // back at the left margin.
         if (e.key === 'Enter' && !e.shiftKey) {
             const before = el.value.slice(0, el.selectionStart);
             const line = before.slice(before.lastIndexOf('\n') + 1);
             const indent = (/^[ \t]*/.exec(line) || [''])[0];
-            const opensBlock = /\{\s*$/.test(line);
+            const opensBlock = this.style.indentBased ? /:\s*$/.test(line) : /\{\s*$/.test(line);
             const nextChar = el.value.slice(el.selectionEnd, el.selectionEnd + 1);
 
             e.preventDefault();
-            if (opensBlock && nextChar === '}') {
+            // Typing between a brace pair puts the closing one on its own
+            // line. An indentation-based style has no closing line to move.
+            if (opensBlock && nextChar === '}' && !this.style.indentBased) {
                 const inner = `${indent}${step}`;
                 this.replaceSelection(el, `\n${inner}\n${indent}`, 1 + inner.length);
                 return;
@@ -363,8 +386,27 @@ class FlipwarpPanel extends React.Component {
             return;
         }
 
+        // Backspace at the front of an indented line goes back out one step
+        // rather than eating a single space. In a bracket-based style the
+        // indent is decoration and the closing brace does this job instead.
+        if (e.key === 'Backspace' && this.style.indentBased &&
+            el.selectionStart === el.selectionEnd && el.selectionStart > 0) {
+            const before = el.value.slice(0, el.selectionStart);
+            const line = before.slice(before.lastIndexOf('\n') + 1);
+            if (line !== '' && /^[ \t]+$/.test(line) && line.length >= step.length) {
+                e.preventDefault();
+                const start = el.selectionStart - step.length;
+                const next = `${el.value.slice(0, start)}${el.value.slice(el.selectionEnd)}`;
+                this.pushHistory(next, start, true);
+                this.setState({text: next, suggestions: []}, () => {
+                    el.selectionStart = el.selectionEnd = start;
+                });
+                return;
+            }
+        }
+
         // A closing brace lines itself up with the line that opened it.
-        if (e.key === '}') {
+        if (e.key === '}' && !this.style.indentBased) {
             const before = el.value.slice(0, el.selectionStart);
             const line = before.slice(before.lastIndexOf('\n') + 1);
             if (/^[ \t]+$/.test(line) && line.length >= step.length) {
@@ -390,7 +432,7 @@ class FlipwarpPanel extends React.Component {
 
         // Check before touching the project, so a bad line changes nothing.
         try {
-            checkText(vm, text, this.state.positions);
+            checkText(vm, text, this.state.positions, this.style);
         } catch (e) {
             this.setState({error: toError(e), status: ''});
             return;
@@ -402,9 +444,9 @@ class FlipwarpPanel extends React.Component {
         this.setState({busy: true, error: null, status: 'Converting…', suggestions: []});
         try {
             this.expectOwnWorkspaceUpdate = true;
-            const result = await applyText(vm, text, this.state.positions);
+            const result = await applyText(vm, text, this.state.positions, this.style);
             if (result.changed) this.blockUndo = before;
-            const read = readCurrentTarget(vm, this.state.settings.showPositions);
+            const read = readCurrentTarget(vm, this.state.settings.showPositions, textOptions());
             this.setState({
                 busy: false,
                 open: false,

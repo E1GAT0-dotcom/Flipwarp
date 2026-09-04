@@ -57,6 +57,9 @@ const restorePositions = (text, positions) => {
     for (let index = 0; index < lines.length; index++) {
         const line = lines[index];
         const blank = line.trim() === '';
+        // No terminator in this test on purpose: a declaration ends with a
+        // semicolon in one style and with the end of the line in the other,
+        // and what matters here is only that the line is a declaration.
         const declaration = /^\s*(global\s+)?(variable|list|broadcast)\s/.test(line);
 
         if (!blank && !declaration && atScriptStart && !looseComment(index)) {
@@ -93,12 +96,12 @@ const editingName = vm => (vm.editingTarget ? vm.editingTarget.getName() : null)
  * @param {VirtualMachine} vm the running VM
  * @returns {{text: string, name: string, isStage: boolean, blocks: number}} the target as text
  */
-export const readCurrentTarget = (vm, showPositions = false) => {
+export const readCurrentTarget = (vm, showPositions = false, options = {}) => {
     const project = projectOf(vm);
     const name = editingName(vm);
     const target = project.targets.find(t => t.name === name);
     if (!target) throw new Error('No sprite is selected.');
-    const full = targetToText(target, contextOf(project)).text;
+    const full = targetToText(target, contextOf(project), options).text;
     const {positions, text} = splitPositions(full);
     return {
         text: showPositions ? full : text,
@@ -115,11 +118,11 @@ export const readCurrentTarget = (vm, showPositions = false) => {
  * @param {string} text the edited text
  * @returns {{blocks: number, unchanged: boolean}} what the text would produce
  */
-export const checkText = (vm, text, positions = []) => {
+export const checkText = (vm, text, positions = [], style) => {
     const project = projectOf(vm);
     const name = editingName(vm);
     const target = project.targets.find(t => t.name === name);
-    const rebuilt = buildTarget(parse(restorePositions(text, positions)), target, contextOf(project));
+    const rebuilt = buildTarget(parse(restorePositions(text, positions), style), target, contextOf(project), style);
     return {
         blocks: Object.values(rebuilt.blocks).filter(b => !b.shadow).length,
         unchanged: JSON.stringify(canonTarget(target.blocks, target.comments)) ===
@@ -133,7 +136,7 @@ export const checkText = (vm, text, positions = []) => {
  * @param {string} text the edited text
  * @returns {Promise<{blocks: number, changed: boolean}>} what was applied
  */
-export const applyText = async (vm, text, positions = []) => {
+export const applyText = async (vm, text, positions = [], style) => {
     const project = projectOf(vm);
     const name = editingName(vm);
     const target = project.targets.find(t => t.name === name);
@@ -141,7 +144,7 @@ export const applyText = async (vm, text, positions = []) => {
 
     // Build first. If the text has a mistake anywhere in it, this throws and
     // the project is still untouched.
-    const rebuilt = buildTarget(parse(restorePositions(text, positions)), target, contextOf(project));
+    const rebuilt = buildTarget(parse(restorePositions(text, positions), style), target, contextOf(project), style);
     const changed = JSON.stringify(canonTarget(target.blocks, target.comments)) !==
         JSON.stringify(canonTarget(rebuilt.blocks, rebuilt.comments));
     const count = Object.values(rebuilt.blocks).filter(b => !b.shadow).length;

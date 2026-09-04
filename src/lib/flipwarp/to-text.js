@@ -1,7 +1,11 @@
 // Blocks -> text. One text document per target (sprite or stage).
 import { BLOCKS, MENU_BLOCKS, LITERAL_SHADOWS, GETTERS, RESERVED } from './phrasebook.js';
 import { NameTable, quote, declLine } from './names.js';
+import { getStyle } from './styles.js';
 
+// The default indent. The real one comes from the style options, because in an
+// indentation-based style the indent is not decoration — it is what says where
+// a body begins and ends.
 const IND = '  ';
 
 export class ConversionError extends Error {
@@ -47,12 +51,14 @@ function commentLines(text, pad) {
   return String(text).split('\n').map(line => (line === '' ? `${pad}#` : `${pad}# ${line}`));
 }
 
-export function targetToText(target, ctx) {
+export function targetToText(target, ctx, options = {}) {
+  const st = getStyle(options.style);
+  const ind = typeof options.indent === 'string' ? options.indent : IND;
   const blocks = target.blocks;
   const allComments = Object.values(target.comments || {});
   const byBlock = new Map();
   for (const c of allComments) if (c.blockId) byBlock.set(c.blockId, c.text);
-  const names = new NameTable(RESERVED);
+  const names = new NameTable(RESERVED, st);
   const procs = new Map(); // proccode -> {ident, args}
 
   // Register this target's own variables and lists, plus the stage's globals.
@@ -66,7 +72,7 @@ export function targetToText(target, ctx) {
 
   const out = [];
   const decls = names.all().filter(r => usedIn(target, ctx, r));
-  for (const r of decls) out.push(declLine(r));
+  for (const r of decls) out.push(declLine(r, st));
   if (decls.length) out.push('');
 
   // Comments that sit on the canvas rather than on a block go first, each
@@ -87,7 +93,7 @@ export function targetToText(target, ctx) {
 
   for (const [id, block] of tops) {
     out.push(`@at(${Math.round(block.x)}, ${Math.round(block.y)})`);
-    out.push(...scriptToText(id, blocks, names, 0, ctx, byBlock));
+    out.push(...scriptToText(id, blocks, names, 0, ctx, byBlock, st, ind));
     out.push('');
   }
 
@@ -98,14 +104,14 @@ function usedIn() { return true; } // declare everything; simplest and lossless
 
 // -------------------------------------------------------------- statements
 
-function scriptToText(startId, blocks, names, depth, ctx, byBlock) {
+function scriptToText(startId, blocks, names, depth, ctx, byBlock, st, ind) {
   const lines = [];
   let id = startId;
   while (id) {
     const block = blocks[id];
     if (!block) break;
-    if (byBlock && byBlock.has(id)) lines.push(...commentLines(byBlock.get(id), IND.repeat(depth)));
-    const res = blockToLines(id, block, blocks, names, depth, ctx, byBlock);
+    if (byBlock && byBlock.has(id)) lines.push(...commentLines(byBlock.get(id), ind.repeat(depth)));
+    const res = blockToLines(id, block, blocks, names, depth, ctx, byBlock, st, ind);
     lines.push(...res.lines);
     if (res.consumedNext) break;
     id = block.next;
@@ -113,31 +119,30 @@ function scriptToText(startId, blocks, names, depth, ctx, byBlock) {
   return lines;
 }
 
-function blockToLines(id, block, blocks, names, depth, ctx, byBlock) {
-  const pad = IND.repeat(depth);
+function blockToLines(id, block, blocks, names, depth, ctx, byBlock, st, ind) {
+  const pad = ind.repeat(depth);
   const op = block.opcode;
 
   if (op === 'procedures_definition') {
     const protoId = inputBlockId(block.inputs.custom_block);
     const proto = blocks[protoId];
-    const { ident, params } = procSignature(proto, names);
-    const body = block.next ? scriptToText(block.next, blocks, names, depth + 1, ctx, byBlock) : [];
+    const { ident, params } = procSignature(proto, names, st);
+    const body = block.next ? scriptToText(block.next, blocks, names, depth + 1, ctx, byBlock, st, ind) : [];
     const warp = proto.mutation.warp === 'true' || proto.mutation.warp === true;
     // The `as` clause carries the block's real Scratch label, which the
     // identifier alone can't express (word order, where each slot sits).
     const label = ` as ${quote(proto.mutation.proccode)}`;
-    return { consumedNext: true, lines: [
-      `${pad}define ${warp ? 'fast ' : ''}${ident}(${params.join(', ')})${label} {`,
-      ...body,
-      `${pad}}`,
-    ] };
+    return { consumedNext: true, lines: closed(
+      `${pad}${st.defineWord} ${warp ? 'fast ' : ''}${ident}(${params.join(', ')})${label}`,
+      body, pad, st
+    ) };
   }
 
   if (op === 'procedures_call') {
-    const { ident, argIdents } = callSignature(block, names);
+    const { ident, argIdents } = callSignature(block, names, st);
     const argOrder = JSON.parse(block.mutation.argumentids || '[]');
-    const args = argOrder.map(aid => exprToText(block.inputs[aid], blocks, names, 0, ctx));
-    return { lines: [`${pad}${ident}(${args.join(', ')});`] };
+    const args = argOrder.map(aid => exprToText(block.inputs[aid], blocks, names, 0, ctx, undefined, st));
+    return { lines: [`${pad}${ident}(${args.join(', ')})${st.terminator}`] };
   }
 
   const def = BLOCKS[op];
@@ -145,47 +150,58 @@ function blockToLines(id, block, blocks, names, depth, ctx, byBlock) {
 
   // if / if-else get real JavaScript shape
   if (def.syntax === 'if' || def.syntax === 'ifElse') {
-    const cond = exprToText(block.inputs.CONDITION, blocks, names, 0, ctx, 'boolean');
-    const a = substackLines(block.inputs.SUBSTACK, blocks, names, depth + 1, ctx, byBlock);
-    const lines = [`${pad}if (${cond}) {`, ...a];
+    const cond = exprToText(block.inputs.CONDITION, blocks, names, 0, ctx, 'boolean', st);
+    const a = substackLines(block.inputs.SUBSTACK, blocks, names, depth + 1, ctx, byBlock, st, ind);
+    const lines = [`${pad}${st.ifHead(cond)}${st.openBody}`, ...a];
     if (def.syntax === 'ifElse') {
-      const b = substackLines(block.inputs.SUBSTACK2, blocks, names, depth + 1, ctx, byBlock);
-      lines.push(`${pad}} else {`, ...b);
+      const b = substackLines(block.inputs.SUBSTACK2, blocks, names, depth + 1, ctx, byBlock, st, ind);
+      lines.push(st.elseLine(pad, st.closeBody, st.openBody), ...b);
     }
-    lines.push(`${pad}}`);
+    if (st.closeBody) lines.push(`${pad}${st.closeBody}`);
     return { lines };
   }
 
   // variable assignment gets real JavaScript shape
   if (def.syntax === 'assign' || def.syntax === 'assignAdd') {
     const ident = names.identFor(block.fields.VARIABLE[1]) ?? names.add(block.fields.VARIABLE[1], block.fields.VARIABLE[0], 'variable');
-    const val = exprToText(block.inputs.VALUE, blocks, names, 0, ctx);
-    return { lines: [`${pad}${ident} ${def.syntax === 'assign' ? '=' : '+='} ${val};`] };
+    const val = exprToText(block.inputs.VALUE, blocks, names, 0, ctx, undefined, st);
+    return { lines: [`${pad}${ident} ${def.syntax === 'assign' ? '=' : '+='} ${val}${st.terminator}`] };
   }
 
   const args = def.args
     .filter(a => !(def.substack || []).includes(a))
-    .map(a => argToText(a, def, block, blocks, names, ctx));
+    .map(a => argToText(a, def, block, blocks, names, ctx, st));
+
+  const spelled = st.blockName(def.name);
 
   if (def.substack && def.substack.length) {
-    const head = args.length ? `${def.name}(${args.join(', ')})` : def.name;
-    const body = substackLines(block.inputs[def.substack[0]], blocks, names, depth + 1, ctx, byBlock);
-    return { lines: [`${pad}${head} {`, ...body, `${pad}}`] };
+    const head = args.length ? `${spelled}(${args.join(', ')})` : spelled;
+    const body = substackLines(block.inputs[def.substack[0]], blocks, names, depth + 1, ctx, byBlock, st, ind);
+    return { lines: closed(`${pad}${head}`, body, pad, st) };
   }
 
   if (def.kind === 'hat') {
-    const head = args.length ? `${def.name}(${args.join(', ')})` : def.name;
-    const body = block.next ? scriptToText(block.next, blocks, names, depth + 1, ctx, byBlock) : [];
-    return { consumedNext: true, lines: [`${pad}${head} {`, ...body, `${pad}}`] };
+    const head = args.length ? `${spelled}(${args.join(', ')})` : spelled;
+    const body = block.next ? scriptToText(block.next, blocks, names, depth + 1, ctx, byBlock, st, ind) : [];
+    return { consumedNext: true, lines: closed(`${pad}${head}`, body, pad, st) };
   }
 
-  return { lines: [`${pad}${def.name}(${args.join(', ')});`] };
+  return { lines: [`${pad}${spelled}(${args.join(', ')})${st.terminator}`] };
 }
 
-function substackLines(input, blocks, names, depth, ctx, byBlock) {
+// A header, its body, and the closing line if the style has one. An
+// indentation-based style closes a body by going back out again, so there is
+// no line to write.
+function closed(head, body, pad, st) {
+  const lines = [`${head}${st.openBody}`, ...body];
+  if (st.closeBody) lines.push(`${pad}${st.closeBody}`);
+  return lines;
+}
+
+function substackLines(input, blocks, names, depth, ctx, byBlock, st, ind) {
   if (!input) return [];
   const id = inputBlockId(input);
-  return id ? scriptToText(id, blocks, names, depth, ctx, byBlock) : [];
+  return id ? scriptToText(id, blocks, names, depth, ctx, byBlock, st, ind) : [];
 }
 
 function inputBlockId(input) {
@@ -196,7 +212,7 @@ function inputBlockId(input) {
 
 // ------------------------------------------------------------- expressions
 
-function argToText(argName, def, block, blocks, names, ctx) {
+function argToText(argName, def, block, blocks, names, ctx, st) {
   if ((def.fields || []).includes(argName)) {
     const f = block.fields[argName];
     if (!f) throw new ConversionError(`Block "${block.opcode}" is missing field ${argName}`);
@@ -209,18 +225,19 @@ function argToText(argName, def, block, blocks, names, ctx) {
     }
     return quote(f[0]);
   }
-  return exprToText(block.inputs[argName], blocks, names, 0, ctx);
+  return exprToText(block.inputs[argName], blocks, names, 0, ctx, undefined, st);
 }
 
-function exprToText(input, blocks, names, prec, ctx, want) {
-  if (!input) return want === 'boolean' ? 'false' : '""';
+function exprToText(input, blocks, names, prec, ctx, want, st) {
+  const style = getStyle(st);
+  if (!input) return want === 'boolean' ? style.falseWord : '""';
 
   const kind = input[0];
   const val = input[1];
 
   // A block sits in the slot.
   if (typeof val === 'string') {
-    return blockExprToText(val, blocks, names, prec, ctx);
+    return blockExprToText(val, blocks, names, prec, ctx, style);
   }
   // A primitive sits in the slot.
   if (Array.isArray(val)) {
@@ -253,7 +270,7 @@ function nodeToText(node, names) {
   }
 }
 
-function blockExprToText(id, blocks, names, prec, ctx) {
+function blockExprToText(id, blocks, names, prec, ctx, st) {
   const block = blocks[id];
   if (!block) return '""';
   const op = block.opcode;
@@ -275,13 +292,13 @@ function blockExprToText(id, blocks, names, prec, ctx) {
   }
 
   if (op === 'argument_reporter_string_number' || op === 'argument_reporter_boolean') {
-    return slugParam(block.fields.VALUE[0]);
+    return slugParam(block.fields.VALUE[0], st);
   }
 
   if (op === 'procedures_call') {
-    const { ident } = callSignature(block, names);
+    const { ident } = callSignature(block, names, st);
     const argOrder = JSON.parse(block.mutation.argumentids || '[]');
-    const args = argOrder.map(aid => exprToText(block.inputs[aid], blocks, names, 0, ctx));
+    const args = argOrder.map(aid => exprToText(block.inputs[aid], blocks, names, 0, ctx, undefined, st));
     return `${ident}(${args.join(', ')})`;
   }
 
@@ -289,45 +306,51 @@ function blockExprToText(id, blocks, names, prec, ctx) {
   if (!def) throw new ConversionError(unknownBlockMessage(op), { opcode: op });
 
   if (def.infix) {
-    const l = exprToText(block.inputs[def.args[0]], blocks, names, def.prec, ctx);
-    const r = exprToText(block.inputs[def.args[1]], blocks, names, def.prec + 1, ctx);
-    const s = `${l} ${def.infix} ${r}`;
+    const l = exprToText(block.inputs[def.args[0]], blocks, names, def.prec, ctx, undefined, st);
+    const r = exprToText(block.inputs[def.args[1]], blocks, names, def.prec + 1, ctx, undefined, st);
+    const s = `${l} ${spellOperator(def.infix, st)} ${r}`;
     return def.prec < prec ? `(${s})` : s;
   }
   if (def.prefix) {
-    const a = exprToText(block.inputs[def.args[0]], blocks, names, def.prec, ctx, 'boolean');
-    return `${def.prefix}${a}`;
+    const a = exprToText(block.inputs[def.args[0]], blocks, names, def.prec, ctx, 'boolean', st);
+    return `${spellOperator(def.prefix, st)}${a}`;
   }
 
-  const args = def.args.map(a => argToText(a, def, block, blocks, names, ctx));
-  return `${def.name}(${args.join(', ')})`;
+  const args = def.args.map(a => argToText(a, def, block, blocks, names, ctx, st));
+  return `${st.blockName(def.name)}(${args.join(', ')})`;
+}
+
+// && || ! are the phrasebook's spelling. A style may write them as words.
+function spellOperator(op, st) {
+  if (op === '&&') return st.andWord;
+  if (op === '||') return st.orWord;
+  if (op === '!') return st.notWord;
+  return op;
 }
 
 // -------------------------------------------------------------- procedures
 
-export function slugParam(name) {
-  let s = String(name).replace(/[^A-Za-z0-9_ ]+/g, ' ').trim().split(/\s+/)
-    .map((w, i) => (i === 0 ? w[0].toLowerCase() + w.slice(1) : w[0].toUpperCase() + w.slice(1))).join('');
-  if (!s || /^[0-9]/.test(s)) s = '_' + s;
-  return s;
+export function slugParam(name, st) {
+  return getStyle(st).slug(name);
 }
 
-export function procIdentFromProccode(proccode) {
+export function procIdentFromProccode(proccode, st) {
+  const style = getStyle(st);
   const label = proccode.replace(/%[sbn]/g, ' ').trim();
-  return slugParam(label) || 'customBlock';
+  return slugParam(label, style) || style.slug('custom block');
 }
 
-function procSignature(proto, names) {
+function procSignature(proto, names, st) {
   const proccode = proto.mutation.proccode;
   const argNames = JSON.parse(proto.mutation.argumentnames || '[]');
   const params = argNames.map(n => {
-    const slug = slugParam(n);
+    const slug = slugParam(n, st);
     return slug === n ? slug : `${slug} as ${quote(n)}`;
   });
-  return { ident: procIdentFromProccode(proccode), params, proccode };
+  return { ident: procIdentFromProccode(proccode, st), params, proccode };
 }
 
-function callSignature(block, names) {
+function callSignature(block, names, st) {
   const proccode = block.mutation.proccode;
-  return { ident: procIdentFromProccode(proccode), proccode };
+  return { ident: procIdentFromProccode(proccode, st), proccode };
 }
