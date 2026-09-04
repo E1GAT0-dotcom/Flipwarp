@@ -7,7 +7,19 @@ import {getSettings} from './flipwarp/settings.js';
  * @param {VirtualMachine} vm - The scratch vm
  * @return {ScratchBlocks} ScratchBlocks connected with the vm
  */
+// One line on a right-click menu, added only if it is not on it already.
+const addOnce = (options, text, callback) => {
+    if (options.some(option => option && option.text === text)) return;
+    options.push({enabled: true, text, callback});
+};
+
+// The VM the menu entries act on. The patches below are applied once, so they
+// cannot close over the vm of whichever call happened to be first — they read
+// it from here instead, and this is kept current.
+let currentVm = null;
+
 export default function (vm) {
+    currentVm = vm;
     const ScratchBlocks = LazyScratchBlocks.get();
     const jsonForMenuBlock = function (name, menuOptionsFn, colors, start) {
         return {
@@ -369,6 +381,12 @@ export default function (vm) {
     // customContextMenu on the prototype: several blocks mix in their own
     // customContextMenu, and scratch-blocks refuses a mixin that would
     // overwrite a member that is already there.
+    //
+    // The guard against adding it twice is on the menu, not on the patching.
+    // This whole function runs again whenever the theme or Cat Blocks changes
+    // and scratch-blocks replaces these prototypes when it does, so a patch
+    // that only applied once would simply be gone afterwards. Wrapping every
+    // time and refusing to write the same line twice survives both.
     const originalShowContextMenu = ScratchBlocks.BlockSvg.prototype.showContextMenu_;
     ScratchBlocks.BlockSvg.prototype.showContextMenu_ = function (e) {
         if (!getSettings().copyAsText || this.isInFlyout) {
@@ -378,11 +396,7 @@ export default function (vm) {
         const existing = this.customContextMenu;
         this.customContextMenu = function (options) {
             if (existing) existing.call(block, options);
-            options.push({
-                enabled: true,
-                text: 'Copy as text',
-                callback: () => copyScript(vm, block.id)
-            });
+            addOnce(options, 'Copy as text', () => copyScript(currentVm, block.id));
         };
         try {
             return originalShowContextMenu.call(this, e);
@@ -409,11 +423,7 @@ export default function (vm) {
         const workspace = this;
         const show = ScratchBlocks.ContextMenu.show;
         ScratchBlocks.ContextMenu.show = function (event, options, rtl) {
-            options.push({
-                enabled: true,
-                text: 'Paste as blocks',
-                callback: () => askForPaste(workspace, e)
-            });
+            addOnce(options, 'Paste as blocks', () => askForPaste(workspace, e));
             return show.call(this, event, options, rtl);
         };
         try {

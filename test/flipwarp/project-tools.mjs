@@ -85,12 +85,23 @@ await page.click('[class*="flipwarp-tools_close"]');
 await page.waitForTimeout(300);
 
 // --- copy a script as text ------------------------------------------------
-// Right-click the first block on the canvas and look for the menu item; the
-// clipboard itself is out of reach from here, so this checks that the item is
-// offered on a real script.
+// Right-click a block on the canvas and look for the menu item; the clipboard
+// itself is out of reach from here, so this checks that the item is offered on
+// a real script.
+//
+// The sprite is chosen deliberately: searching now jumps to the first result,
+// which can leave the editor on a sprite with no scripts of its own — and
+// then the only blocks on screen are the palette's, which are not scripts and
+// are not meant to offer this.
+await page.evaluate(() => {
+    const runner = window.vm.runtime.targets.find(t => t.getName() === 'Runner');
+    if (runner) window.vm.setEditingTarget(runner.id);
+});
+await page.waitForTimeout(1500);
+
 let copyOffered = false;
 try {
-    const block = await page.$('.blocklyDraggable');
+    const block = await page.$('.blocklyWorkspace:not(.blocklyFlyout) .blocklyDraggable');
     if (block) {
         await block.click({button: 'right'});
         await page.waitForTimeout(500);
@@ -99,8 +110,15 @@ try {
                 .some(e => /Copy as text/i.test(e.textContent)));
         await page.keyboard.press('Escape');
     }
+    if (!copyOffered) {
+        console.log('  menu was:', JSON.stringify(await page.$$eval('.goog-menuitem-content',
+            els => els.map(el => el.textContent.trim()))));
+        console.log('  sprite  :', await page.evaluate(() => window.vm.editingTarget.getName()));
+        console.log('  blocks  :', await page.$$eval('.blocklyDraggable', els => els.length));
+    }
 } catch (e) {
     copyOffered = false;
+    console.log('  threw:', String(e).slice(0, 200));
 }
 
 await browser.close();

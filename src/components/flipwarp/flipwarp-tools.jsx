@@ -9,7 +9,7 @@ import React from 'react';
 import bindAll from 'lodash.bindall';
 import VM from 'scratch-vm';
 
-import {findInProject, planReplace, applyReplacements, openSprite} from '../../lib/flipwarp/project-text.js';
+import {findInProject, planReplace, applyReplacements, revealScript} from '../../lib/flipwarp/project-text.js';
 import {BLOCKS} from '../../lib/flipwarp/phrasebook.js';
 import {currentStyle} from '../../lib/flipwarp/settings.js';
 import styles from './flipwarp-tools.css';
@@ -50,13 +50,14 @@ const describe = e => (e && e.message ? e.message : String(e));
 // A rename and an edited line are different things and are counted
 // separately: renaming a variable changes every block that uses it without
 // any line being rewritten, and saying "nothing changed" there would be a lie.
-const describeResult = result => {
+const describeResult = (result, deleting) => {
     const parts = [];
     if (result.renamed) {
         parts.push(`renamed ${result.renamed} ${result.renamed === 1 ? 'variable' : 'variables'} everywhere`);
     }
     if (result.lines) {
-        parts.push(`changed ${result.lines} ${result.lines === 1 ? 'line' : 'lines'} in ` +
+        parts.push(`${deleting ? 'deleted' : 'changed'} ${result.lines} ` +
+            `${result.lines === 1 ? 'block' : 'blocks'} in ` +
             `${result.sprites} ${result.sprites === 1 ? 'sprite' : 'sprites'}`);
     }
     if (!parts.length) return 'Nothing changed.';
@@ -75,7 +76,8 @@ const KIND_LABEL = {
 class FlipwarpTools extends React.Component {
     constructor (props) {
         super(props);
-        bindAll(this, ['handleSearch', 'handlePreview', 'handleApply', 'handleClose']);
+        bindAll(this, ['handleSearch', 'handlePreview', 'handleApply', 'handleClose',
+            'handleNext', 'handlePrevious', 'handleQueryKey']);
         this.state = {
             mode: props.settings.searchProject ? 'search' : (props.settings.findReplace ? 'replace' : 'sheet'),
             query: '',
@@ -83,8 +85,12 @@ class FlipwarpTools extends React.Component {
             caseSensitive: false,
             wholeWord: false,
             matches: null,
+            // Which match the arrows are on. Kept so the panel can be walked
+            // through without being closed and reopened for every one.
+            current: -1,
             unreadable: [],
             chosen: {},
+            wholeBlock: false,
             sheetQuery: '',
             status: '',
             error: null,
@@ -107,7 +113,12 @@ class FlipwarpTools extends React.Component {
                 unreadable,
                 error: null,
                 chosen: {},
+                current: -1,
                 status: `${matches.length} ${matches.length === 1 ? 'line' : 'lines'}`
+            }, () => {
+                // Straight to the first one, because that is what pressing
+                // Find is asking for.
+                if (matches.length) this.goTo(0);
             });
         } catch (e) {
             this.setState({error: describe(e), matches: null});
@@ -119,17 +130,20 @@ class FlipwarpTools extends React.Component {
             const {matches, unreadable} = planReplace(
                 this.props.vm, this.state.query, this.state.replacement, {
                     caseSensitive: this.state.caseSensitive,
-                    wholeWord: this.state.wholeWord
+                    wholeWord: this.state.wholeWord,
+                    wholeBlock: this.state.wholeBlock
                 });
             // Everything found starts ticked; untick what you do not want.
             const chosen = {};
             for (const m of matches) chosen[m.id] = true;
+            const verb = this.state.wholeBlock ? 'would be deleted' : 'would change';
             this.setState({
                 matches,
                 unreadable,
                 chosen,
                 error: null,
-                status: `${matches.length} ${matches.length === 1 ? 'line' : 'lines'} would change`
+                current: -1,
+                status: `${matches.length} ${matches.length === 1 ? 'line' : 'lines'} ${verb}`
             });
         } catch (e) {
             this.setState({error: describe(e), matches: null});
@@ -144,19 +158,72 @@ class FlipwarpTools extends React.Component {
             const result = applyReplacements(
                 this.props.vm, this.state.query, this.state.replacement, chosen, {
                     caseSensitive: this.state.caseSensitive,
-                    wholeWord: this.state.wholeWord
+                    wholeWord: this.state.wholeWord,
+                    wholeBlock: this.state.wholeBlock
                 });
             this.setState({
                 busy: false,
                 matches: null,
                 chosen: {},
-                status: describeResult(result)
+                current: -1,
+                status: describeResult(result, this.state.wholeBlock)
             });
         } catch (e) {
             // Nothing was applied — the build failed before any sprite was
             // touched — so say what went wrong and leave the list up.
             this.setState({busy: false, error: describe(e), status: 'Nothing was changed.'});
         }
+    }
+
+    // Walking the results. The panel stays open the whole time — having to
+    // close and reopen it for every hit was the whole complaint.
+    goTo (index) {
+        const matches = this.state.matches;
+        if (!matches || !matches.length) return;
+        const wrapped = ((index % matches.length) + matches.length) % matches.length;
+        const match = matches[wrapped];
+        this.setState({current: wrapped});
+        revealScript(this.props.vm, match.sprite, match.script);
+    }
+
+    handleNext () {
+        this.goTo(this.state.current + 1);
+    }
+
+    handlePrevious () {
+        this.goTo(this.state.current - 1);
+    }
+
+    // Enter searches, and searching again steps on to the next one — which is
+    // what Enter does in every other find box there is.
+    handleQueryKey (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        if (this.state.matches && this.state.matches.length) this.handleNext();
+        else if (this.state.mode === 'search') this.handleSearch();
+        else this.handlePreview();
+    }
+
+    renderSteps () {
+        const {matches, current} = this.state;
+        if (!matches || !matches.length) return null;
+        return (
+            <div className={styles.steps}>
+                <button
+                    className={styles.step}
+                    title="Previous"
+                    onClick={this.handlePrevious}
+                >{'\u2039'}</button>
+                <span className={styles.stepCount}>
+                    {`${current < 0 ? '\u2013' : current + 1} of ${matches.length}`}
+                </span>
+                <button
+                    className={styles.step}
+                    title="Next"
+                    onClick={this.handleNext}
+                >{'\u203a'}</button>
+            </div>
+        );
     }
 
     renderOptions () {
@@ -178,6 +245,16 @@ class FlipwarpTools extends React.Component {
                     />
                     {' Whole word only'}
                 </label>
+                {this.state.mode === 'replace' ? (
+                    <label>
+                        <input
+                            checked={this.state.wholeBlock}
+                            type="checkbox"
+                            onChange={e => this.setState({wholeBlock: e.target.checked, matches: null})}
+                        />
+                        {' Delete the whole block'}
+                    </label>
+                ) : null}
             </div>
         );
     }
@@ -190,9 +267,9 @@ class FlipwarpTools extends React.Component {
         }
         return (
             <div className={styles.results}>
-                {matches.map(m => (
+                {matches.map((m, index) => (
                     <div
-                        className={styles.result}
+                        className={`${styles.result} ${index === this.state.current ? styles.currentResult : ''}`}
                         key={m.id || `${m.sprite}:${m.line}`}
                     >
                         {withPreview ? (
@@ -205,16 +282,21 @@ class FlipwarpTools extends React.Component {
                             />
                         ) : null}
                         <button
-                            className={styles.where}
-                            title={`Open ${m.sprite}`}
-                            onClick={() => {
-                                openSprite(this.props.vm, m.sprite);
-                                this.handleClose();
-                            }}
+                            className={`${styles.where} ${index === this.state.current ? styles.currentWhere : ''}`}
+                            title={`Show this in ${m.sprite}`}
+                            onClick={() => this.goTo(index)}
                         >{`${m.sprite}:${m.line}`}</button>
                         <div className={styles.lines}>
-                            <code className={withPreview ? styles.before : ''}>{m.text}</code>
-                            {withPreview && m.after !== m.text ? (
+                            <code className={withPreview && (m.deletes || m.after !== m.text) ?
+                                styles.before : ''}
+                            >{m.text}</code>
+                            {withPreview && m.cannotDelete ? (
+                                <code className={styles.kept}>{`kept — ${m.cannotDelete}`}</code>
+                            ) : null}
+                            {withPreview && m.deletes ? (
+                                <code className={styles.after}>{'deleted, with anything inside it'}</code>
+                            ) : null}
+                            {withPreview && !m.deletes && !m.cannotDelete && m.after !== m.text ? (
                                 <code className={styles.after}>{m.after}</code>
                             ) : null}
                         </div>
@@ -303,14 +385,9 @@ class FlipwarpTools extends React.Component {
                                         placeholder={current === 'search' ? 'Find in every sprite' : 'Find'}
                                         value={this.state.query}
                                         onChange={e => this.setState({query: e.target.value, matches: null})}
-                                        onKeyDown={e => {
-                                            if (e.key === 'Enter') {
-                                                if (current === 'search') this.handleSearch();
-                                                else this.handlePreview();
-                                            }
-                                        }}
+                                        onKeyDown={this.handleQueryKey}
                                     />
-                                    {current === 'replace' ? (
+                                    {current === 'replace' && !this.state.wholeBlock ? (
                                         <input
                                             className={styles.input}
                                             placeholder="Replace with"
@@ -320,6 +397,7 @@ class FlipwarpTools extends React.Component {
                                             })}
                                         />
                                     ) : null}
+                                    {this.renderSteps()}
                                     <button
                                         className={styles.go}
                                         disabled={!this.state.query || busy}

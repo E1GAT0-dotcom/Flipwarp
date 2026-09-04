@@ -15,6 +15,7 @@ import {buildTarget} from './build.js';
 import {canonTarget} from './canon.js';
 import {replaceTargetBlocks} from './sb3-to-runtime.js';
 import {textOptions} from './settings.js';
+import LazyScratchBlocks from '../tw-lazy-scratch-blocks';
 
 const AT_LINE = /^@at\((-?\d+),\s*(-?\d+)\)$/;
 
@@ -51,13 +52,29 @@ export const readAllTargets = vm => {
             continue;
         }
         const lines = full.split('\n');
+        // Which script each visible line sits in, counted the same way
+        // to-text writes them out: one @at marker per script, in order. That
+        // number is what lets a search result scroll the workspace to the
+        // right place rather than only opening the right sprite.
+        const visible = [];
+        const scripts = [];
+        let scriptIndex = -1;
+        for (const line of lines) {
+            if (AT_LINE.test(line.trim())) {
+                scriptIndex++;
+                continue;
+            }
+            visible.push(line);
+            scripts.push(scriptIndex);
+        }
         out.push({
             name: target.name,
             isStage: !!target.isStage,
             full,
             // Line numbers people see must match the text they would see in
             // the panel, which does not show the @at markers.
-            visible: lines.filter(line => !AT_LINE.test(line.trim()))
+            visible,
+            scripts
         });
     }
     return out;
@@ -122,11 +139,115 @@ export const findInProject = (vm, query, options = {}) => {
                 sprite: target.name,
                 isStage: target.isStage,
                 line: index + 1,
-                text: line.trim()
+                script: target.scripts[index],
+                text: line.trim(),
+                id: `${target.name}:${index + 1}`
             });
         });
     }
     return {matches, unreadable};
+};
+
+
+// ------------------------------------------------- deleting a whole block
+
+const indentOf = line => (/^[ \t]*/.exec(line) || [''])[0]
+    .replace(/\t/g, '        ').length;
+
+const opensBody = (line, style) => (style.indentBased ?
+    /:\s*$/.test(line) : /\{\s*$/.test(line));
+
+/**
+ * The lines one block occupies: itself, and everything it holds.
+ *
+ * Deleting "goToXY(0, 0)" should take one line. Deleting "repeat(10)" should
+ * take the loop and what is inside it, because that is what deleting the
+ * block would do in the workspace — the alternative is an orphaned closing
+ * brace and text that will not go back into blocks at all.
+ *
+ * @param {Array<string>} lines every line of the sprite, markers included
+ * @param {number} index the line the match is on
+ * @param {object} style the style the text is written in
+ * @returns {Array<number>} first and last line, inclusive
+ */
+const spanOf = (lines, index, style) => {
+    const line = lines[index];
+    if (!opensBody(line, style)) return [index, index];
+
+    if (style.indentBased) {
+        const outer = indentOf(line);
+        let end = index;
+        for (let i = index + 1; i < lines.length; i++) {
+            if (lines[i].trim() === '') continue;
+            if (AT_LINE.test(lines[i].trim())) break;
+            if (indentOf(lines[i]) <= outer) break;
+            end = i;
+        }
+        return [index, end];
+    }
+
+    // Braces are counted rather than matched by indentation, because
+    // indentation in a bracketed style is decoration and may be wrong.
+    let depth = 0;
+    for (let i = index; i < lines.length; i++) {
+        for (const ch of lines[i]) {
+            if (ch === '{') depth++;
+            else if (ch === '}') {
+                depth--;
+                if (depth === 0) return [index, i];
+            }
+        }
+    }
+    return [index, lines.length - 1];
+};
+
+/**
+ * Tidy up after a deletion.
+ *
+ * Taking a line out can leave things behind that are not valid on their own:
+ * a loop with nothing in it, or a script marker with no script under it. Both
+ * are removed, and removing them can empty something else, so this repeats
+ * until there is nothing left to tidy.
+ *
+ * @param {Array<string>} lines what is left after the deletion
+ * @param {object} style the style the text is written in
+ * @returns {Array<string>} the tidied lines
+ */
+const tidy = (lines, style) => {
+    let out = lines;
+    for (let pass = 0; pass < 50; pass++) {
+        const doomed = new Set();
+        for (let i = 0; i < out.length; i++) {
+            const line = out[i];
+            if (line.trim() === '') continue;
+
+            // A marker with no script under it.
+            if (AT_LINE.test(line.trim())) {
+                let j = i + 1;
+                while (j < out.length && out[j].trim() === '') j++;
+                if (j >= out.length || AT_LINE.test(out[j].trim())) doomed.add(i);
+                continue;
+            }
+
+            if (!opensBody(line, style)) continue;
+
+            // A body with nothing in it.
+            let j = i + 1;
+            while (j < out.length && out[j].trim() === '') j++;
+            if (style.indentBased) {
+                const empty = j >= out.length ||
+                    AT_LINE.test(out[j].trim()) ||
+                    indentOf(out[j]) <= indentOf(line);
+                if (empty) doomed.add(i);
+            } else if (j < out.length && out[j].trim() === '}') {
+                doomed.add(i);
+                doomed.add(j);
+            }
+        }
+        if (!doomed.size) break;
+        out = out.filter((_, i) => !doomed.has(i));
+    }
+    return out;
 };
 
 /**
@@ -138,6 +259,7 @@ export const findInProject = (vm, query, options = {}) => {
  * @returns {{matches: Array, unreadable: Array}} each match with its new line
  */
 export const planReplace = (vm, query, replacement, options = {}) => {
+    const wholeBlock = !!options.wholeBlock;
     const re = matcher(query, options);
     const matches = [];
     const unreadable = [];
@@ -152,12 +274,20 @@ export const planReplace = (vm, query, replacement, options = {}) => {
             re.lastIndex = 0;
             if (!re.test(line)) return;
             re.lastIndex = 0;
+            const declaration = declarationOf(line);
             matches.push({
                 sprite: target.name,
                 isStage: target.isStage,
                 line: index + 1,
+                script: target.scripts[index],
                 text: line.trim(),
-                after: line.replace(re, replacement).trim(),
+                // In whole-block mode nothing is written in place of the
+                // line — the line and everything it holds goes.
+                after: wholeBlock ? '' : line.replace(re, replacement).trim(),
+                deletes: wholeBlock && !declaration,
+                // A declaration is the name of a real variable, so deleting
+                // it would leave every block that uses it pointing at nothing.
+                cannotDelete: wholeBlock && declaration ? 'this names a variable' : null,
                 id: `${target.name}:${index + 1}`
             });
         });
@@ -180,6 +310,7 @@ export const planReplace = (vm, query, replacement, options = {}) => {
  * @returns {{sprites: number, lines: number, renamed: number}} what changed
  */
 export const applyReplacements = (vm, query, replacement, chosen, options = {}) => {
+    const wholeBlock = !!options.wholeBlock;
     const re = matcher(query, options);
     if (!re) return {sprites: 0, lines: 0, renamed: 0};
     const wanted = new Set(chosen);
@@ -189,7 +320,7 @@ export const applyReplacements = (vm, query, replacement, chosen, options = {}) 
     // there with its value and point every block at a brand new one, which is
     // not a rename, it is a quiet duplication. So those go through the same
     // rename the editor itself uses, first, and every reference follows.
-    const renamed = renameDeclarations(vm, re, replacement, wanted);
+    const renamed = wholeBlock ? 0 : renameDeclarations(vm, re, replacement, wanted);
 
     // Whatever the renames did not cover, done as text. Lines the rename
     // already fixed no longer match, so they are simply passed over.
@@ -198,38 +329,56 @@ export const applyReplacements = (vm, query, replacement, chosen, options = {}) 
     const rebuilds = [];
     let lines = 0;
 
+    const style = textOptions().style;
+
     for (const target of project.targets) {
         const full = targetToText(target, context, textOptions()).text;
         const sourceLines = full.split('\n');
-        let visibleIndex = 0;
-        let touched = false;
-        const edited = [];
 
-        for (const line of sourceLines) {
-            if (AT_LINE.test(line.trim())) {
-                edited.push(line);
+        // Where each line the person can see sits in the real text, which
+        // also carries the @at markers they never see.
+        const sourceOf = [];
+        sourceLines.forEach((line, i) => {
+            if (!AT_LINE.test(line.trim())) sourceOf.push(i);
+        });
+
+        const edited = sourceLines.slice();
+        const doomed = new Set();
+        let touched = false;
+
+        for (let v = 0; v < sourceOf.length; v++) {
+            const at = sourceOf[v];
+            const line = sourceLines[at];
+            if (!wanted.has(`${target.name}:${v + 1}`) || declarationOf(line)) continue;
+
+            if (wholeBlock) {
+                const [from, to] = spanOf(sourceLines, at, style);
+                for (let i = from; i <= to; i++) doomed.add(i);
+                touched = true;
+                lines++;
                 continue;
             }
-            visibleIndex++;
-            if (!wanted.has(`${target.name}:${visibleIndex}`) || declarationOf(line)) {
-                edited.push(line);
-                continue;
-            }
+
             re.lastIndex = 0;
             const next = line.replace(re, replacement);
             if (next !== line) {
+                edited[at] = next;
                 touched = true;
                 lines++;
             }
-            edited.push(next);
         }
 
         if (!touched) continue;
 
-        // Throws here if the replacement made the text invalid, before
-        // anything at all has been applied.
-        const style = textOptions().style;
-        const rebuilt = buildTarget(parse(edited.join('\n'), style), target, context, style);
+        // Deleting can leave an empty loop or a marker with no script under
+        // it, neither of which is valid on its own.
+        const kept = doomed.size ?
+            tidy(edited.filter((_, i) => !doomed.has(i)), style) :
+            edited;
+
+        // Throws here if the change made the text invalid, before anything at
+        // all has been applied.
+        const rebuilt = buildTarget(parse(kept.join('\n'), style), target, context, style);
         const changed = JSON.stringify(canonTarget(target.blocks, target.comments)) !==
             JSON.stringify(canonTarget(rebuilt.blocks, rebuilt.comments));
         if (changed) rebuilds.push({name: target.name, rebuilt});
@@ -326,7 +475,104 @@ const renameDeclarations = (vm, re, replacement, wanted) => {
 export const openSprite = (vm, name) => {
     const target = vm.runtime.targets.find(t => t.getName() === name && (!t.isSprite || t.isOriginal));
     if (!target) return false;
+    // Asking for the sprite that is already open is not free — it rebuilds
+    // the workspace, which loses the scroll position and any selection.
+    if (vm.editingTarget && vm.editingTarget.id === target.id) return true;
     vm.setEditingTarget(target.id);
+    return true;
+};
+
+// The editor has more than one copy of Blockly loaded and more than one
+// workspace on the page — the block palette is a workspace of its own — so
+// the right one is the one that actually holds the block.
+const workspaceHolding = blockId => {
+    if (!LazyScratchBlocks.isLoaded()) return null;
+    const Blockly = LazyScratchBlocks.get();
+    const db = Blockly.Workspace && Blockly.Workspace.WorkspaceDB_;
+    const all = db ? Object.values(db) :
+        [Blockly.getMainWorkspace && Blockly.getMainWorkspace()].filter(Boolean);
+    for (const workspace of all) {
+        try {
+            if (workspace.isFlyout) continue;
+            if (workspace.getBlockById && workspace.getBlockById(blockId)) return workspace;
+        } catch (e) {
+            // A workspace mid-teardown is not the one we want anyway.
+        }
+    }
+    return null;
+};
+
+// Scroll the workspace so a block is in the middle of it, and select it.
+//
+// Two things make this harder than the one call it looks like. The block is
+// not there the instant we ask, because changing sprite tears the workspace
+// down and builds it again — so it is asked for repeatedly for a short while.
+// And that rebuild also resets the scroll, and can land *after* we have
+// scrolled, putting the view straight back where it was. So it is done again
+// a moment later, and the second one is what usually sticks.
+const centre = (blockId, attempt = 0) => {
+    const workspace = workspaceHolding(blockId);
+    if (!workspace) {
+        if (attempt < 25) setTimeout(() => centre(blockId, attempt + 1), 80);
+        return false;
+    }
+    try {
+        if (workspace.centerOnBlock) workspace.centerOnBlock(blockId);
+        const block = workspace.getBlockById(blockId);
+        // Selected as well, because one script among many on a big canvas is
+        // still hard to pick out once you get there.
+        if (block && block.select) block.select();
+        return true;
+    } catch (e) {
+        // Scrolling is a courtesy. Never let it break the search.
+        return false;
+    }
+};
+
+const scrollTo = blockId => {
+    centre(blockId);
+    setTimeout(() => centre(blockId), 150);
+    setTimeout(() => centre(blockId), 450);
+};
+
+/**
+ * Open the sprite a match is in and scroll the workspace to the script it is
+ * part of.
+ *
+ * The scripts are ordered here exactly the way the converter orders them when
+ * it writes the text — by where they sit on the canvas — so the number
+ * counted out of the text picks the same script back out of the project.
+ *
+ * @param {VirtualMachine} vm the running VM
+ * @param {string} name the sprite to open
+ * @param {number} scriptIndex which script, counted from the text
+ * @returns {boolean} whether the sprite was opened
+ */
+export const revealScript = (vm, name, scriptIndex) => {
+    if (!openSprite(vm, name)) return false;
+    if (typeof scriptIndex !== 'number' || scriptIndex < 0) return true;
+
+    // Read from the running project rather than a saved copy of it. Saving
+    // renumbers every block, so the ids in vm.toJSON() are not the ids the
+    // workspace knows a block by — looking one up there finds nothing at all,
+    // silently.
+    const target = vm.runtime.targets.find(t =>
+        t.getName() === name && (!t.isSprite || t.isOriginal));
+    if (!target || !target.blocks) return true;
+
+    const all = target.blocks._blocks || {};
+    // Ordered the way the converter orders scripts when it writes them out:
+    // by where they sit on the canvas. Two scripts at exactly the same point
+    // could come out the other way round, which would scroll to the wrong one
+    // of the pair — and no worse than that.
+    const tops = Object.values(all)
+        .filter(b => b && b.topLevel && !b.shadow)
+        .sort((a, b) => ((a.y || 0) - (b.y || 0)) ||
+            ((a.x || 0) - (b.x || 0)) ||
+            String(a.id).localeCompare(String(b.id)));
+
+    const found = tops[scriptIndex];
+    if (found) scrollTo(found.id);
     return true;
 };
 

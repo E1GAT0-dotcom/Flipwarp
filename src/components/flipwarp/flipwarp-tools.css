@@ -223,3 +223,55 @@
     color: $text-primary;
     font-size: 0.8rem;
 }
+
+/* Walking the results, in the same row as the search box. */
+.steps {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    flex: 0 0 auto;
+}
+
+.step {
+    width: 1.5rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.3rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.step:hover {
+    background: $ui-primary;
+}
+
+.step-count {
+    min-width: 3.4rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: $text-primary;
+    opacity: 0.8;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The one the arrows are on, so it can be found in a long list. */
+.current-result {
+    background: $looks-transparent;
+}
+
+.current-where {
+    text-decoration: underline;
+}
+
+/* A line the deletion cannot take, and why. */
+.kept {
+    font-size: 0.8rem;
+    opacity: 0.75;
+    font-style: italic;
+    color: $text-primary;
+}
