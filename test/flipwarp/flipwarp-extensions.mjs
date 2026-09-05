@@ -35,7 +35,7 @@ const credit = await page.$$eval('[class*="library_tag-banner"], [class*="tagBan
 const saved = await page.evaluate(async () => {
     const vm = window.vm;
     for (const file of ['save-slots.js', 'dialogue.js', 'record-replay.js',
-        'near.js', 'pathfinding.js', 'tilemap.js']) {
+        'near.js', 'pathfinding.js', 'tilemap.js', 'accessibility.js']) {
         await vm.extensionManager.loadExtensionURL(
             new URL(`flipwarp-extensions/${file}`, document.baseURI).href);
     }
@@ -184,6 +184,93 @@ const saved = await page.evaluate(async () => {
     const pathSeesWall = await call('flipwarpPathfinding_isBlocked', {X: -20, Y: 0});
     const pathSeesOpen = await call('flipwarpPathfinding_isBlocked', {X: -60, Y: 40});
 
+    // Accessibility: the six things a player might need, each adjustable
+    // while it is on.
+    //
+    // Reading aloud is checked by watching what is handed to the browser's
+    // voice rather than by listening: a test machine has no speakers and
+    // often no voices installed at all, and the question being asked is
+    // whether a say block reaches the voice, not whether the voice works.
+    const spoken = [];
+    if (window.speechSynthesis) {
+        const realSpeak = window.speechSynthesis.speak.bind(window.speechSynthesis);
+        window.speechSynthesis.speak = utterance => {
+            spoken.push({text: utterance.text, rate: utterance.rate, pitch: utterance.pitch});
+            void realSpeak;
+        };
+    }
+    await call('flipwarpAccessibility_setReading', {ON: 'on'});
+    await call('flipwarpAccessibility_setVoiceRate', {RATE: 1.5});
+    await call('flipwarpAccessibility_speak', {TEXT: 'hello there'});
+    // And what a sprite says goes to the voice without being asked twice.
+    vm.runtime.emit('SAY', me, 'say', 'a sprite said this');
+    await new Promise(resolve => setTimeout(resolve, 200));
+    await call('flipwarpAccessibility_setReading', {ON: 'off'});
+    vm.runtime.emit('SAY', me, 'say', 'this one should not be read');
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const readAloud = {
+        said: spoken.map(s => s.text),
+        rate: spoken.length ? spoken[0].rate : null,
+        canRead: await call('flipwarpAccessibility_canRead', {})
+    };
+
+    // Captions: real text over the stage, so a screen reader can reach it.
+    await call('flipwarpAccessibility_setCaptions', {ON: 'on'});
+    await call('flipwarpAccessibility_setCaptionSize', {PERCENT: 200});
+    await call('flipwarpAccessibility_setCaptionSeconds', {SECONDS: 30});
+    await call('flipwarpAccessibility_caption', {TEXT: 'a door creaks open'});
+    const captionShowing = (() => {
+        const box = [...document.querySelectorAll('div[aria-live]')]
+            .find(e => e.textContent === 'a door creaks open');
+        if (!box) return null;
+        return {
+            text: box.textContent,
+            showing: getComputedStyle(box).display !== 'none',
+            fontSize: parseFloat(getComputedStyle(box).fontSize)
+        };
+    })();
+    await call('flipwarpAccessibility_setCaptions', {ON: 'off'});
+    const captionGone = (() => {
+        const box = [...document.querySelectorAll('div[aria-live]')]
+            .find(e => e.textContent === 'a door creaks open');
+        return box ? getComputedStyle(box).display === 'none' : true;
+    })();
+
+    // Speed: the player's own choice, reported back so a menu can show it.
+    await call('flipwarpAccessibility_setSpeed', {SPEED: 'quarter speed'});
+    const speedSaid = await call('flipwarpAccessibility_gameSpeed', {});
+    let framesAtQuarter = 0;
+    const countQuarter = () => framesAtQuarter++;
+    vm.runtime.on('BEFORE_EXECUTE', countQuarter);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    vm.runtime.removeListener('BEFORE_EXECUTE', countQuarter);
+    await call('flipwarpAccessibility_setSpeed', {SPEED: 'normal speed'});
+    let framesAtNormal = 0;
+    const countNormal = () => framesAtNormal++;
+    vm.runtime.on('BEFORE_EXECUTE', countNormal);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    vm.runtime.removeListener('BEFORE_EXECUTE', countNormal);
+
+    // Keys: one key doing another's job, which is the whole point for
+    // somebody who cannot reach the arrows.
+    await call('flipwarpAccessibility_remap', {FROM: 'a', TO: 'left arrow'});
+    const standsFor = await call('flipwarpAccessibility_standsFor', {FROM: 'a'});
+    vm.postIOData('keyboard', {key: 'a', keyCode: 65, isDown: true});
+    const leftArrowDown = vm.runtime.ioDevices.keyboard.getKeyIsDown('left arrow');
+    const theLetterA = vm.runtime.ioDevices.keyboard.getKeyIsDown('a');
+    vm.postIOData('keyboard', {key: 'a', keyCode: 65, isDown: false});
+    await call('flipwarpAccessibility_clearRemapping', {});
+    vm.postIOData('keyboard', {key: 'a', keyCode: 65, isDown: true});
+    const backToNormal = vm.runtime.ioDevices.keyboard.getKeyIsDown('a');
+    vm.postIOData('keyboard', {key: 'a', keyCode: 65, isDown: false});
+
+    // Seeing it: a filter over the canvas, so the project's own colours are
+    // untouched and touching-colour still answers what it always answered.
+    await call('flipwarpAccessibility_setContrast', {PERCENT: 150});
+    const filtered = vm.runtime.renderer.canvas.style.filter;
+    await call('flipwarpAccessibility_resetLook', {});
+    const unfiltered = vm.runtime.renderer.canvas.style.filter;
+
     for (const clone of clones) vm.runtime.disposeTarget(clone);
 
     const loaded = vm.extensionManager.isExtensionLoaded('flipwarpSaveSlots');
@@ -194,7 +281,10 @@ const saved = await page.evaluate(async () => {
         routeFound, routeSteps, throughWall, sealedFound,
         mapColumns, mapRows, cornerTile, insideTile, wallCount,
         markX, markY, underMe, openHere, wallInTheMiddle,
-        stoppedAt, stoppedInsideWall, mapText, pathSeesWall, pathSeesOpen};
+        stoppedAt, stoppedInsideWall, mapText, pathSeesWall, pathSeesOpen,
+        readAloud, captionShowing, captionGone, speedSaid,
+        framesAtQuarter, framesAtNormal, standsFor, leftArrowDown, theLetterA,
+        backToNormal, filtered, unfiltered};
 });
 
 // --- and they convert to text --------------------------------------------
@@ -245,7 +335,7 @@ await browser.close();
 
 const checks = [
     ['there is a Flipwarp tab', tabs.includes('Flipwarp'), tabs],
-    ['it lists all six', onTab.length >= 6, onTab],
+    ['it lists all seven', onTab.length >= 7, onTab],
     ['and says who made them', /E1GAT0_/.test(credit), credit.slice(0, 120)],
     ['an extension served from this site loads', saved.loaded === true, saved.loaded],
     ['a slot remembers what was put in it', saved.readBack === '42', saved],
@@ -296,6 +386,28 @@ const checks = [
         saved.mapText === '####@#\n#....#\n#.##.#\n#....#\n######', saved.mapText],
     ['Pathfinding is given the walls', saved.pathSeesWall === true, saved.pathSeesWall],
     ['and not given the floor', saved.pathSeesOpen === false, saved.pathSeesOpen],
+    ['a say block reaches the voice, and stops when reading is turned off',
+        saved.readAloud.said.length === 2 &&
+        saved.readAloud.said[0] === 'hello there' &&
+        saved.readAloud.said[1] === 'a sprite said this', saved.readAloud],
+    ['at the speed that was asked for', saved.readAloud.rate === 1.5, saved.readAloud],
+    ['a caption is real text over the stage',
+        saved.captionShowing && saved.captionShowing.showing === true, saved.captionShowing],
+    ['at the size that was asked for',
+        saved.captionShowing && saved.captionShowing.fontSize === 32, saved.captionShowing],
+    ['and captions off takes it away', saved.captionGone === true, saved.captionGone],
+    ['quarter speed says so', saved.speedSaid === 'quarter speed', saved.speedSaid],
+    ['and runs about a quarter of the frames',
+        saved.framesAtQuarter > 0 &&
+        saved.framesAtQuarter < saved.framesAtNormal * 0.45, 
+        {quarter: saved.framesAtQuarter, normal: saved.framesAtNormal}],
+    ['a remapped key does the other key\'s job',
+        saved.leftArrowDown === true && saved.theLetterA === false,
+        {standsFor: saved.standsFor, left: saved.leftArrowDown, a: saved.theLetterA}],
+    ['and putting the keys back undoes it', saved.backToNormal === true, saved.backToNormal],
+    ['contrast is a filter over the canvas, not a change to the project',
+        /contrast/.test(saved.filtered) && saved.unfiltered === '',
+        {filtered: saved.filtered, unfiltered: saved.unfiltered}],
     ['the editor raised no errors', errs.length === 0, errs]
 ];
 

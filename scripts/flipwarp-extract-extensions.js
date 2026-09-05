@@ -68,7 +68,8 @@ const TEXT_PREFIX = {
     flipwarpDialogue: 'dialogue',
     flipwarpNear: 'near',
     flipwarpPathfinding: 'route',
-    flipwarpTilemap: 'tiles'
+    flipwarpTilemap: 'tiles',
+    flipwarpAccessibility: 'access'
 };
 
 const camel = label => {

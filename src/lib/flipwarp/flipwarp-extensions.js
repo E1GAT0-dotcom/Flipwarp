@@ -64,6 +64,14 @@ const EXTENSIONS = [
         description: 'Find a way round the walls instead of walking into them, and step along it.'
     },
     {
+        id: 'flipwarpAccessibility',
+        file: 'accessibility.js',
+        icon: 'accessibility.svg',
+        name: 'Accessibility',
+        description: 'Reading aloud, captions, key changes, a speed the player picks. ' +
+            'For the person playing, who has no settings window.'
+    },
+    {
         id: 'flipwarpTilemap',
         file: 'tilemap.js',
         icon: 'tilemap.svg',

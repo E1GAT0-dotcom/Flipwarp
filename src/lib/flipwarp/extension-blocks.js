@@ -93,6 +93,27 @@ export const EXTENSION_BLOCKS = {
     gdxfor_isFreeFalling: { kind: 'boolean', name: 'gdxfor.falling', args: [], extension: true },
     gdxfor_getSpinSpeed: { kind: 'reporter', name: 'gdxfor.spinSpeed', args: ["DIRECTION"], menu: {"DIRECTION":"gdxfor_menu_axisOptions"}, extension: true },
     gdxfor_getAcceleration: { kind: 'reporter', name: 'gdxfor.acceleration', args: ["DIRECTION"], menu: {"DIRECTION":"gdxfor_menu_axisOptions"}, extension: true },
+    flipwarpAccessibility_setReading: { kind: 'statement', name: 'access.readWhatSpritesSayAloud', args: ["ON"], menu: {"ON":"flipwarpAccessibility_menu_onOff"}, extension: true },
+    flipwarpAccessibility_speak: { kind: 'statement', name: 'access.sayAloud', args: ["TEXT"], extension: true },
+    flipwarpAccessibility_setVoiceRate: { kind: 'statement', name: 'access.readAtTimesNormalSpeed', args: ["RATE"], extension: true },
+    flipwarpAccessibility_setVoicePitch: { kind: 'statement', name: 'access.readAtPitch', args: ["PITCH"], extension: true },
+    flipwarpAccessibility_stopSpeaking: { kind: 'statement', name: 'access.stopReading', args: [], extension: true },
+    flipwarpAccessibility_canRead: { kind: 'boolean', name: 'access.canThisBrowserReadAloud', args: [], extension: true },
+    flipwarpAccessibility_setCaptions: { kind: 'statement', name: 'access.captions', args: ["ON"], menu: {"ON":"flipwarpAccessibility_menu_onOff"}, extension: true },
+    flipwarpAccessibility_caption: { kind: 'statement', name: 'access.caption', args: ["TEXT"], extension: true },
+    flipwarpAccessibility_setCaptionSeconds: { kind: 'statement', name: 'access.leaveCaptionsUpForSeconds', args: ["SECONDS"], extension: true },
+    flipwarpAccessibility_setCaptionSize: { kind: 'statement', name: 'access.captionSize', args: ["PERCENT"], extension: true },
+    flipwarpAccessibility_setCaptionPlace: { kind: 'statement', name: 'access.putCaptionsAtThe', args: ["PLACE"], menu: {"PLACE":"flipwarpAccessibility_menu_place"}, extension: true },
+    flipwarpAccessibility_setSpeed: { kind: 'statement', name: 'access.runTheGameAt', args: ["SPEED"], menu: {"SPEED":"flipwarpAccessibility_menu_speed"}, extension: true },
+    flipwarpAccessibility_gameSpeed: { kind: 'reporter', name: 'access.gameSpeed', args: [], extension: true },
+    flipwarpAccessibility_setRepeating: { kind: 'statement', name: 'access.holdingAKeyCountsAsTappingIt', args: ["ON"], menu: {"ON":"flipwarpAccessibility_menu_onOff"}, extension: true },
+    flipwarpAccessibility_setRepeatSeconds: { kind: 'statement', name: 'access.countAHeldKeyEverySeconds', args: ["SECONDS"], extension: true },
+    flipwarpAccessibility_remap: { kind: 'statement', name: 'access.letDoWhatDoes', args: ["FROM","TO"], extension: true },
+    flipwarpAccessibility_clearRemapping: { kind: 'statement', name: 'access.putEveryKeyBack', args: [], extension: true },
+    flipwarpAccessibility_standsFor: { kind: 'reporter', name: 'access.whatDoesNow', args: ["FROM"], extension: true },
+    flipwarpAccessibility_setContrast: { kind: 'statement', name: 'access.stageContrast', args: ["PERCENT"], extension: true },
+    flipwarpAccessibility_setBrightness: { kind: 'statement', name: 'access.stageBrightness', args: ["PERCENT"], extension: true },
+    flipwarpAccessibility_resetLook: { kind: 'statement', name: 'access.putTheStageBackToNormal', args: [], extension: true },
     flipwarpDialogue_use: { kind: 'statement', name: 'dialogue.useConversation', args: ["TEXT"], extension: true },
     flipwarpDialogue_goTo: { kind: 'statement', name: 'dialogue.goToPart', args: ["NAME"], extension: true },
     flipwarpDialogue_says: { kind: 'reporter', name: 'dialogue.whatIsSaidHere', args: [], extension: true },
@@ -288,6 +309,40 @@ export const EXTENSION_INPUT_SHADOWS = {
     },
     "wedo2_whenDistance": {
         "REFERENCE": "math_number"
+    },
+    "flipwarpAccessibility_speak": {
+        "TEXT": "text"
+    },
+    "flipwarpAccessibility_setVoiceRate": {
+        "RATE": "math_number"
+    },
+    "flipwarpAccessibility_setVoicePitch": {
+        "PITCH": "math_number"
+    },
+    "flipwarpAccessibility_caption": {
+        "TEXT": "text"
+    },
+    "flipwarpAccessibility_setCaptionSeconds": {
+        "SECONDS": "math_number"
+    },
+    "flipwarpAccessibility_setCaptionSize": {
+        "PERCENT": "math_number"
+    },
+    "flipwarpAccessibility_setRepeatSeconds": {
+        "SECONDS": "math_number"
+    },
+    "flipwarpAccessibility_remap": {
+        "FROM": "text",
+        "TO": "text"
+    },
+    "flipwarpAccessibility_standsFor": {
+        "FROM": "text"
+    },
+    "flipwarpAccessibility_setContrast": {
+        "PERCENT": "math_number"
+    },
+    "flipwarpAccessibility_setBrightness": {
+        "PERCENT": "math_number"
     },
     "flipwarpDialogue_use": {
         "TEXT": "text"
