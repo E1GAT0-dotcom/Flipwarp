@@ -19,6 +19,11 @@ import FlipwarpTools from './flipwarp-tools.jsx';
 import PasteBlocks from './paste-blocks.jsx';
 import styles from './flipwarp-panel.css';
 
+// The characters the text form is made of that a phone keyboard hides behind a
+// second layout. The arrow is an indent, which is two taps away on no keyboard
+// at all because Tab moves between fields rather than typing anything.
+const SYMBOLS = ['\u21e5', '(', ')', '{', '}', '[', ']', ';', ',', '"', '=', '<', '>', '+', '-', '*', '/'];
+
 // Words that are part of the language rather than a block. The spelling of
 // two of them follows the style; the rest are the same either way.
 const keywordsFor = style => [
@@ -60,7 +65,8 @@ class FlipwarpPanel extends React.Component {
             'handlePasteRequest',
             'handlePasteClose',
             'handlePasteDone',
-            'setTextarea'
+            'setTextarea',
+            'handleSymbol'
         ]);
 
         this.textarea = null;
@@ -321,6 +327,30 @@ class FlipwarpPanel extends React.Component {
         });
     }
 
+    /**
+     * The strip of symbols above a phone keyboard.
+     *
+     * Braces, brackets and semicolons are two taps away on a phone keyboard —
+     * a whole second layout — and the text form is made of them. These type
+     * one at the caret without moving the focus, so the keyboard stays up.
+     * @param {Event} e The press.
+     * @returns {void}
+     */
+    handleSymbol (e) {
+        e.preventDefault();
+        const symbol = e.currentTarget.dataset.symbol;
+        const el = this.textarea;
+        if (!el || typeof symbol !== 'string') return;
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        const next = `${el.value.slice(0, start)}${symbol}${el.value.slice(end)}`;
+        const caret = start + symbol.length;
+        this.pushHistory(next, caret, true);
+        this.setState({text: next}, () => {
+            el.selectionStart = el.selectionEnd = caret;
+            el.focus();
+        });
+    }
     handleSelect (e) {
         // Moving the caret ends the current run of typing, and re-checks what
         // is worth suggesting where the caret now is.
@@ -584,6 +614,18 @@ class FlipwarpPanel extends React.Component {
                                 ) : null}
                             </div>
                         ) : null}
+
+                        {/* Only on a touchscreen; the stylesheet decides. */}
+                        <div className={styles.symbols}>
+                            {SYMBOLS.map(symbol => (
+                                <button
+                                    className={styles.symbol}
+                                    data-symbol={symbol === '\u21e5' ? '  ' : symbol}
+                                    key={symbol}
+                                    onMouseDown={this.handleSymbol}
+                                >{symbol}</button>
+                            ))}
+                        </div>
 
                         <div className={styles.panelFoot}>
                             <button

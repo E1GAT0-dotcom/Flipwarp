@@ -11,6 +11,7 @@ import VM from 'scratch-vm';
 
 import Blocks from '../../containers/blocks.jsx';
 import FlipwarpPanel from '../flipwarp/flipwarp-panel.jsx';
+import PaneSwitcher from '../flipwarp/pane-switcher.jsx';
 import CostumeTab from '../../containers/costume-tab.jsx';
 import TargetPane from '../../containers/target-pane.jsx';
 import SoundTab from '../../containers/sound-tab.jsx';
@@ -327,7 +328,12 @@ const GUIComponent = props => {
                     onToggleLoginOpen={onToggleLoginOpen}
                 />
                 <Box className={styles.bodyWrapper}>
-                    <Box className={styles.flexWrapper}>
+                    {/* Marked so the phone pane switcher can find the row it
+                        scrolls; see src/components/flipwarp/pane-switcher.jsx */}
+                    <Box
+                        className={styles.flexWrapper}
+                        data-flipwarp-panes=""
+                    >
                         <Box className={styles.editorWrapper}>
                             <Tabs
                                 forceRenderTabPanel
@@ -450,6 +456,9 @@ const GUIComponent = props => {
                             </Box>
                         </Box>
                     </Box>
+                    {/* Only ever visible on a narrow screen being used with a
+                        finger; the stylesheet decides, not this. */}
+                    <PaneSwitcher vm={vm} />
                 </Box>
                 <DragLayer />
             </Box>

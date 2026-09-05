@@ -361,3 +361,59 @@ $fade-out-distance: 15px;
     width: 2.1rem;
     height: 2.1rem;
 }
+
+/*
+ * A phone. The blocks and the stage cannot both be on screen at once, so the
+ * two of them are laid side by side at a screenful each and the row is
+ * scrolled from one to the other — src/components/flipwarp/pane-switcher.jsx,
+ * the bar along the bottom, is what scrolls it.
+ *
+ * Scrolled rather than hidden, and that is the whole trick. Hiding the stage
+ * gives it no size, and a renderer told it has no size stops being able to
+ * draw; showing it again leaves a blank white square until something jogs it.
+ * Scrolled, both panes are always laid out at their full width and the only
+ * thing that changes is which one you are looking at.
+ *
+ * Gated on a finger as well as a narrow window, because a desktop window
+ * dragged narrow is still being used with a mouse and can be dragged wide
+ * again.
+ */
+@media (max-width: 720px) {
+    /*
+        The editor asks for at least 1024 pixels and says so as an inline style
+        on the element — below that is a broken desktop layout, which is right
+        everywhere except here. An inline style can only be argued with this
+        way.
+    */
+    :global(html[data-input="touch"]) .page-wrapper {
+        min-width: 0 !important;
+        min-height: 0 !important;
+        overflow-x: hidden;
+    }
+
+    :global(html[data-input="touch"]) .body-wrapper {
+        padding-bottom: 3.5rem;
+    }
+
+    :global(html[data-input="touch"]) .flex-wrapper {
+        scroll-behavior: smooth;
+    }
+
+    :global(html[data-input="touch"]) .editor-wrapper,
+    :global(html[data-input="touch"]) .stage-and-target-wrapper {
+        flex: 0 0 100%;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    :global(html[data-input="touch"]) .stage-and-target-wrapper {
+        overflow-y: auto;
+    }
+
+    /* The backpack is a place to drag things into. There is no dragging
+       between windows on a phone, so it is only taking up room. */
+    :global(html[data-input="touch"]) .body-wrapper :global([class*="backpack_backpack-container"]) {
+        display: none;
+    }
+}

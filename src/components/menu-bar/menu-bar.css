@@ -233,3 +233,25 @@
     color: inherit;
     text-decoration: none;
 }
+
+/*
+ * On a phone the menu bar is wider than the screen. Letting it slide sideways
+ * keeps every menu reachable; the alternative is wrapping it onto a second
+ * row, which costs a tenth of the screen for something used once a session.
+ */
+@media (max-width: 720px) {
+    :global(html[data-input="touch"]) .menu-bar {
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+    }
+
+    :global(html[data-input="touch"]) .menu-bar::-webkit-scrollbar {
+        display: none;
+    }
+
+    :global(html[data-input="touch"]) .main-menu {
+        width: max-content;
+        min-width: 100%;
+    }
+}

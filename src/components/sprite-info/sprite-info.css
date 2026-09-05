@@ -75,3 +75,15 @@
 .sprite-input {
     width: 8rem;
 }
+
+/*
+ * On a phone the sprite's name, x and y do not fit on one line, and pressing
+ * them into it puts the x label under the name box. Let the row wrap instead.
+ */
+@media (max-width: 720px) {
+    :global(html[data-input="touch"]) .row {
+        flex-wrap: wrap;
+        gap: 0.5rem 0.75rem;
+        justify-content: flex-start;
+    }
+}

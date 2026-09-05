@@ -52,6 +52,30 @@ const onInputChanged = listener => {
     return () => listeners.delete(listener);
 };
 
+/**
+ * Say how much of the window the on-screen keyboard is covering.
+ *
+ * A phone keyboard does not make the page smaller — it slides over the bottom
+ * of it — so anything sitting at the bottom of the screen, which is where the
+ * buttons on a full-height panel are, ends up underneath it and unreachable.
+ * The height of the covered strip is written as a custom property so a
+ * stylesheet can hold that much clear.
+ * @return {void}
+ */
+const watchKeyboard = () => {
+    const view = window.visualViewport;
+    if (!view || !ROOT) return;
+    const measure = () => {
+        const covered = Math.max(0, window.innerHeight - (view.height + view.offsetTop));
+        // A few pixels of difference are the address bar sliding, not a
+        // keyboard, and reacting to those makes the page twitch while scrolling.
+        ROOT.style.setProperty('--flipwarp-keyboard', `${covered > 80 ? covered : 0}px`);
+    };
+    view.addEventListener('resize', measure);
+    view.addEventListener('scroll', measure);
+    measure();
+};
+
 let started = false;
 
 /**
@@ -61,6 +85,7 @@ let started = false;
 const watchInput = () => {
     if (started || typeof window === 'undefined') return;
     started = true;
+    watchKeyboard();
 
     // The first answer, before anything has been touched. A phone has a coarse
     // pointer and no fine one; a laptop with a touchscreen has both, and it
@@ -101,6 +126,7 @@ const watchInput = () => {
 
 export {
     watchInput,
+    watchKeyboard,
     isTouch,
     inputKind,
     onInputChanged
