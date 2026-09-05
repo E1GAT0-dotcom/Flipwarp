@@ -378,6 +378,26 @@ $fade-out-distance: 15px;
  * dragged narrow is still being used with a mouse and can be dragged wide
  * again.
  */
+/*
+ * A phone held sideways. There is room for the blocks and the stage side by
+ * side — that is the one thing landscape is good for — so the panes are left
+ * alone. What is not there is height: the editor asks for 640 points of it and
+ * a phone on its side has about 460, so the tabs were being pushed off the top
+ * of the screen.
+ */
+@media (max-height: 560px) {
+    :global(html[data-input="touch"]) .page-wrapper {
+        min-width: 0 !important;
+        min-height: 0 !important;
+    }
+
+    /* Every row counts at this height, and the backpack is a place to drag
+       things into from another window. There is no other window. */
+    :global(html[data-input="touch"]) .body-wrapper :global([class*="backpack_backpack-container"]) {
+        display: none;
+    }
+}
+
 @media (max-width: 720px) {
     /*
         The editor asks for at least 1024 pixels and says so as an inline style

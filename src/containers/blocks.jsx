@@ -7,6 +7,7 @@ import React from 'react';
 import {intlShape, injectIntl, defineMessages} from 'react-intl';
 import VMScratchBlocks from '../lib/blocks';
 import {installPinchZoom} from '../lib/flipwarp/pinch-zoom.js';
+import {installPaletteDrawer} from '../lib/flipwarp/palette-drawer.js';
 import VM from 'scratch-vm';
 
 import log from '../lib/log.js';
@@ -170,6 +171,9 @@ class Blocks extends React.Component {
         // Two fingers to zoom. Blockly can zoom but does not know the gesture,
         // so on a tablet the only way in is the small round button.
         this.removePinchZoom = installPinchZoom(this.blocks, this.workspace, this.ScratchBlocks);
+        // On a phone the palette costs two thirds of the width, so it slides
+        // over the workspace instead of sitting beside it.
+        this.removePaletteDrawer = installPaletteDrawer(this.workspace, this.ScratchBlocks);
 
         // Register buttons under new callback keys for creating variables,
         // lists, and procedures from extensions.
@@ -294,6 +298,10 @@ class Blocks extends React.Component {
         if (this.removePinchZoom) {
             this.removePinchZoom();
             this.removePinchZoom = null;
+        }
+        if (this.removePaletteDrawer) {
+            this.removePaletteDrawer();
+            this.removePaletteDrawer = null;
         }
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);
