@@ -334,3 +334,30 @@ $fade-out-distance: 15px;
     /* overridden by JS; this will be used if the browser can't understand that color */
     background-color: white;
 }
+
+/*
+ * Finger-sized. Only when a finger is what was last used — a laptop with a
+ * touchscreen has both, and someone with a mouse in their hand should not be
+ * given a set of chunky buttons because the screen happens to be able to feel
+ * things. src/lib/flipwarp/touch.js is what decides and sets the attribute.
+ */
+:global(html[data-input="touch"]) .tab-list {
+    height: 3.5rem;
+    width: 300px;
+}
+
+:global(html[data-input="touch"]) .tab {
+    height: 100%;
+    padding: 0.25rem 1rem 0;
+    font-size: 0.85rem;
+}
+
+:global(html[data-input="touch"]) .tab img {
+    width: 1.35rem;
+    height: 1.35rem;
+}
+
+:global(html[data-input="touch"]) .extension-button-icon {
+    width: 2.1rem;
+    height: 2.1rem;
+}

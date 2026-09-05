@@ -17,3 +17,10 @@
 .green-flag.is-active {
     background-color: $looks-transparent;
 }
+
+/* Finger-sized. See src/lib/flipwarp/touch.js for what sets the attribute. */
+:global(html[data-input="touch"]) .green-flag {
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0.375rem;
+}

@@ -6,6 +6,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import {intlShape, injectIntl, defineMessages} from 'react-intl';
 import VMScratchBlocks from '../lib/blocks';
+import {installPinchZoom} from '../lib/flipwarp/pinch-zoom.js';
 import VM from 'scratch-vm';
 
 import log from '../lib/log.js';
@@ -166,6 +167,9 @@ class Blocks extends React.Component {
         );
         this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);
         AddonHooks.blocklyWorkspace = this.workspace;
+        // Two fingers to zoom. Blockly can zoom but does not know the gesture,
+        // so on a tablet the only way in is the small round button.
+        this.removePinchZoom = installPinchZoom(this.blocks, this.workspace, this.ScratchBlocks);
 
         // Register buttons under new callback keys for creating variables,
         // lists, and procedures from extensions.
@@ -287,6 +291,10 @@ class Blocks extends React.Component {
     componentWillUnmount () {
         this.detachVM();
         this.unmounted = true;
+        if (this.removePinchZoom) {
+            this.removePinchZoom();
+            this.removePinchZoom = null;
+        }
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);
 

@@ -91,3 +91,10 @@
     /* relied on by addons */
     display: flex;
 }
+
+/* Finger-sized. See src/lib/flipwarp/touch.js for what sets the attribute. */
+:global(html[data-input="touch"]) .stage-button {
+    width: calc(2.75rem + 2px);
+    height: calc(2.75rem + 2px);
+    padding: 0.5rem;
+}

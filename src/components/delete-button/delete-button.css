@@ -34,3 +34,9 @@
     user-select: none;
     transform-origin: 50%;
 }
+
+/* Finger-sized. See src/lib/flipwarp/touch.js for what sets the attribute. */
+:global(html[data-input="touch"]) .delete-button {
+  width: 2.25rem;
+  height: 2.25rem;
+}

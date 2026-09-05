@@ -121,3 +121,21 @@
 [dir="rtl"] .number {
     right: 0.15rem;
 }
+
+/*
+ * Finger-sized. The cross that deletes a sprite wants to be easy to hit on
+ * purpose and hard to hit by accident, so it moves further out of the corner
+ * as it grows rather than spreading further over the thumbnail.
+ * See src/lib/flipwarp/touch.js for what sets the attribute.
+ */
+:global(html[data-input="touch"]) .delete-button {
+    top: -0.85rem;
+}
+
+:global(html[data-input="touch"]) [dir="ltr"] .delete-button {
+    right: -0.85rem;
+}
+
+:global(html[data-input="touch"]) [dir="rtl"] .delete-button {
+    left: -0.85rem;
+}
