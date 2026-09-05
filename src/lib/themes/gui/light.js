@@ -56,6 +56,11 @@ const guiColors = {
     'drop-highlight': 'hsla(215, 100%, 77%, 1)', /* lighter than motion-primary */
 
     'menu-bar-background': 'var(--looks-secondary)',
+    // The menus that hang off the bar. The same colour as the bar in the light
+    // theme, which is how this has always looked, but its own name so that a
+    // theme can part them — see the dark theme, where a bar wearing an accent
+    // colour should not drop a menu in that colour over a dark page.
+    'menu-background': 'var(--looks-secondary)',
     'menu-bar-background-image': 'none',
     'menu-bar-foreground': '#ffffff',
 

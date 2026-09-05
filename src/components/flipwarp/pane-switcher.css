@@ -61,6 +61,22 @@
         align-items: center;
         gap: 0.25rem;
         z-index: 1001;
+
+        /*
+            Stop short of the buttons on the right. Both this and the bar are
+            pinned to the bottom of the screen, so neither pushes the other
+            along — without a limit they simply overlap, and how close they
+            come depends on how many buttons the addons have added and how big
+            the phone's text is set. It slides sideways rather than being cut
+            off, so nothing ever becomes unreachable.
+        */
+        max-width: calc(100% - 11.5rem);
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    :global(html[data-input="touch"]) :global([class*="controls_controls-container"])::-webkit-scrollbar {
+        display: none;
     }
 }
 

@@ -128,12 +128,37 @@
     :global(html[data-input="touch"]) .filter-bar {
         flex-wrap: wrap;
         height: auto;
+        /* However many rows it takes. Told to be a fixed height it wraps the
+           later categories onto a row nothing has made room for, and they are
+           cut off — which reads as those categories not existing. */
+        flex: none;
         padding: 0.5rem;
         gap: 0.5rem 0;
     }
 
     :global(html[data-input="touch"]) .filter-bar-item {
         margin-right: 0.5rem;
+    }
+
+    /*
+        The categories sit in a row of their own inside the bar. That row was
+        already told to wrap — and then told to be exactly one row tall with
+        anything past it hidden, which is a wrap that throws away everything it
+        wraps. On a phone set to larger text the last category or two went over
+        the edge and were cut off, which reads as those categories not
+        existing at all.
+    */
+    :global(html[data-input="touch"]) .tag-wrapper {
+        height: auto;
+        overflow: visible;
+        gap: 0.4rem 0;
+    }
+
+    /* And smaller, so fewer rows are needed. How many fit depends on the text
+       size the phone is set to, which is not ours to know. */
+    :global(html[data-input="touch"]) .tag-wrapper :global([class*="tag-button_tag-button"]) {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.75rem;
     }
 
     :global(html[data-input="touch"]) .library-scroll-grid.withFilterBar {

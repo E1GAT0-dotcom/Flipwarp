@@ -5,6 +5,12 @@ const guiColors = {
     'ui-secondary': '#1e1e1e',
     'ui-tertiary': '#2e2e2e',
 
+    // Menus follow the theme rather than the accent. An accent tints the bar
+    // along the top, which is the point of it; a dropdown is a panel over a
+    // dark page, and a bright one there is a hole in the page rather than a
+    // decoration. The rainbow accent made this obvious — plain red menus.
+    'menu-background': '#252528',
+
     'ui-modal-background': '#111111',
     'ui-modal-foreground': '#eeeeee',
     'ui-modal-header-background': '#333333',
