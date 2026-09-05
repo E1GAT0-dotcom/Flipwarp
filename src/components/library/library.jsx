@@ -171,13 +171,28 @@ class LibraryComponent extends React.Component {
     handleFilterClear () {
         this.setState({filterQuery: ''});
     }
+    // Which items belong in the section at the top.
+    //
+    // Two lists are involved and they are not the same list. `favorites` is
+    // what is starred right now; `initialFavorites` is what was starred when
+    // this window was opened, and the top section is built from that one on
+    // purpose — otherwise starring something would make it jump to the top
+    // under your finger while you are still reading the row it left.
+    //
+    // But it has to be both. Built from the opening list alone, taking a star
+    // off left the item pinned to the top with an empty star on it, looking
+    // for all the world like an item that promotes itself, and it stayed
+    // there until the window was closed and opened again.
+    isPinnedToTop (dataItem) {
+        const key = dataItem[this.props.persistableKey];
+        return this.state.initialFavorites.includes(key) &&
+            this.state.favorites.includes(key);
+    }
     getFilteredData () {
         // When no filtering, favorites get their own section
         if (this.state.selectedTag === 'all' && !this.state.filterQuery) {
             const favoriteItems = this.props.data
-                .filter(dataItem => (
-                    this.state.initialFavorites.includes(dataItem[this.props.persistableKey])
-                ))
+                .filter(dataItem => this.isPinnedToTop(dataItem))
                 .map(dataItem => ({
                     ...dataItem,
                     key: `favorite-${dataItem[this.props.persistableKey]}`
@@ -199,7 +214,7 @@ class LibraryComponent extends React.Component {
         for (const dataItem of this.props.data) {
             if (dataItem === '---') {
                 // ignore
-            } else if (this.state.initialFavorites.includes(dataItem[this.props.persistableKey])) {
+            } else if (this.isPinnedToTop(dataItem)) {
                 favoriteItems.push(dataItem);
             } else {
                 nonFavoriteItems.push(dataItem);
