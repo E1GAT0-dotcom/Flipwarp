@@ -2,7 +2,7 @@
 // text and read back must come home as exactly the same blocks, in every
 // style. If that ever stops being true, a person loses work.
 //
-// Runs without a browser — the conversion is plain JavaScript.
+// Runs without a browser, the conversion is plain JavaScript.
 import {targetToText} from '../../src/lib/flipwarp/to-text.js';
 import {parse} from '../../src/lib/flipwarp/parse.js';
 import {buildTarget} from '../../src/lib/flipwarp/build.js';
@@ -112,7 +112,7 @@ const project = {
                     inputs: {'arg-1': [1, [10, '3']]},
                     fields: {},
                     // A call carries only the proccode, the argument ids and
-                    // warp — the names live on the prototype. Shaped the way
+                    // warp, the names live on the prototype. Shaped the way
                     // Scratch shapes it, so the test cannot pass on a mutation
                     // Scratch would never write.
                     mutation: {

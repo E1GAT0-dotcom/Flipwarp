@@ -7,7 +7,7 @@ import {STYLES, getStyle} from './styles.js';
 const STORAGE_KEY = 'flipwarp:settings';
 
 const DEFAULTS = {
-    // How the text is written. The blocks are the same either way — this only
+    // How the text is written. The blocks are the same either way, this only
     // decides the spelling.
     textStyle: 'js',
     // How far one step of indent goes. Two reads well in a narrow panel.
@@ -15,7 +15,7 @@ const DEFAULTS = {
     // Offer block names as you type, completed with Tab.
     suggestions: true,
     // Show the @at markers that record where each script sits. Off by
-    // default because the positions are kept either way — this only decides
+    // default because the positions are kept either way, this only decides
     // whether you have to look at them.
     showPositions: false,
     // Background radio beside the green flag. Off by default: it reaches out
@@ -96,8 +96,8 @@ const read = () => {
                 parsed.slowMotion : DEFAULTS.slowMotion,
             stepButton: bool(parsed.stepButton, DEFAULTS.stepButton),
             fixedRandom: bool(parsed.fixedRandom, DEFAULTS.fixedRandom),
-            // A seed is any whole number. Anything else — a word, a decimal,
-            // something that came back from storage mangled — is not an
+            // A seed is any whole number. Anything else, a word, a decimal,
+            // something that came back from storage mangled, is not an
             // argument for refusing to run, so it becomes the default.
             randomSeed: Number.isSafeInteger(parsed.randomSeed) ?
                 parsed.randomSeed : DEFAULTS.randomSeed,
@@ -122,14 +122,21 @@ export const getSettings = () => {
 
 /**
  * @param {object} changes settings to change
+ * @param {object} [options] how to apply them
+ * @param {boolean} [options.remember=true] false to change the settings for
+ *   this page only, leaving what is saved alone. Used by the address bar: a
+ *   link somebody sends you says how the project should run while you look at
+ *   it, and has no business quietly rewriting the settings you chose.
  */
-export const setSettings = changes => {
+export const setSettings = (changes, options) => {
     current = {...getSettings(), ...changes};
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
-    } catch (e) {
-        // A browser that refuses storage still gets working settings for
-        // this session; only the memory of them is lost.
+    if (!options || options.remember !== false) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+        } catch (e) {
+            // A browser that refuses storage still gets working settings for
+            // this session; only the memory of them is lost.
+        }
     }
     for (const fn of listeners) fn(current);
 };

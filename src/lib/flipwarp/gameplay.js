@@ -6,13 +6,13 @@
 // by the next `npm install`; everything here reaches in from outside and
 // wraps a method instead. Each wrapper is put on once and reads the setting
 // on every call, so turning a setting off is instant and there is never an
-// unwrapping step to get wrong — the wrapper stays, and hands straight
+// unwrapping step to get wrong. The wrapper stays, and hands straight
 // through.
 //
 // The one thing that needs explaining is the clock.
 //
 // Scratch does not ask the wall clock what time it is. Every timer in the
-// project — `timer`, `wait _ seconds`, `glide` — reads runtime.currentMSecs,
+// project, `timer`, `wait _ seconds`, `glide`, reads runtime.currentMSecs,
 // which the VM refreshes from Date.now() once per frame. So a project that
 // misses ten seconds of frames comes back to find ten seconds have passed:
 // every wait fires at once and everything that was gliding teleports. That is
@@ -20,7 +20,7 @@
 //
 // So this file owns that clock. It advances by real elapsed time while
 // nothing here is bending it, which is exactly what the VM did on its own,
-// and by exactly one frame per frame while something is — which is what makes
+// and by exactly one frame per frame while something is, which is what makes
 // pausing, slow motion and stepping a frame at a time behave the way you
 // would expect rather than piling up time to be paid back all at once.
 
@@ -32,8 +32,8 @@ let vm = null;
 // --- the clock ------------------------------------------------------------
 
 // Kept in floating point and rounded only when handed over, so that a
-// framerate the frame time does not divide evenly — 25fps is 40ms, but 24fps
-// is 41.666… — does not lose a fraction of a millisecond every frame and
+// framerate the frame time does not divide evenly, 25fps is 40ms, but 24fps
+// is 41.666..., does not lose a fraction of a millisecond every frame and
 // drift away from real time over a long session.
 let virtualNow = Date.now();
 let lastRealNow = Date.now();
@@ -75,7 +75,7 @@ const audioContext = () => {
 };
 
 // Suspending is asynchronous and so is resuming, and asking for both in quick
-// succession — a phone that is backgrounded and immediately foregrounded —
+// succession (a phone that is backgrounded and immediately foregrounded)
 // can otherwise land them out of order and leave the project silent while it
 // runs. Chaining them keeps the last request the one that wins.
 let audioChange = Promise.resolve();
@@ -118,7 +118,7 @@ export const onFrozenChanged = fn => {
 
 /**
  * Run exactly one frame, freezing first if the project is not already
- * frozen — pressing step on a running project means "stop here and let me
+ * frozen, pressing step on a running project means "stop here and let me
  * look", not "run one more frame among the sixty you were going to run
  * anyway".
  */
@@ -159,7 +159,7 @@ const stopSeededRandom = () => {
 };
 
 // A renderer that has already been wrapped, marked on the renderer itself
-// so that attaching a second one — which the paint editor does — wraps that
+// so that attaching a second one, which the paint editor does, wraps that
 // one too rather than wrapping the first one twice.
 const MARK = '__flipwarpGameplay';
 
@@ -189,7 +189,7 @@ const installRenderer = (renderer, shouldSkipDraw) => {
 
     // Comparing boxes instead of pixels. The pixel-perfect version walks
     // every point where two sprites' boxes overlap and asks both whether
-    // anything is drawn there — correct, and the single most expensive thing
+    // anything is drawn there, correct, and the single most expensive thing
     // a busy project does. The boxes have already been worked out by the time
     // that loop starts, so the fast version is simply the answer before it.
     const realTouching = renderer.isTouchingDrawables;
@@ -238,7 +238,7 @@ export const refreshRenderScale = () => {
 
 // A project only looks at the keyboard once a frame. At 30 frames a second
 // that is every 33ms, and a quick tap is shorter than that more often than
-// you would think — the key goes down and up between two looks, and the
+// you would think: the key goes down and up between two looks, and the
 // project never sees it at all. That is the "it didn't register my jump"
 // complaint, and it is not the player's reflexes.
 //
@@ -258,7 +258,7 @@ const installInputBuffering = runtime => {
     let heldReleases = [];
 
     // A press that arrives between two frames is first looked at by the frame
-    // after the one that is counted now — so the release may go out at the
+    // after the one that is counted now, so the release may go out at the
     // start of the frame after that, and no sooner.
     const releaseIsDue = held => frame > held.frame + 1;
 
@@ -414,7 +414,7 @@ export const installGameplay = virtualMachine => {
     installInputBuffering(runtime);
 
     // --- the renderer ------------------------------------------------------
-    // It may not be attached yet — the stage builds it — so this waits for it
+    // It may not be attached yet, because the stage builds it, so this waits for it
     // rather than assuming.
     const withRenderer = () => {
         if (!runtime.renderer || runtime.renderer[MARK]) return;

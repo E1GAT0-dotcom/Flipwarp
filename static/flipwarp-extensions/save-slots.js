@@ -1,4 +1,4 @@
-// Save slots — Flipwarp
+// Save slots. Flipwarp
 //
 // Scratch has no memory between one visit and the next. A project that took an
 // hour to play is an hour thrown away when the tab closes, so people build
@@ -186,7 +186,7 @@
             if (!writeSlot(slot, data)) {
                 // Nearly always the store being full, but a browser set to
                 // refuse storage altogether looks the same from here.
-                this.lastError = 'could not save — this browser is out of room, or is not letting ' +
+                this.lastError = 'could not save, this browser is out of room, or is not letting ' +
                     'this page remember anything';
                 return;
             }
@@ -220,7 +220,7 @@
             // containing a comma survives the round trip.
             data[Scratch.Cast.toString(args.NAME)] = list.value.slice();
             if (!writeSlot(slot, data)) {
-                this.lastError = 'could not save — this browser is out of room, or is not letting ' +
+                this.lastError = 'could not save, this browser is out of room, or is not letting ' +
                     'this page remember anything';
                 return;
             }

@@ -1,5 +1,5 @@
 // A phone set to larger text. Android and iOS both let the system text size
-// be turned up, and the browser honours it by growing the root font — so every
+// be turned up, and the browser honours it by growing the root font, so every
 // measurement in the editor that was written in rem grows with it while the
 // screen stays exactly as wide as it was.
 //

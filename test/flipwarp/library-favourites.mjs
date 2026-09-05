@@ -7,7 +7,7 @@
 //
 // The bug was the other half of it. Taking a star off did not take the item
 // out of the top section, because that section was still working from the
-// opening list — so it sat pinned above everything with an empty star on it,
+// opening list, so it sat pinned above everything with an empty star on it,
 // looking like an item that had decided it was important, and stayed there
 // until the window was closed and opened again.
 import {launchBrowser, SITE} from './launch.mjs';

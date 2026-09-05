@@ -1,6 +1,6 @@
 // Every switch in the Flipwarp settings must go both ways, and stay where it
 // was put. It used to be one-way: the checkbox hands back the click, not a
-// yes or no, and the click is always something — so off never took.
+// yes or no, and the click is always something, so off never took.
 import {launchBrowser, SITE} from './launch.mjs';
 
 const browser = await launchBrowser();

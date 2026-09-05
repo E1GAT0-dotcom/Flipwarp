@@ -3,7 +3,7 @@
 //
 // What is NOT checked here is that a station makes a sound. This machine
 // cannot reach the station directory, and a browser will not start audio
-// without a real click anyway — so that part is checked by hand on the live
+// without a real click anyway, so that part is checked by hand on the live
 // site. What this does check is that failing to reach the directory says so
 // plainly instead of leaving a spinner going forever, which is the failure
 // this environment can actually produce.

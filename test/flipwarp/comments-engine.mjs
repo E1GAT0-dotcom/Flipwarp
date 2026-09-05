@@ -11,8 +11,8 @@ import { repoPath } from './launch.mjs';
 
 // The conversion engine is written as ES modules with a .js extension, in a
 // project that is not marked as type:module, so node will not import those
-// files as they stand. Copying them to a scratch folder under .mjs names —
-// and pointing their imports at each other — lets this test use the engine
+// files as they stand. Copying them to a scratch folder under .mjs names,
+// and pointing their imports at each other, lets this test use the engine
 // itself rather than a second copy of it that could drift.
 const mirror = fs.mkdtempSync(path.join(os.tmpdir(), 'flipwarp-engine-'));
 for (const file of fs.readdirSync(repoPath('src', 'lib', 'flipwarp'))) {

@@ -11,8 +11,8 @@ await page.waitForSelector('text=Costumes', {timeout: 60000});
 await page.waitForTimeout(3000);
 
 // A stereo sound with the two channels deliberately different: the left is
-// quiet, the right is loud. Keeping only the left — which is what Scratch
-// does — would lose almost all of it.
+// quiet, the right is loud. Keeping only the left, which is what Scratch
+// does, would lose almost all of it.
 await page.evaluate(async () => {
     const vm = window.vm;
     const t = vm.editingTarget;
@@ -131,7 +131,7 @@ await page.waitForTimeout(3000);
 const after = await info();
 const panelGone = await page.$('[class*="sound-shrink_window"]');
 
-// And that it still plays — the VM has to be able to read back what we wrote.
+// And that it still plays, the VM has to be able to read back what we wrote.
 const playsBack = await page.evaluate(async () => {
     const t = window.vm.editingTarget;
     const i = t.getSounds().length - 1;

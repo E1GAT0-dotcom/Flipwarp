@@ -1,6 +1,6 @@
 // Paste as blocks: the other half of Copy as text.
 //
-// The test that matters is the round trip through the clipboard's shape —
+// The test that matters is the round trip through the clipboard's shape,
 // copy a script out as text, paste it back, and end up with two identical
 // scripts rather than one mangled one. Then the things that are easy to get
 // wrong: not disturbing what is already in the sprite, making a variable the
@@ -54,7 +54,7 @@ const varNames = () => page.evaluate(() => {
 });
 
 // The text a person would have on their clipboard. Produced the way they
-// would produce it — open the text panel and read what is in it — rather than
+// would produce it, open the text panel and read what is in it, rather than
 // by reaching into the library, which the page cannot do.
 await page.click('button:has-text("Text")');
 await page.waitForTimeout(1200);

@@ -10,7 +10,7 @@
  * that names no pictures.
  *
  * An extension whose file is not in the extensions folder is left out of the
- * list rather than listed and broken — that is how Pen+ is excluded, since
+ * list rather than listed and broken, that is how Pen+ is excluded, since
  * Windows Defender objects to that one file and stops the whole folder from
  * unpacking.
  */
@@ -69,7 +69,7 @@ const main = () => {
         'Each extension belongs to its author, credited below.',
         ''
     ];
-    for (const entry of manifest) credits.push(`${entry.name} — ${entry.creator} — ${entry.code}`);
+    for (const entry of manifest) credits.push(`${entry.name}, ${entry.creator}, ${entry.code}`);
     if (skipped.length) {
         credits.push('', 'Not included in this copy:', ...skipped.map(name => `  ${name}`));
     }

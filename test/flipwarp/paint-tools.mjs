@@ -5,7 +5,7 @@
 // wand click takes the shape it was clicked on and not the one next to it,
 // that turning off "touching only" makes it take both, and that a lasso takes
 // what it drew round. Each is checked by selecting, deleting, and looking at
-// what the costume is left holding — which is what the person would do.
+// what the costume is left holding, which is what the person would do.
 //
 // The two shapes are deliberately different sizes, so the number of pixels
 // left says which one survived without needing to know where on the canvas
@@ -15,8 +15,8 @@ import {launchBrowser, SITE} from './launch.mjs';
 const BIG = {x: 100, y: 100, w: 140, h: 140};
 const SMALL = {x: 500, y: 120, w: 80, h: 80};
 
-// The paint editor works on a board twice the size of the costume it saves —
-// a bitmap costume is stored at half these numbers — so a square drawn 140
+// The paint editor works on a board twice the size of the costume it saves,
+// a bitmap costume is stored at half these numbers, so a square drawn 140
 // wide is 70 wide by the time it is counted.
 const stored = box => (box.w / 2) * (box.h / 2);
 const BIG_PIXELS = stored(BIG);

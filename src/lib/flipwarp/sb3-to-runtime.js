@@ -149,8 +149,8 @@ export const replaceTargetBlocks = (target, savedBlocks, savedComments) => {
     // Comments live on the target rather than in its block store, and the
     // runtime keeps them in the same shape a saved project does, so they can
     // go straight across.
-    // The runtime holds real Comment objects, not plain records — the editor
-    // asks each one to draw itself — so they are rebuilt as the real thing.
+    // The runtime holds real Comment objects, not plain records, the editor
+    // asks each one to draw itself, so they are rebuilt as the real thing.
     if (savedComments) {
         target.comments = {};
         for (const [id, c] of Object.entries(savedComments)) {

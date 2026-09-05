@@ -1,6 +1,6 @@
 // The project-wide tools: search, find and replace, and the block sheet.
 //
-// They share one panel because they share one idea — the project as text,
+// They share one panel because they share one idea: the project as text,
 // rather than the sprite you happen to be looking at. Each one can be turned
 // off under Advanced, and a panel with nothing turned on never appears.
 
@@ -15,14 +15,14 @@ import {currentStyle} from '../../lib/flipwarp/settings.js';
 import styles from './flipwarp-tools.css';
 
 // The block sheet is built from the phrasebook itself, so it cannot fall out
-// of step with what the editor actually accepts — and it is built per style,
+// of step with what the editor actually accepts, and it is built per style,
 // because a sheet showing a spelling the editor would reject is worse than no
 // sheet at all.
 const sheetCache = new Map();
 const sheetFor = style => {
     if (sheetCache.has(style.id)) return sheetCache.get(style.id);
     const spell = op => (op === '&&' ? style.andWord : op === '||' ? style.orWord : op);
-    const body = style.indentBased ? ':' : ' { … }';
+    const body = style.indentBased ? ':' : ' { ... }';
     const sheet = Object.entries(BLOCKS)
         .filter(([, block]) => !block.hidden)
         .map(([opcode, block]) => {
@@ -169,13 +169,13 @@ class FlipwarpTools extends React.Component {
                 status: describeResult(result, this.state.wholeBlock)
             });
         } catch (e) {
-            // Nothing was applied — the build failed before any sprite was
-            // touched — so say what went wrong and leave the list up.
+            // Nothing was applied; the build failed before any sprite was
+            // touched, so say what went wrong and leave the list up.
             this.setState({busy: false, error: describe(e), status: 'Nothing was changed.'});
         }
     }
 
-    // Walking the results. The panel stays open the whole time — having to
+    // Walking the results. The panel stays open the whole time, having to
     // close and reopen it for every hit was the whole complaint.
     goTo (index) {
         const matches = this.state.matches;
@@ -194,7 +194,7 @@ class FlipwarpTools extends React.Component {
         this.goTo(this.state.current - 1);
     }
 
-    // Enter searches, and searching again steps on to the next one — which is
+    // Enter searches, and searching again steps on to the next one, which is
     // what Enter does in every other find box there is.
     handleQueryKey (e) {
         if (e.key !== 'Enter') return;
@@ -291,7 +291,7 @@ class FlipwarpTools extends React.Component {
                                 styles.before : ''}
                             >{m.text}</code>
                             {withPreview && m.cannotDelete ? (
-                                <code className={styles.kept}>{`kept — ${m.cannotDelete}`}</code>
+                                <code className={styles.kept}>{`kept, ${m.cannotDelete}`}</code>
                             ) : null}
                             {withPreview && m.deletes ? (
                                 <code className={styles.after}>{'deleted, with anything inside it'}</code>

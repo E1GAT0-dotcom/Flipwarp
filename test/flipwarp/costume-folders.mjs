@@ -15,7 +15,7 @@ await page.goto(`${SITE}/editor.html`, {waitUntil: 'domcontentloaded'});
 await page.waitForSelector('text=Costumes', {timeout: 60000});
 await page.waitForTimeout(3000);
 
-// Six costumes, and a script that switches to one of them by name — the thing
+// Six costumes, and a script that switches to one of them by name, the thing
 // that breaks if a folder is hidden in the name.
 await page.evaluate(() => {
     const vm = window.vm;

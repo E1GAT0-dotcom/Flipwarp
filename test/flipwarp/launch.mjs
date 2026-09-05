@@ -23,8 +23,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
  */
 export const repoPath = (...parts) => path.join(here, '..', '..', ...parts);
 
-// Playwright is not a dependency of this project — it is only needed to run
-// these tests — so it may be installed here, or globally, or not at all.
+// Playwright is not a dependency of this project, it is only needed to run
+// these tests, so it may be installed here, or globally, or not at all.
 const importPlaywright = async () => {
     try {
         return await import('playwright');

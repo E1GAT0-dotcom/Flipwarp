@@ -6,7 +6,7 @@ import {isTouch, onInputChanged} from './touch.js';
  * On a wide screen the palette sits beside the workspace and that is right: it
  * costs 310 pixels out of a thousand and you can see both. On a phone it costs
  * 310 out of 460, which leaves a strip of workspace too narrow to put a block
- * down in — the palette is not next to the workspace so much as instead of it.
+ * down in: the palette is not next to the workspace so much as instead of it.
  *
  * So on a phone it slides over the workspace instead. Tap a category to open
  * it, drag a block out and it closes behind you, tap the workspace and it
@@ -14,7 +14,7 @@ import {isTouch, onInputChanged} from './touch.js';
  *
  * None of this changes scratch-blocks. Two of the numbers it lays out from are
  * properties on its prototypes, and the position of the drawer is one wrapped
- * method — the same way the right-click menu is already added to, in
+ * method, the same way the right-click menu is already added to, in
  * src/lib/blocks.js.
  */
 
@@ -55,7 +55,7 @@ const installPaletteDrawer = (workspace, Blockly) => {
 
     // Where the drawer sits when it is open. Blockly works this out by taking
     // the flyout's width off the toolbox's, which lands it off the left of the
-    // screen once the toolbox is only as wide as the category strip — correct
+    // screen once the toolbox is only as wide as the category strip, correct
     // arithmetic for a layout that is no longer the one being used.
     Blockly.VerticalFlyout.prototype.position = function () {
         originalPosition.call(this);
@@ -110,7 +110,7 @@ const installPaletteDrawer = (workspace, Blockly) => {
 
     // Dropping a block on the palette is how you throw it away, and the area
     // that counts is worked out from where the palette is. With the drawer
-    // shut the palette is the strip of categories and nothing else — without
+    // shut the palette is the strip of categories and nothing else, without
     // this, the whole left half of the workspace still swallows blocks, which
     // is a block vanishing for no visible reason.
     const originalToolboxRect = Blockly.Toolbox.prototype.getClientRect;
@@ -125,8 +125,8 @@ const installPaletteDrawer = (workspace, Blockly) => {
         return rect;
     };
 
-    // The editor refills the palette whenever the blocks available change — a
-    // new extension, a new variable — and filling it is the same call as
+    // The editor refills the palette whenever the blocks available change (a
+    // new extension, a new variable), and filling it is the same call as
     // showing it. The contents still need refreshing while the drawer is shut,
     // so it is filled and then put away again rather than not filled.
     const originalShow = Blockly.Flyout.prototype.show;
@@ -157,7 +157,7 @@ const installPaletteDrawer = (workspace, Blockly) => {
 
         const category = target.closest('.scratchCategoryMenuItem');
         if (category) {
-            // The same category twice puts it away — otherwise there would be
+            // The same category twice puts it away, otherwise there would be
             // no way to close it except taking a block or tapping behind it.
             if (open && category === lastCategory) show(false);
             else show(true);

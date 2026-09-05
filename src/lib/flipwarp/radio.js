@@ -6,7 +6,7 @@
 //
 //   Anyone can add a station, so a name and a genre tag are claims, not
 //   facts. Nothing here treats anything the directory says as an
-//   instruction — a station is a name to show and an address to play, and
+//   instruction, a station is a name to show and an address to play, and
 //   that is all it ever becomes.
 //
 //   Stations die constantly. A directory entry is not a promise that
@@ -15,7 +15,7 @@
 //   pressed.
 //
 // Flipwarp is served over https, so a station on plain http cannot be played
-// at all — the browser blocks it. Those are filtered out rather than offered
+// at all, the browser blocks it. Those are filtered out rather than offered
 // and then failing, which is most of why a genre has fewer stations here than
 // the directory claims.
 
@@ -30,7 +30,7 @@ const MIRRORS = [
 
 // The genres offered, in the order they are shown. Tags are the directory's
 // own, so these are the words it files stations under rather than words we
-// invented — searching for a tag it does not use returns nothing.
+// invented, searching for a tag it does not use returns nothing.
 export const GENRES = [
     {id: 'lofi', label: 'Lo-fi'},
     {id: 'jazz', label: 'Jazz'},
@@ -262,7 +262,7 @@ export class Radio {
             this.clearStartTimer();
             this.setStatus('error', `${station.name} did not answer.`);
         };
-        // A dead station often does not report an error at all — it accepts
+        // A dead station often does not report an error at all, it accepts
         // the connection and then sends nothing, forever. So it gets a
         // deadline as well.
         this.startTimer = setTimeout(() => {

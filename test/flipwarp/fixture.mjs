@@ -16,8 +16,8 @@ import {repoPath} from './launch.mjs';
 // exercise a compatibility hook each, and one plain one that owns the only
 // picture in the fixture.
 //
-// The paths are shaped the way PenguinMod's registry shapes them —
-// <author>/<file> for both the code and the picture — because the bundle
+// The paths are shaped the way PenguinMod's registry shapes them,
+// <author>/<file> for both the code and the picture, because the bundle
 // keeps that layout inside the zip, and a flat fixture would let a bundle
 // that flattened everything pass.
 const EXTENSIONS = [

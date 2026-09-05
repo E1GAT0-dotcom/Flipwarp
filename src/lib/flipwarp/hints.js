@@ -1,5 +1,5 @@
 // Flipwarp never guesses. When text falls outside the phrasebook it stops and
-// says what to do instead. These are the prewritten answers — plain language,
+// says what to do instead. These are the prewritten answers, plain language,
 // no parser jargon, and every one of them points at the Scratch way to do it.
 
 export const HINTS = [

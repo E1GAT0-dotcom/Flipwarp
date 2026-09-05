@@ -11,7 +11,7 @@ await page.waitForSelector('text=Costumes', {timeout: 60000});
 await page.waitForTimeout(3000);
 
 // Advanced opens the settings dialog directly. The menu bar's "Settings" is a
-// different thing — the theme and language menu.
+// different thing, the theme and language menu.
 await page.click('[class*="menu-bar_menu-bar-item"]:has-text("Advanced")');
 await page.waitForSelector('text=Advanced Settings', {timeout: 15000});
 await page.waitForTimeout(1200);

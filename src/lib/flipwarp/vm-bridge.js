@@ -2,7 +2,7 @@
 //
 // Reading is easy: ask the VM to serialize itself and convert the target we
 // are looking at. Writing swaps that one target's blocks in place and tells
-// the editor to redraw — the project is never reloaded, so costumes and
+// the editor to redraw, the project is never reloaded, so costumes and
 // sounds are not re-fetched and nothing else about the project is touched.
 
 import { targetToText } from './to-text.js';
@@ -12,8 +12,8 @@ import { canonTarget } from './canon.js';
 import { ParseError } from './hints.js';
 import { replaceTargetBlocks } from './sb3-to-runtime.js';
 
-// Script positions are real information — they are where you dragged each
-// script — but @at lines are noise to read past. They are stripped out of the
+// Script positions are real information, they are where you dragged each
+// script, but @at lines are noise to read past. They are stripped out of the
 // text you see and put back on the way in, so the positions survive without
 // ever being on screen.
 const AT_LINE = /^@at\((-?\d+),\s*(-?\d+)\)$/;
@@ -162,7 +162,7 @@ export const applyText = async (vm, text, positions = [], style) => {
 };
 
 /**
- * Put a target's blocks back to a saved state — how undoing a conversion works.
+ * Put a target's blocks back to a saved state, how undoing a conversion works.
  * @param {VirtualMachine} vm the running VM
  * @param {string} targetName which sprite
  * @param {object} savedBlocks blocks in saved-project format
@@ -179,7 +179,7 @@ export const restoreBlocks = (vm, targetName, savedBlocks, savedComments) => {
 };
 
 /**
- * A target's blocks exactly as they would be saved — the snapshot undo needs.
+ * A target's blocks exactly as they would be saved, the snapshot undo needs.
  * @param {VirtualMachine} vm the running VM
  * @returns {{name: string, blocks: object}} the snapshot
  */

@@ -1,5 +1,5 @@
 // The text styles in the real editor: that the setting is there, that picking
-// Python changes what the text says, and — the part that matters — that
+// Python changes what the text says, and, the part that matters, that
 // pressing Blocks on Python text puts the same blocks back.
 import {launchBrowser, SITE} from './launch.mjs';
 
@@ -18,7 +18,7 @@ const openEditor = async style => {
     return page;
 };
 
-// A script with a hat, a loop, an if/else and a comparison — enough that the
+// A script with a hat, a loop, an if/else and a comparison, enough that the
 // two styles have to disagree about it.
 const buildScript = page => page.evaluate(() => {
     const vm = window.vm;
@@ -65,7 +65,7 @@ await py.waitForTimeout(2000);
 const pyText = await openText(py);
 
 // Press Blocks and make sure it went back without complaint, then read it
-// again — if the text comes back the same, the blocks came back the same.
+// again, if the text comes back the same, the blocks came back the same.
 await py.click('button:has-text("Blocks")');
 await py.waitForTimeout(2500);
 const errorShown = await py.$('[class*="flipwarp-panel_error"]');

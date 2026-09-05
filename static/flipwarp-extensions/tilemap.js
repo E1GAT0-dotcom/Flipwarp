@@ -1,16 +1,16 @@
-// Tilemap — Flipwarp
+// Tilemap. Flipwarp
 //
 // A level built out of squares, which is how nearly every platformer, maze and
 // top-down game is actually built, and which Scratch has no way of saying. The
 // usual workarounds are a list of numbers with the width remembered in your
-// head, or one clone per tile — the first is unreadable and the second falls
+// head, or one clone per tile, the first is unreadable and the second falls
 // over at a few hundred tiles.
 //
 // This owns the grid and the arithmetic. It does not draw: what a tile looks
 // like is a costume, and stamping costumes is something the project already
 // knows how to do. What it gives you instead is the two things that are
-// genuinely fiddly — turning stage coordinates into tiles and back, and asking
-// whether a move would put you inside a wall — and a way to write a level down
+// genuinely fiddly, turning stage coordinates into tiles and back, and asking
+// whether a move would put you inside a wall, and a way to write a level down
 // as text, which is the only form a level is readable in.
 //
 //     ##########
@@ -460,7 +460,7 @@
          * Hand the walls to the Pathfinding extension, if it is loaded.
          *
          * Without this, giving a route-finder a level means a loop that reads
-         * every tile and writes it back one block at a time — hundreds of
+         * every tile and writes it back one block at a time, hundreds of
          * blocks running to say something both extensions already know.
          */
         sendWallsToPathfinding () {

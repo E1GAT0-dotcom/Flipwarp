@@ -1,5 +1,5 @@
 // Checks the PenguinMod tab: that it appears, lists what is in the site's own
-// penguinmod folder, and loads one without asking the user's permission —
+// penguinmod folder, and loads one without asking the user's permission,
 // because a file served from the same site as the editor is not a stranger.
 import { launchBrowser, repoPath, SITE } from './launch.mjs';
 import fs from 'node:fs';
@@ -31,7 +31,7 @@ const errs = [];
 const dialogs = [];
 page.on('pageerror', e => errs.push('PAGEERROR: ' + e.message.slice(0, 160)));
 // These extensions are marked as not working on the Scratch website, so the
-// editor asks before enabling one — the same question it asks for TurboWarp's.
+// editor asks before enabling one, the same question it asks for TurboWarp's.
 // Say yes, and record that it was asked.
 page.on('dialog', async d => {
     dialogs.push(d.message().slice(0, 120));

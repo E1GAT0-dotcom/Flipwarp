@@ -38,7 +38,7 @@ const checks = [
   ['says where it goes', listing.includes('WHERE-THIS-GOES.txt')],
   ['the list names the picture it got', withPicture.length === 1 && withPicture[0].image === 'images/Test/icon.svg'],
   ['a missing picture leaves the entry without one', manifest.some(e => e.name === 'Uses PM Shapes' && !e.image)],
-  // Everything from the registry, including the one whose file is missing —
+  // Everything from the registry, including the one whose file is missing,
   // the thumbnails zip does not decide which extensions exist.
   ['every extension is still listed', manifest.length === 7]
 ];

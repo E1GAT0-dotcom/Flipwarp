@@ -34,6 +34,7 @@ import ProjectSaverHOC from '../lib/project-saver-hoc.jsx';
 import storage from '../lib/storage';
 import {installGameplay} from '../lib/flipwarp/gameplay.js';
 import {watchGameplaySettings} from '../lib/flipwarp/gameplay-settings.js';
+import {watchGameplayUrl} from '../lib/flipwarp/gameplay-url.js';
 import vmListenerHOC from '../lib/vm-listener-hoc.jsx';
 import vmManagerHOC from '../lib/vm-manager-hoc.jsx';
 import cloudManagerHOC from '../lib/cloud-manager-hoc.jsx';
@@ -66,6 +67,9 @@ class GUI extends React.Component {
         // to be in place before a project is loaded into it.
         installGameplay(this.props.vm);
         watchGameplaySettings();
+        // After the watcher above, so that a setting arriving from the
+        // address is applied by it rather than sitting in storage unread.
+        watchGameplayUrl();
     }
     componentDidUpdate (prevProps) {
         if (this.props.projectId !== prevProps.projectId) {

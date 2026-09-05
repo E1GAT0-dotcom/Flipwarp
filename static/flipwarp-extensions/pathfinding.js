@@ -1,4 +1,4 @@
-// Pathfinding — Flipwarp
+// Pathfinding. Flipwarp
 //
 // Getting from here to there without walking into the walls. Scratch's answer
 // is "point towards and move", which works until something is in the way and
@@ -6,7 +6,7 @@
 //
 // The world here is a grid of squares, each either open or blocked, laid over
 // the stage. You mark the walls, ask for a route, and step along it. The route
-// is found with A* — the same method used everywhere for this — which is
+// is found with A*, the same method used everywhere for this, which is
 // Dijkstra's with a hint about which direction the goal is in, so it looks at
 // far fewer squares than it otherwise would.
 //
@@ -215,7 +215,7 @@
             // would be walked around through the wings, so a door built into
             // it would mean nothing. A sprite that has drifted off the edge
             // can still find its way back, because where it starts is never
-            // ruled out — only where it may step next.
+            // ruled out, only where it may step next.
             const limit = {
                 left: Math.floor((-STAGE.width / 2) / this.square),
                 right: Math.floor(((STAGE.width / 2) - 1) / this.square),
@@ -224,7 +224,7 @@
             };
 
             // How far the goal is if nothing were in the way. Diagonal steps
-            // cost about 1.414, so the guess uses that too — a guess that is
+            // cost about 1.414, so the guess uses that too, a guess that is
             // never an overestimate is what keeps the answer the shortest one.
             const guess = (i, j) => {
                 const dx = Math.abs(i - goal[0]);

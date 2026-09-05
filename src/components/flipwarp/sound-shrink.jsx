@@ -12,7 +12,7 @@ const RATES = [
     {value: 22050, label: '22,050 a second'},
     {value: 16000, label: '16,000 a second'},
     {value: 11025, label: '11,025 a second'},
-    {value: 8000, label: '8,000 a second — telephone'}
+    {value: 8000, label: '8,000 a second, telephone'}
 ];
 
 const size = bytes => (bytes >= 1024 * 1024 ?
@@ -23,7 +23,7 @@ const size = bytes => (bytes >= 1024 * 1024 ?
  * Making one sound smaller, with the result audible before it is kept.
  *
  * The listening is the point. Every choice here trades sound quality for room,
- * and how much quality you can stand to lose depends entirely on the sound —
+ * and how much quality you can stand to lose depends entirely on the sound,
  * a drum loop survives things a singing voice does not. Nothing here can tell
  * you that, so it plays you both instead.
  */
@@ -47,7 +47,7 @@ class SoundShrink extends React.Component {
         this.handleStop();
     }
 
-    // What the choices would produce, worked out rather than made — so the
+    // What the choices would produce, worked out rather than made, so the
     // number moves as soon as a choice does, without any waiting.
     plan () {
         return {
@@ -191,8 +191,8 @@ class SoundShrink extends React.Component {
                                 value={this.state.format}
                                 onChange={e => this.setState({format: e.target.value, preview: null})}
                             >
-                                <option value="wav">{'Uncompressed — best quality'}</option>
-                                <option value="adpcm">{'Compressed — about a quarter the size'}</option>
+                                <option value="wav">{'Uncompressed, best quality'}</option>
+                                <option value="adpcm">{'Compressed, about a quarter the size'}</option>
                             </select>
                         </label>
 
@@ -224,7 +224,7 @@ class SoundShrink extends React.Component {
                                 />
                                 <span>
                                     {forcedMono ?
-                                        'Mixed to one channel — the compressed form holds only one' :
+                                        'Mixed to one channel, because the compressed form holds only one' :
                                         'Mix the two channels into one'}
                                 </span>
                             </label>
@@ -248,13 +248,13 @@ class SoundShrink extends React.Component {
                             <span className={styles.note}>
                                 {this.state.format === 'adpcm' ?
                                     'A form Scratch has read since its earliest days, so it still plays there.' :
-                                    'Listen to both before keeping it — how much you can lose depends on the sound.'}
+                                    'Listen to both before keeping it, how much you can lose depends on the sound.'}
                             </span>
                             <button
                                 className={styles.apply}
                                 disabled={busy}
                                 onClick={this.handleApply}
-                            >{busy ? 'Working…' : 'Keep it'}</button>
+                            >{busy ? 'Working...' : 'Keep it'}</button>
                         </div>
                     </div>
                 </div>

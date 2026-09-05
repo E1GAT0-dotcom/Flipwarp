@@ -1,13 +1,13 @@
 // Working on a touchscreen.
 //
 // The rule the whole thing hangs on is that touch is about what the person
-// last used, not what the device can do — a laptop with a touchscreen has
+// last used, not what the device can do, a laptop with a touchscreen has
 // both, and someone holding a mouse should not be given chunky buttons. So the
 // first thing tested is that the mode follows the input and goes back again.
 //
 // After that: that things are actually bigger in touch mode, that two fingers
 // zoom the workspace, and that a long press still opens the menu that Copy as
-// text and Paste as blocks live on — which is the only way to reach them
+// text and Paste as blocks live on, which is the only way to reach them
 // without a right mouse button.
 import {launchBrowser, SITE} from './launch.mjs';
 
@@ -105,7 +105,7 @@ const afterSqueeze = await scaleNow();
 // --- a pinch must never zoom the page ------------------------------------
 // Two fingers on the workspace zoom the blocks. If the browser gets the
 // gesture first it zooms the whole editor instead, and a page left zoomed in
-// survives turning the phone and cannot always be zoomed back out — so the
+// survives turning the phone and cannot always be zoomed back out, so the
 // browser is told to keep its hands off before any finger lands.
 const handsOff = await page.evaluate(() => {
     const of = selector => {

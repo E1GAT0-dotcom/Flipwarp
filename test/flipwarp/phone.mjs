@@ -4,7 +4,7 @@
 // screenshot. The first is that nothing runs off the side: the editor asks for
 // at least 1024 pixels and says so in an inline style, and if that is still in
 // force the whole page slides sideways and half the buttons are off the edge.
-// The second is that the stage still draws after you have been away from it —
+// The second is that the stage still draws after you have been away from it,
 // hiding a pane gives it no size, and a renderer told it has no size gives
 // back a blank white square, which is why the panes are scrolled rather than
 // hidden.

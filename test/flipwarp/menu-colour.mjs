@@ -1,6 +1,6 @@
 // The menus that hang off the bar along the top.
 //
-// An accent colour is meant to tint that bar — that is the whole point of
+// An accent colour is meant to tint that bar, that is the whole point of
 // picking one. The menus were taking their colour from the same place, which
 // is fine while the accent is a shade of blue and the page is white, and
 // obviously wrong the moment either of those changes: on the dark theme with

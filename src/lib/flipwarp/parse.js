@@ -187,7 +187,7 @@ class Parser {
   }
 
   // The end of a statement. Written by hand in a bracket-based style, and
-  // put there by the end of the line in an indentation-based one — either way
+  // put there by the end of the line in an indentation-based one, either way
   // the token is the same by the time it gets here.
   endStatement() {
     this.expect('punct', ';', this.style.terminator ? 'a semicolon' : 'the end of the line');

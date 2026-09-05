@@ -10,7 +10,7 @@
 // name:      the identifier used in text
 // args:      block input/field names, in the order they appear in the text
 // fields:    which of those args are dropdown FIELDS (serialized as fields,
-//            not inputs) — they always render as string literals
+//            not inputs), they always render as string literals
 // substack:  statement input names, rendered as { } bodies
 // infix:     operator symbol, for blocks written as infix instead of a call
 
@@ -224,7 +224,7 @@ export const BY_NAME = (() => {
 
 // The same index for whichever style is being read or written. A style spells
 // the block names its own way (turnRight / turn_right), so the lookup has to
-// follow it, and the collision check has to be made again per style — a pair
+// follow it, and the collision check has to be made again per style, a pair
 // of names that are distinct in one spelling could in principle collide in
 // another, and that would break the round trip silently.
 const NAME_INDEXES = new Map([['js', BY_NAME]]);

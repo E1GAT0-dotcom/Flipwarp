@@ -21,7 +21,7 @@ import Target from 'scratch-vm/src/engine/target';
 import LazyScratchBlocks from '../tw-lazy-scratch-blocks';
 
 // PenguinMod draws blocks in shapes this engine does not have. The shape is
-// decoration — it changes how a block looks, not what it does — so each one
+// decoration: it changes how a block looks, not what it does, so each one
 // falls back to the nearest real shape. The extension loads and works; its
 // blocks just look ordinary.
 const SHAPE_FALLBACKS = {
@@ -149,7 +149,7 @@ export const installPenguinModCompat = vm => {
     //
     // What it is used for: loading a built-in extension that this one needs,
     // such as Pen+ pulling in the pen extension. That works. Asking for an
-    // extension that is not built in — jwArray, which is PenguinMod's — logs
+    // extension that is not built in, jwArray, which is PenguinMod's, logs
     // a warning and carries on, which is what those extensions already
     // expect: they all test for the thing afterwards.
     if (!runtime.extensionManager && vm.extensionManager) {
@@ -161,8 +161,8 @@ export const installPenguinModCompat = vm => {
     installVariableEvents();
 };
 
-// PenguinMod lets an extension invent a value type — a vector, a set, an
-// iterator — and register how to write one down and read it back, so a
+// PenguinMod lets an extension invent a value type, a vector, a set, an
+// iterator, and register how to write one down and read it back, so a
 // project can be saved with one sitting in a variable.
 //
 // This keeps the registrations, which is what the extensions need in order to
@@ -185,8 +185,8 @@ const installSerializers = runtime => {
 // change to the compiler itself, not a hook.
 //
 // Accepting and ignoring the registration lets the extension load and lets
-// every ordinary block in it work. Blocks that exist only as compiled code —
-// usually the ones whose handler is a stub — will not do anything. The names
+// every ordinary block in it work. Blocks that exist only as compiled code,
+// usually the ones whose handler is a stub, will not do anything. The names
 // are logged so it is clear which extension is affected rather than leaving a
 // block that silently does nothing.
 const installCompiledBlockStub = runtime => {
@@ -205,7 +205,7 @@ const installCompiledBlockStub = runtime => {
 
 // PenguinMod tells extensions when a variable is made, renamed or removed.
 // These wrap the target's own methods, so the events fire however the change
-// was made — from the palette, from a block, or from a project loading.
+// was made, from the palette, from a block, or from a project loading.
 //
 // Deliberately absent: an event for a variable's VALUE changing. PenguinMod
 // has one, but a variable's value changes thousands of times a second in a

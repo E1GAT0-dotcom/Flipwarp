@@ -1,8 +1,8 @@
 // The rest of the editor on a phone: the menu bar, the costume and sound
 // tabs, the extension picker, and the bar along the bottom.
 //
-// Most of these are one bug with several faces — something was given a fixed
-// width or a fixed height that a phone does not have — and the one worth
+// Most of these are one bug with several faces, something was given a fixed
+// width or a fixed height that a phone does not have, and the one worth
 // keeping a test on is the menu bar, because its failure was so misleading. A
 // bar that scrolls sideways has to clip what overflows it, and what overflows
 // a menu bar is its menus: File, Edit and Settings opened perfectly and were
@@ -122,7 +122,7 @@ const labelOnCode = await barLabel();
 
 // --- the run controls live in the bottom bar ------------------------------
 // Pinned in from above the stage rather than rebuilt, so there is one of each
-// in the page — which is what lets the pause button, added by an addon to
+// in the page, which is what lets the pause button, added by an addon to
 // whichever strip it finds first, end up in the right place.
 const inTheBar = await page.evaluate(() => {
     const bar = document.querySelector('[class*="pane-switcher_bar"]');

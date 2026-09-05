@@ -4,7 +4,7 @@ import { NameTable, quote, declLine } from './names.js';
 import { getStyle } from './styles.js';
 
 // The default indent. The real one comes from the style options, because in an
-// indentation-based style the indent is not decoration — it is what says where
+// indentation-based style the indent is not decoration, it is what says where
 // a body begins and ends.
 const IND = '  ';
 
@@ -18,7 +18,7 @@ export class ConversionError extends Error {
 function unknownBlockMessage(opcode) {
   const extension = opcode.includes('_') ? opcode.slice(0, opcode.indexOf('_')) : opcode;
   return `This sprite uses a block from the "${extension}" extension, which Flipwarp cannot show as text yet. ` +
-    'Its blocks still work — only the text view is missing. Remove that block from this sprite, or edit this ' +
+    'Its blocks still work, only the text view is missing. Remove that block from this sprite, or edit this ' +
     'sprite in blocks.';
 }
 
@@ -76,7 +76,7 @@ export function targetToText(target, ctx, options = {}) {
   if (decls.length) out.push('');
 
   // Comments that sit on the canvas rather than on a block go first, each
-  // followed by a blank line — which is exactly what marks them as loose when
+  // followed by a blank line, which is exactly what marks them as loose when
   // the text is read back.
   const loose = allComments
     .filter(c => !c.blockId)

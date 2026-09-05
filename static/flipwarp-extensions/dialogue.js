@@ -1,4 +1,4 @@
-// Dialogue trees — Flipwarp
+// Dialogue trees. Flipwarp
 //
 // A conversation is a shape: someone says something, you pick from two or
 // three replies, and each reply leads somewhere else. Built out of ordinary
@@ -18,7 +18,7 @@
 //
 // A line ending in a colon starts a part and names it. A line beginning with
 // -> is a reply: what the player sees, then a colon, then which part it leads
-// to. Indentation is decoration — it reads better, and nothing depends on it.
+// to. Indentation is decoration, it reads better, and nothing depends on it.
 
 (function (Scratch) {
     'use strict';

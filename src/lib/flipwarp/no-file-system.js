@@ -2,7 +2,7 @@
 //
 // The packager is a library that works in Node and in a browser. Its Node
 // half caches the large downloads a desktop build needs, and it wraps
-// fs.readFile and friends in promisify the moment it is loaded — before
+// fs.readFile and friends in promisify the moment it is loaded, before
 // anything has asked it to do anything. Told simply that there is no file
 // system, promisify is handed undefined and throws while the module is still
 // being read, so the whole thing fails before it can be asked for the one

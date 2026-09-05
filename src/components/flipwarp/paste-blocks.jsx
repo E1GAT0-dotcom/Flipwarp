@@ -16,7 +16,7 @@ import styles from './paste-blocks.css';
  * somewhere else is very often not quite right, and a mistake shown next to
  * the line it is on can be fixed here instead of sending you back to whatever
  * you copied it from. The others are that Firefox will not let a page read the
- * clipboard at all, and that Chrome asks permission first — neither is a good
+ * clipboard at all, and that Chrome asks permission first, neither is a good
  * moment for a feature to simply do nothing.
  *
  * The clipboard is still used where it is allowed, so the usual case is the
@@ -69,7 +69,7 @@ class PasteBlocks extends React.Component {
         // The box is usable with nothing in it, so nothing here is allowed to
         // hold it shut. A browser asking permission to read the clipboard can
         // leave the promise unsettled for as long as the person ignores the
-        // prompt — and in some setups forever — so the wait is capped and the
+        // prompt, and in some setups forever, so the wait is capped and the
         // empty box is the answer.
         this.giveUp = setTimeout(() => done(''), 1200);
 
@@ -139,7 +139,7 @@ class PasteBlocks extends React.Component {
                     <div className={styles.body}>
                         <textarea
                             className={styles.editor}
-                            placeholder={reading ? 'Reading the clipboard…' : `Paste ${style.label} text here.`}
+                            placeholder={reading ? 'Reading the clipboard...' : `Paste ${style.label} text here.`}
                             ref={this.setTextarea}
                             spellCheck={false}
                             value={text}
@@ -160,7 +160,7 @@ class PasteBlocks extends React.Component {
                                 it does not elsewhere: text copied while the
                                 other one was on will not go back in. */}
                             <span className={styles.note}>
-                                {`Read as ${style.label}. The scripts are added to this sprite — nothing already in it is removed.`}
+                                {`Read as ${style.label}. The scripts are added to this sprite, nothing already in it is removed.`}
                             </span>
                             <button
                                 className={styles.add}

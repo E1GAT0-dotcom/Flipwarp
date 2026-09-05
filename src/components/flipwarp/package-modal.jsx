@@ -32,8 +32,8 @@ const STAGE_TEXT = {
 /**
  * Three questions and a button.
  *
- * Everything else the packager would ask — the framerate, the stage size, the
- * clone limit, whether the compiler is on — is already set in the editor you
+ * Everything else the packager would ask, the framerate, the stage size, the
+ * clone limit, whether the compiler is on, is already set in the editor you
  * pressed this from, so it is copied rather than asked for again. That is the
  * whole idea: the packager website has to ask because it has never seen your
  * project, and this has.
@@ -117,7 +117,7 @@ class PackageModal extends React.Component {
                     <p className={styles.lead}>
                         <FormattedMessage
                             // eslint-disable-next-line max-len
-                            defaultMessage="Turns this project into something you can hand to somebody who does not have Flipwarp. How it runs — the framerate, the stage size, the clone limit — is taken from this project, so there is nothing to set up twice."
+                            defaultMessage="Turns this project into something you can hand to somebody who does not have Flipwarp. How it runs, the framerate, the stage size, the clone limit, is taken from this project, so there is nothing to set up twice."
                             description="Explanation at the top of the packaging dialog"
                             id="flipwarp.package.lead"
                         />
@@ -186,7 +186,7 @@ class PackageModal extends React.Component {
                         <p className={styles.hint}>
                             <FormattedMessage
                                 // eslint-disable-next-line max-len
-                                defaultMessage="Off, it opens with a green flag to press. On, it runs the moment it is opened — which some browsers will not allow to make sound until something is clicked."
+                                defaultMessage="Off, it opens with a green flag to press. On, it runs the moment it is opened, which some browsers will not allow to make sound until something is clicked."
                                 description="Help for the autoplay option"
                                 id="flipwarp.package.autoplayHint"
                             />
@@ -197,7 +197,7 @@ class PackageModal extends React.Component {
                         <div className={styles.progress}>
                             <div className={styles.progressLabel}>
                                 {STAGE_TEXT[this.state.stage] || 'Working'}
-                                {'…'}
+                                {'...'}
                             </div>
                             <div className={styles.progressTrack}>
                                 <div

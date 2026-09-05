@@ -9,7 +9,7 @@ export function canonTarget(blocks, comments) {
   }
   const scripts = canonScripts(blocks, byBlock);
   // Canvas comments have no block to hang off, so they are compared as a
-  // sorted list of their text — moving one does not count as a change to the
+  // sorted list of their text, moving one does not count as a change to the
   // code, but editing one does.
   return loose.length ? { scripts, loose: loose.sort() } : scripts;
 }
@@ -89,7 +89,7 @@ function canonInput(input, blocks, key, byBlock) {
       canonStack(val, blocks, byBlock) : canonBlock(val, blocks, byBlock);
   }
   if (Array.isArray(val)) {
-    // [type, value] or [type, name, id] — the id is dropped.
+    // [type, value] or [type, name, id]; the id is dropped.
     return { prim: val[0], v: val[1] };
   }
   return null;

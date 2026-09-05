@@ -90,7 +90,7 @@ await page.waitForTimeout(300);
 // a real script.
 //
 // The sprite is chosen deliberately: searching now jumps to the first result,
-// which can leave the editor on a sprite with no scripts of its own — and
+// which can leave the editor on a sprite with no scripts of its own, and
 // then the only blocks on screen are the palette's, which are not scripts and
 // are not meant to offer this.
 await page.evaluate(() => {

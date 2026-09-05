@@ -2,7 +2,7 @@
 //
 // The engine counts asset requests but never says what any of them are: the
 // loading screen can tell you it is on 12 of 40 and nothing more. It knows,
-// of course — a costume has a name, and it belongs to a sprite — but that
+// of course: a costume has a name, and it belongs to a sprite, but that
 // name is inside a closure by the time the request is made, out of reach.
 //
 // So this reads the project's own description of itself before the engine
@@ -10,7 +10,7 @@
 // targets in layer order, and within each one its costumes and then its
 // sounds. The engine's Nth request is then the Nth thing on that list.
 //
-// If any of that fails — an unfamiliar file, an older project format — the
+// If any of that fails, an unfamiliar file, an older project format, the
 // list is simply empty and the loading screen shows its counts as before.
 // Nothing here is allowed to stop a project from opening.
 
@@ -35,7 +35,7 @@ const readProjectJson = async input => {
     // An .sb3 is a zip with project.json inside it.
     const bytes = input instanceof ArrayBuffer ? new Uint8Array(input) : input;
     if (!bytes || typeof bytes.length !== 'number') return null;
-    // "PK" — anything else is not a zip and there is nothing to unpack.
+    // "PK", anything else is not a zip and there is nothing to unpack.
     if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
         try {
             return JSON.parse(new TextDecoder().decode(bytes));
@@ -67,7 +67,7 @@ export const assetOrder = json => {
 
     // The engine sorts targets by layer order before touching their assets,
     // so this has to sort them the same way or every name would be off by a
-    // sprite. Sorting a copy — the engine wants the original order too.
+    // sprite. Sorting a copy, because the engine wants the original order too.
     const inOrder = targets
         .map((target, index) => ({target, index}))
         .sort((a, b) => {
@@ -103,7 +103,7 @@ export const installLoadingAssets = vm => {
     const finished = new Set();
 
     // Reported as each request settles, naming the asset that request was
-    // for. The alternative — naming the first one still outstanding — sounds
+    // for. The alternative, naming the first one still outstanding, sounds
     // more like "currently loading", but every request is made at once, so on
     // anything fast the pointer runs past whole categories before the first
     // one is announced: a project would load twenty-two things and name only

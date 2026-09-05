@@ -9,9 +9,9 @@ import styles from './radio-control.css';
 /**
  * Play/pause for the background radio, sitting beside the green flag.
  *
- * The player itself lives outside React, so this component can come and go —
+ * The player itself lives outside React, so this component can come and go,
  * which it does, because the controls bar is rebuilt whenever the stage
- * changes size — without the music stopping.
+ * changes size, without the music stopping.
  */
 class RadioControl extends React.Component {
     constructor (props) {
@@ -86,7 +86,7 @@ class RadioControl extends React.Component {
 
     handleToggle () {
         // Nothing chosen yet, so pressing play opens the list instead of
-        // guessing — the first station of a genre is rarely the one wanted.
+        // guessing: the first station of a genre is rarely the one wanted.
         if (!this.state.station) {
             this.handlePicker();
             return;
@@ -211,7 +211,7 @@ class RadioControl extends React.Component {
                         </div>
 
                         <div className={styles.list}>
-                            {loading ? <div className={styles.note}>{'Loading stations…'}</div> : null}
+                            {loading ? <div className={styles.note}>{'Loading stations...'}</div> : null}
                             {listError ? <div className={styles.note}>{listError}</div> : null}
                             {!loading && !listError && !stations.length ? (
                                 <div className={styles.note}>

@@ -46,7 +46,7 @@ export function quote(s) {
 //                                      global list inventory as "my inventory";
 //
 // The terminator is the style's, and in an indentation-based style there is
-// none — the end of the line is what ends the declaration.
+// none: the end of the line is what ends the declaration.
 export function declLine(rec, style) {
   const kw = rec.kind === 'list' ? 'list' : rec.kind === 'broadcast' ? 'broadcast' : 'variable';
   const scope = rec.global ? 'global ' : '';

@@ -4,7 +4,7 @@
  * The featured projects on the front page used to be read from TurboWarp's
  * trampoline, which exists because Scratch's API refuses to answer another
  * website directly. That worked, but it put a server we do not control
- * between this site and its own content — and when its cache holds an empty
+ * between this site and its own content, and when its cache holds an empty
  * answer, as it did for this studio, there is nothing to be done from here
  * but wait, and the front page shows nothing.
  *

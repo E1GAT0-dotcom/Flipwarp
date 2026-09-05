@@ -138,7 +138,7 @@ export class Builder {
   // Every custom block the text defines, known before anything is built.
   // Scripts come out in the order they sit on the canvas, not the order
   // somebody would write them in, so a call very often appears above the
-  // define it belongs to — and without this that call has no block to be.
+  // define it belongs to, and without this that call has no block to be.
   registerProcs(scripts) {
     for (const script of scripts) {
       for (const stmt of script.stmts) {
@@ -284,7 +284,7 @@ export class Builder {
       // Written as a primitive rather than as a shadow block, because that is
       // how Scratch itself saves a message slot. Building the shadow instead
       // works, but it does not match what was read, so every project using
-      // broadcast looked edited the moment it was converted — which threw
+      // broadcast looked edited the moment it was converted, which threw
       // away the "nothing changed" path and the undo that goes with it.
       return [1, [11, rec.name, rec.id]];
     }

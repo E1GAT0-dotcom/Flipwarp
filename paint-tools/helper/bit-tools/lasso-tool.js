@@ -14,7 +14,7 @@ import NudgeTool from '../selection-tools/nudge-tool';
  * The lasso: draw a loop around the part you want and pick that part up.
  *
  * The loop closes itself, so you do not have to come back to exactly where you
- * started. What is picked up is the drawing inside the loop and nothing else —
+ * started. What is picked up is the drawing inside the loop and nothing else,
  * the empty space inside is left alone, which is how the rectangular select
  * already behaves and means the selection hugs what you can see rather than
  * carrying a cloud of nothing around with it.
@@ -102,7 +102,7 @@ class LassoTool extends paper.Tool {
     startLoop (point) {
         this.endLoop();
         // A guide item, so that undo, export and the drawing itself never see
-        // it — it is a line on the glass, not part of the picture.
+        // it, it is a line on the glass, not part of the picture.
         this.loop = new paper.Path({
             segments: [point],
             closed: false,

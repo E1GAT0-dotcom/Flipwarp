@@ -1,4 +1,4 @@
-// Record and replay input — Flipwarp
+// Record and replay input. Flipwarp
 //
 // Recording what someone pressed, and pressing it again later. Two things this
 // is good for: testing a game the same way twice, which is otherwise a matter

@@ -55,8 +55,8 @@ const onInputChanged = listener => {
 /**
  * Say how much of the window the on-screen keyboard is covering.
  *
- * A phone keyboard does not make the page smaller — it slides over the bottom
- * of it — so anything sitting at the bottom of the screen, which is where the
+ * A phone keyboard does not make the page smaller, it slides over the bottom
+ * of it, so anything sitting at the bottom of the screen, which is where the
  * buttons on a full-height panel are, ends up underneath it and unreachable.
  * The height of the covered strip is written as a custom property so a
  * stylesheet can hold that much clear.
@@ -100,7 +100,7 @@ const watchInput = () => {
             announce(e.pointerType === 'mouse' ? 'mouse' : 'touch');
         };
         window.addEventListener('pointerdown', sawPointer, {capture: true, passive: true});
-        // Moving the mouse counts as picking it up, even before a click —
+        // Moving the mouse counts as picking it up, even before a click,
         // otherwise the buttons stay finger-sized until the first thing is
         // pressed, which is the moment they are most in the way.
         window.addEventListener('pointermove', sawPointer, {capture: true, passive: true});

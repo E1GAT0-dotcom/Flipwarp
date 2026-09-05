@@ -330,8 +330,8 @@ class FlipwarpPanel extends React.Component {
     /**
      * The strip of symbols above a phone keyboard.
      *
-     * Braces, brackets and semicolons are two taps away on a phone keyboard —
-     * a whole second layout — and the text form is made of them. These type
+     * Braces, brackets and semicolons are two taps away on a phone keyboard,
+     * a whole second layout, and the text form is made of them. These type
      * one at the caret without moving the focus, so the keyboard stays up.
      * @param {Event} e The press.
      * @returns {void}
@@ -501,7 +501,7 @@ class FlipwarpPanel extends React.Component {
         // Remember the blocks as they are, so Ctrl+Z can put them back.
         const before = snapshotCurrentTarget(vm);
 
-        this.setState({busy: true, error: null, status: 'Converting…', suggestions: []});
+        this.setState({busy: true, error: null, status: 'Converting...', suggestions: []});
         try {
             this.expectOwnWorkspaceUpdate = true;
             const result = await applyText(vm, text, this.state.positions, this.style);

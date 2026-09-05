@@ -1,7 +1,7 @@
 // The two ways the same blocks can be written.
 //
 // A style is only a spelling. The blocks, the tree the parser builds, and
-// everything build.js does with that tree are identical either way — which is
+// everything build.js does with that tree are identical either way, which is
 // the point: switching style must never change what your project does, only
 // what it looks like while you are reading it.
 //
@@ -107,7 +107,7 @@ export const STYLE_IDS = Object.keys(STYLES);
  * The style with this id, falling back to JavaScript.
  *
  * Everything that reads a style goes through here, so a stored setting from a
- * future version — or a corrupted one — degrades to the original behaviour
+ * future version, or a corrupted one, degrades to the original behaviour
  * instead of throwing somewhere far away.
  *
  * @param {string|object} id a style id, or a style

@@ -1,9 +1,9 @@
-// Near — Flipwarp
+// Near. Flipwarp
 //
 // "Which sprites are close to me" is a question Scratch answers by asking every
 // sprite in turn. With twenty clones that is four hundred comparisons a frame
 // and nobody notices. With four hundred clones it is a hundred and sixty
-// thousand, and the project crawls — which is where most ambitious Scratch
+// thousand, and the project crawls, which is where most ambitious Scratch
 // games stop.
 //
 // This keeps a coarse grid of where everything is. Only the handful of squares
@@ -140,7 +140,7 @@
 
         /**
          * Every sprite in the squares a circle touches. Not every sprite in the
-         * circle — the squares are the point, and the caller measures.
+         * circle, the squares are the point, and the caller measures.
          * @param {number} x middle of the circle
          * @param {number} y middle of the circle
          * @param {number} range how far out to look

@@ -6,7 +6,7 @@
 // by hand in blocks, which is the point.
 //
 // Nothing here changes a project until applyReplacements is called, and that
-// builds every affected sprite before touching any of them — so a rename that
+// builds every affected sprite before touching any of them, so a rename that
 // would break one sprite changes none of them, rather than half.
 
 import {targetToText} from './to-text.js';
@@ -80,7 +80,7 @@ export const readAllTargets = vm => {
     return out;
 };
 
-// "variable speed;", "global list history as \"my history\";" — the line that
+// "variable speed;", "global list history as \"my history\";", the line that
 // names a variable rather than one that merely uses it.
 //
 // The terminator is optional because a style that ends statements with the end
@@ -162,7 +162,7 @@ const opensBody = (line, style) => (style.indentBased ?
  *
  * Deleting "goToXY(0, 0)" should take one line. Deleting "repeat(10)" should
  * take the loop and what is inside it, because that is what deleting the
- * block would do in the workspace — the alternative is an orphaned closing
+ * block would do in the workspace, the alternative is an orphaned closing
  * brace and text that will not go back into blocks at all.
  *
  * @param {Array<string>} lines every line of the sprite, markers included
@@ -282,7 +282,7 @@ export const planReplace = (vm, query, replacement, options = {}) => {
                 script: target.scripts[index],
                 text: line.trim(),
                 // In whole-block mode nothing is written in place of the
-                // line — the line and everything it holds goes.
+                // line, the line and everything it holds goes.
                 after: wholeBlock ? '' : line.replace(re, replacement).trim(),
                 deletes: wholeBlock && !declaration,
                 // A declaration is the name of a real variable, so deleting
@@ -299,7 +299,7 @@ export const planReplace = (vm, query, replacement, options = {}) => {
  * Carry out chosen replacements.
  *
  * Every affected sprite is rebuilt first. If any of them fails to build, none
- * of them are changed — a rename either lands everywhere or nowhere, never
+ * of them are changed, a rename either lands everywhere or nowhere, never
  * across half a project.
  *
  * @param {VirtualMachine} vm the running VM
@@ -315,7 +315,7 @@ export const applyReplacements = (vm, query, replacement, chosen, options = {}) 
     if (!re) return {sprites: 0, lines: 0, renamed: 0};
     const wanted = new Set(chosen);
 
-    // A declaration line is not text to swap — it is the name of a real
+    // A declaration line is not text to swap, it is the name of a real
     // variable. Rewriting it as text would leave the old variable sitting
     // there with its value and point every block at a brand new one, which is
     // not a rename, it is a quiet duplication. So those go through the same
@@ -443,7 +443,7 @@ const renameDeclarations = (vm, re, replacement, wanted) => {
             .find(([, v]) => v.name === job.from && v.type === type) : null);
 
         // A variable on the stage is a global one even when it is the stage's
-        // own text that names it — which is exactly where a rename is most
+        // own text that names it, which is exactly where a rename is most
         // likely to be typed, and where treating it as local would rename it
         // on the stage and leave every sprite still saying the old name.
         const onStage = lookup(stage);
@@ -475,7 +475,7 @@ const renameDeclarations = (vm, re, replacement, wanted) => {
 export const openSprite = (vm, name) => {
     const target = vm.runtime.targets.find(t => t.getName() === name && (!t.isSprite || t.isOriginal));
     if (!target) return false;
-    // Asking for the sprite that is already open is not free — it rebuilds
+    // Asking for the sprite that is already open is not free, it rebuilds
     // the workspace, which loses the scroll position and any selection.
     if (vm.editingTarget && vm.editingTarget.id === target.id) return true;
     vm.setEditingTarget(target.id);
@@ -483,7 +483,7 @@ export const openSprite = (vm, name) => {
 };
 
 // The editor has more than one copy of Blockly loaded and more than one
-// workspace on the page — the block palette is a workspace of its own — so
+// workspace on the page, the block palette is a workspace of its own, so
 // the right one is the one that actually holds the block.
 const workspaceHolding = blockId => {
     if (!LazyScratchBlocks.isLoaded()) return null;
@@ -506,7 +506,7 @@ const workspaceHolding = blockId => {
 //
 // Two things make this harder than the one call it looks like. The block is
 // not there the instant we ask, because changing sprite tears the workspace
-// down and builds it again — so it is asked for repeatedly for a short while.
+// down and builds it again, so it is asked for repeatedly for a short while.
 // And that rebuild also resets the scroll, and can land *after* we have
 // scrolled, putting the view straight back where it was. So it is done again
 // a moment later, and the second one is what usually sticks.
@@ -540,7 +540,7 @@ const scrollTo = blockId => {
  * part of.
  *
  * The scripts are ordered here exactly the way the converter orders them when
- * it writes the text — by where they sit on the canvas — so the number
+ * it writes the text, by where they sit on the canvas, so the number
  * counted out of the text picks the same script back out of the project.
  *
  * @param {VirtualMachine} vm the running VM
@@ -554,7 +554,7 @@ export const revealScript = (vm, name, scriptIndex) => {
 
     // Read from the running project rather than a saved copy of it. Saving
     // renumbers every block, so the ids in vm.toJSON() are not the ids the
-    // workspace knows a block by — looking one up there finds nothing at all,
+    // workspace knows a block by, looking one up there finds nothing at all,
     // silently.
     const target = vm.runtime.targets.find(t =>
         t.getName() === name && (!t.isSprite || t.isOriginal));
@@ -564,7 +564,7 @@ export const revealScript = (vm, name, scriptIndex) => {
     // Ordered the way the converter orders scripts when it writes them out:
     // by where they sit on the canvas. Two scripts at exactly the same point
     // could come out the other way round, which would scroll to the wrong one
-    // of the pair — and no worse than that.
+    // of the pair, and no worse than that.
     const tops = Object.values(all)
         .filter(b => b && b.topLevel && !b.shadow)
         .sort((a, b) => ((a.y || 0) - (b.y || 0)) ||
@@ -577,7 +577,7 @@ export const revealScript = (vm, name, scriptIndex) => {
 };
 
 /**
- * One script, as text — the block you right-clicked and everything joined to
+ * One script, as text, the block you right-clicked and everything joined to
  * it below and inside it.
  *
  * Built by handing the converter a copy of the sprite that contains only that
@@ -653,7 +653,7 @@ const withFreshIds = (built, target) => {
     };
 
     // Only a string that names one of the new blocks is an id. The other
-    // strings in an input are values — a message name, a dropdown choice —
+    // strings in an input are values, a message name, a dropdown choice,
     // and renaming one of those would quietly change what the script does.
     const isBlockId = v => typeof v === 'string' && Object.prototype.hasOwnProperty.call(built.blocks, v);
     const remap = value => {

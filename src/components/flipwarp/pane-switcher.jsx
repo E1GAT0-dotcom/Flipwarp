@@ -37,16 +37,16 @@ const TAB_NAMES = {
  *
  * Which one is showing is also written on the <html> element, for rules
  * elsewhere that want to know. The stylesheet is what decides this bar exists
- * at all — it is hidden unless the screen is narrow and a finger is what was
- * last used — so nothing here has to measure the window.
+ * at all: it is hidden unless the screen is narrow and a finger is what was
+ * last used, so nothing here has to measure the window.
  *
- * The run buttons belong here too — running a project you are in the middle of
+ * The run buttons belong here too, running a project you are in the middle of
  * writing should not mean swapping pane, pressing go, and swapping back. They
  * are not drawn here though: the strip above the stage that already holds the
  * green flag, stop, pause and the radio is pinned into this bar by the
  * stylesheet instead. Drawing a second green flag would mean two of everything
- * in the page, and the pause button — which is added by an addon, to whichever
- * strip it finds first — would attach to the wrong one.
+ * in the page, and the pause button, which is added by an addon, to whichever
+ * strip it finds first, would attach to the wrong one.
  */
 class PaneSwitcher extends React.Component {
     constructor (props) {

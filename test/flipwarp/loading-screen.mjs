@@ -1,7 +1,7 @@
 // Checks the loading screen names what it is loading.
 //
 // Two halves. The first watches a real project open and samples the screen
-// while it is up — that proves the wiring reaches the page. The second loads
+// while it is up, that proves the wiring reaches the page. The second loads
 // the same project again through the engine and collects every report, which
 // is deterministic: sampling the screen cannot catch all twenty-two assets
 // when a local file loads in a fraction of a second.

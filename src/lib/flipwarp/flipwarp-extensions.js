@@ -30,7 +30,7 @@ const EXTENSIONS = [
         file: 'save-slots.js',
         icon: 'save-slots.svg',
         name: 'Save Slots',
-        description: 'Remember things after the tab is closed — scores, progress, whole lists.'
+        description: 'Remember things after the tab is closed, scores, progress, whole lists.'
     },
     {
         id: 'flipwarpRecordReplay',

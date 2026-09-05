@@ -43,7 +43,7 @@ const keysUsed = vm => {
             const input = block.inputs && block.inputs.KEY_OPTION;
             if (!input) continue;
             // The dropdown is a block of its own, plugged in. Whichever of the
-            // two slots it is in — a filled input keeps the shadow in one and
+            // two slots it is in, a filled input keeps the shadow in one and
             // whatever replaced it in the other.
             for (const slot of [input.shadow, input.block]) {
                 const dropdown = slot && blocks[slot];

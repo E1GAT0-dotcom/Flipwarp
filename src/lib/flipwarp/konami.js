@@ -2,7 +2,7 @@
 // into shibas until the page is reloaded.
 //
 // Nothing is saved and nothing is announced. If Cat Blocks is off, the code
-// does nothing at all — there are no faces to change.
+// does nothing at all: there are no faces to change.
 
 import LazyScratchBlocks from '../tw-lazy-scratch-blocks';
 
@@ -20,8 +20,8 @@ let doged = false;
 /**
  * Draw a shiba face instead of a cat one.
  *
- * Deliberately the same set of elements the cat uses — two eyes, two closed
- * eyes, a mouth — because the addon's own blink and ear-flick handlers reach
+ * Deliberately the same set of elements the cat uses, two eyes, two closed
+ * eyes, a mouth, because the addon's own blink and ear-flick handlers reach
  * for them by name. A doge that could not blink would be a worse joke.
  *
  * The coordinates match the cat's: the head sits roughly between x 12 and 85,
@@ -98,7 +98,7 @@ const drawDogeFace = (block, Blockly) => {
         'stroke-opacity': '0.55'
     }, block.svgFace_);
 
-    // The ears keep the cat's shape — a shiba's are pricked too — but lose
+    // The ears keep the cat's shape, since a shiba's are pricked too, but lose
     // the pink.
     block.catPath_.ear.setAttribute(
         'd',
@@ -118,7 +118,7 @@ const drawDogeFace = (block, Blockly) => {
 };
 
 // Every workspace on the page, which matters because an empty project has no
-// blocks on the canvas at all — every cat you can see is in the palette, and
+// blocks on the canvas at all, every cat you can see is in the palette, and
 // the palette is a workspace of its own.
 const allWorkspaces = Blockly => {
     const db = Blockly.Workspace && Blockly.Workspace.WorkspaceDB_;
@@ -184,7 +184,7 @@ export const installDogeEasterEgg = () => {
     // Listened for on the way down rather than on the way up. Blockly moves
     // the selected block with the arrow keys and stops the event there, and a
     // running project is handed them too, so by the time a key reaches
-    // document it may already have been swallowed — which is why this worked
+    // document it may already have been swallowed, which is why this worked
     // on an empty page and not once you had clicked into the workspace.
     window.addEventListener('keydown', e => {
         // Arrow keys mean something else while typing, and nudging a block

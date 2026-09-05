@@ -10,7 +10,7 @@ import styles from './stage-controls.css';
  * Buttons over the stage, for projects that expect a keyboard.
  *
  * A phone has no arrow keys, so a project built around them cannot be played
- * on one at all — not badly, not at all. These are the keys that project asks
+ * on one at all, not badly, not at all. These are the keys that project asks
  * about, read off its own blocks, laid over the stage: the arrows as a pad
  * where a thumb expects them and everything else as buttons on the other side.
  *

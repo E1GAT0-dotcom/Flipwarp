@@ -91,7 +91,7 @@ class WandTool extends paper.Tool {
         this.active = true;
 
         // A click on the selection already on screen means move it, not start
-        // again — same rule the rectangular select follows.
+        // again, same rule the rectangular select follows.
         if (this.boundingBoxTool.onMouseDown(
             event,
             event.modifiers.alt,

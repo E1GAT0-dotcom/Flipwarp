@@ -3,14 +3,14 @@
 //
 // TurboWarp's packager is a whole second website with about sixty settings on
 // it, and the reason it has to ask so many questions is that it has never
-// seen your project — you arrive with a file and it knows nothing else. This
+// seen your project: you arrive with a file and it knows nothing else. This
 // one is inside the editor, so nearly every one of those questions already
 // has an answer sitting in front of it: the framerate, whether the compiler
 // is on, the stage size, the clone limit, the fencing. Copying them is both
 // simpler and more likely to be right than asking again.
 //
-// So this asks three things — what kind of file, what to call it, and whether
-// it should start on its own — and takes the rest from the project. Anything
+// So this asks three things, what kind of file, what to call it, and whether
+// it should start on its own, and takes the rest from the project. Anything
 // it cannot do, which is Windows, macOS, Linux and Android, is still the
 // packager's job, and the dialog says so and links to it.
 //
@@ -160,8 +160,8 @@ export const packageProject = async ({vm, title, kind, autoplay, onProgress}) =>
     const result = await packager.package();
     say('done', 1);
 
-    // The packager's own suggested name is not sanitised — its documentation
-    // says so — so the name is built here from the title instead.
+    // The packager's own suggested name is not sanitised. Its documentation
+    // says so, so the name is built here from the title instead.
     const extension = result.type === 'application/zip' ? 'zip' : 'html';
     return {
         name: `${tidyName(title)}.${extension}`,

@@ -50,7 +50,7 @@ await list[0].click();
 await page.waitForTimeout(500);
 const afterPlain = await selectedCount();
 // The strip is there for one costume too, because that is where a folder is
-// chosen — but it carries no count and none of the act-on-all-of-them
+// chosen, but it carries no count and none of the act-on-all-of-them
 // buttons, which belong to the item itself when there is only one.
 const plainBarText = await page.$eval('[class*="selector_batch-bar"]',
     el => el.textContent.trim()).catch(() => null);

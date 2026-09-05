@@ -1,7 +1,7 @@
 /**
  * Pinch to zoom the block workspace.
  *
- * Blockly can zoom — the buttons in the corner and ctrl-scroll both do it —
+ * Blockly can zoom: the buttons in the corner and ctrl-scroll both do it,
  * but it has no idea what two fingers moving apart means, so on a tablet the
  * only way to make blocks bigger is to hunt for a small round button. This
  * adds the gesture, from outside: it listens on the element Blockly was
@@ -48,8 +48,8 @@ const installPinchZoom = (element, workspace, Blockly) => {
         // on the page itself and is zooming the whole editor, which survives
         // turning the phone and leaves it stuck too far in to get back out of.
         if (e.cancelable) e.preventDefault();
-        // Whatever Blockly thought was happening — dragging a block, drawing a
-        // selection — a second finger means it was wrong.
+        // Whatever Blockly thought was happening, dragging a block, drawing a
+        // selection; a second finger means it was wrong.
         if (workspace.currentGesture_) workspace.currentGesture_.cancel();
         startGap = distance(two[0], two[1]);
         lastScale = workspace.scale;

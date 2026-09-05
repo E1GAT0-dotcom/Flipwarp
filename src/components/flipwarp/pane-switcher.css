@@ -27,7 +27,7 @@
         /*
             See-through, and not in the way. The run controls are pinned into
             this strip from elsewhere in the page, and "elsewhere" turns out to
-            be a different stacking context — no z-index here can lift them
+            be a different stacking context, no z-index here can lift them
             above a bar that is painted opaque, whatever the number says. The
             strip is the same colour as the page behind it anyway, so there is
             nothing to paint; only the line along the top is real, and taps
@@ -43,8 +43,8 @@
  * The strip that already holds the green flag, stop, pause and the radio,
  * pinned into this bar rather than rebuilt in it. Pinned rather than moved,
  * because moving an element React owns is a fight; pinned rather than copied,
- * because two green flags in a page means the pause button — which an addon
- * adds to whichever strip it finds first — attaches to the wrong one.
+ * because two green flags in a page means the pause button, which an addon
+ * adds to whichever strip it finds first, attaches to the wrong one.
  *
  * It comes along even while the stage is scrolled off the side, which is the
  * point: you can run a project from the blocks.
@@ -65,7 +65,7 @@
         /*
             Stop short of the buttons on the right. Both this and the bar are
             pinned to the bottom of the screen, so neither pushes the other
-            along — without a limit they simply overlap, and how close they
+            along, without a limit they simply overlap, and how close they
             come depends on how many buttons the addons have added and how big
             the phone's text is set. It slides sideways rather than being cut
             off, so nothing ever becomes unreachable.

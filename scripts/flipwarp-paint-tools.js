@@ -1,7 +1,7 @@
 /**
  * Put the magic wand and the lasso into the paint editor.
  *
- * The paint editor is not part of this repository — it is scratch-paint,
+ * The paint editor is not part of this repository, it is scratch-paint,
  * pulled straight from TurboWarp, and npm rewrites it from scratch on every
  * install. So the two tools live in paint-tools/ here and are laid over it
  * afterwards, by this script, which npm runs at the end of every install.
@@ -9,7 +9,7 @@
  * Two kinds of change. New files are copied, which is safe: nothing upstream
  * has that name. The handful of existing files that have to mention the new
  * tools are edited by looking for a piece of their text and putting something
- * in its place — not by overwriting them, which would freeze them at whatever
+ * in its place, not by overwriting them, which would freeze them at whatever
  * TurboWarp had written on the day this was set up and quietly stop every
  * later fix from arriving.
  *
@@ -138,8 +138,8 @@ import BitLassoMode from '../../containers/bit-lasso-mode.jsx';`
             case Modes.BIT_WAND:
                 /* falls through */
             case Modes.BIT_LASSO:
-                // Neither the wand nor the lasso has a vector twin — vectors
-                // are shapes you click, not pixels you gather — so plain
+                // Neither the wand nor the lasso has a vector twin, vectors
+                // are shapes you click, not pixels you gather, so plain
                 // select is the nearest thing to carry across.
                 this.props.changeMode(Modes.SELECT);
                 break;`

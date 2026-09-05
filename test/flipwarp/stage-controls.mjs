@@ -2,7 +2,7 @@
 //
 // A phone has no arrow keys, so a project built around them cannot be played
 // on one at all. The point of these is not that they exist but that they are
-// the right ones — read off the project's own blocks, so a project played with
+// the right ones, read off the project's own blocks, so a project played with
 // the mouse gets none and a project that uses the arrows and the space bar
 // gets exactly those five.
 //

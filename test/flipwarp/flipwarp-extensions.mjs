@@ -3,7 +3,7 @@
 // The thing that makes them worth writing rather than pointing people at
 // TurboWarp's is that their blocks convert to text. Everything under the other
 // tabs works as blocks and refuses the Text button; these do not. So the test
-// that matters is not that a block runs — it is that a script using one goes
+// that matters is not that a block runs, it is that a script using one goes
 // out as text and comes back as the same blocks.
 import {launchBrowser, SITE} from './launch.mjs';
 
@@ -162,8 +162,8 @@ const saved = await page.evaluate(async () => {
     const underMe = await call('flipwarpTilemap_tileUnderMe', {});
 
     // Six columns and five rows of forty steps is 240 by 200, centred, so the
-    // top-left corner of the map is at (-120, 100). Column 1 row 1 — counting
-    // from nothing — is therefore the middle of the square at (-60, 40), which
+    // top-left corner of the map is at (-120, 100). Column 1 row 1, counting
+    // from nothing, is therefore the middle of the square at (-60, 40), which
     // the map says is floor, and column 2 row 2 is (-20, 0), which it says is
     // one of the two blocks in the middle.
     const openHere = await call('flipwarpTilemap_isWallAt', {X: -60, Y: 40});

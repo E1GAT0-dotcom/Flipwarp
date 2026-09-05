@@ -85,7 +85,7 @@ export function tokenize(text, style) {
                 if (width <= top) {
                     fail(ln, width + 1, raw, 'expected-indent',
                         'This line needs to be indented, because the line above it starts a body.',
-                        'Put some spaces in front of it — the same number for every line in the body.');
+                        'Put some spaces in front of it, the same number for every line in the body.');
                 }
                 levels.push(width);
                 expectIndent = false;
@@ -117,7 +117,7 @@ export function tokenize(text, style) {
 
             if (ch === ' ' || ch === '\t' || ch === '\r') { i++; continue; }
 
-            // A whole line beginning with # is a comment — the real Scratch kind,
+            // A whole line beginning with # is a comment, the real Scratch kind,
             // which ends up attached to a block or sitting on the canvas. Runs of
             // them are one comment, because a Scratch comment can hold several
             // lines of text and there is no other way to write that here.
@@ -129,7 +129,7 @@ export function tokenize(text, style) {
                     parts.push(stripHash(lines[last].trim()));
                 }
                 // A comment with a line of code under it belongs to that block. One
-                // with a blank line under it, or nothing, sits loose on the canvas —
+                // with a blank line under it, or nothing, sits loose on the canvas,
                 // which is what Scratch's two kinds of comment are.
                 const after = lines[last + 1];
                 push({

@@ -3,7 +3,7 @@
 //
 // Most of them need nothing: the wrappers in gameplay.js read the setting on
 // every call, so a switch is in effect the instant it is flipped. These three
-// are the exceptions — one is a stylesheet rather than a wrapper, one has to
+// are the exceptions: one is a stylesheet rather than a wrapper, one has to
 // ask the renderer to work its size out again, and one has to let go of a
 // project it is holding frozen when the reason for holding it is switched
 // off.

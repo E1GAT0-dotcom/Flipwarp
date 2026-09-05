@@ -516,7 +516,7 @@ const FlipwarpSettings = () => {
                 <p>
                     <FormattedMessage
                         // eslint-disable-next-line max-len
-                        defaultMessage="Renames something everywhere at once. Every line it would change is listed first with a tick box, and nothing is changed until you press the button — and then either every ticked line changes or, if one of them would break a sprite, none of them do."
+                        defaultMessage="Renames something everywhere at once. Every line it would change is listed first with a tick box, and nothing is changed until you press the button. Then either every ticked line changes or, if one of them would break a sprite, none of them do."
                         description="Help text for the find and replace setting"
                         id="flipwarp.settings.findReplaceHelp"
                     />
@@ -552,7 +552,7 @@ const FlipwarpSettings = () => {
                 <p>
                     <FormattedMessage
                         // eslint-disable-next-line max-len
-                        defaultMessage="Adds Paste as blocks to the menu you get when you right-click the workspace — the other half of Copy as text. The scripts are added to the sprite you are in; nothing already there is removed."
+                        defaultMessage="Adds Paste as blocks to the menu you get when you right-click the workspace. It is the other half of Copy as text. The scripts are added to the sprite you are in; nothing already there is removed."
                         description="Help text for the paste as blocks setting"
                         id="flipwarp.settings.pasteAsBlocksHelp"
                     />
@@ -614,6 +614,7 @@ const FlipwarpSettings = () => {
                     </label>
                     <p>
                         <FormattedMessage
+                            // eslint-disable-next-line max-len
                             defaultMessage="So a project's own sounds can be heard over the music. The radio goes back to normal when the project stops."
                             description="Help text for what the radio does while a project runs"
                             id="flipwarp.settings.musicWhileRunningHelp"
@@ -644,7 +645,7 @@ const FlipwarpSettings = () => {
                 <p>
                     <FormattedMessage
                         // eslint-disable-next-line max-len
-                        defaultMessage="How the text is written. The blocks are the same either way — only the spelling changes, and Blocks turns either one back into the same project."
+                        defaultMessage="How the text is written. The blocks are the same either way; only the spelling changes, and Blocks turns either one back into the same project."
                         description="Help text for the text style setting"
                         id="flipwarp.settings.textStyleHelp"
                     />
@@ -668,6 +669,7 @@ const FlipwarpSettings = () => {
                 </label>
                 <p>
                     <FormattedMessage
+                        // eslint-disable-next-line max-len
                         defaultMessage="How far one step of indent goes, both in the text you are shown and when Tab and Enter add one."
                         description="Help text for the indent size setting"
                         id="flipwarp.settings.indentHelp"
@@ -720,7 +722,7 @@ ChoiceSetting.propTypes = {
 // the way it behaves everywhere else until somebody decides otherwise.
 //
 // The labels are deliberately two or three words. What each one actually does
-// takes a paragraph, and a paragraph belongs behind the "?" — a column of
+// takes a paragraph, and a paragraph belongs behind the "?", a column of
 // sentences is a column nobody reads.
 const GameplaySettings = () => {
     const [settings, setLocal] = React.useState(getSettings());
@@ -741,7 +743,7 @@ const GameplaySettings = () => {
                 help={<p>
                     <FormattedMessage
                         // eslint-disable-next-line max-len
-                        defaultMessage="Holds the project still while its tab is in the background, and starts it again when you come back. Without this a phone half-runs it — sound keeps playing, timers keep counting — and you return to a game that carried on without you."
+                        defaultMessage="Holds the project still while its tab is in the background, and starts it again when you come back. Without this a phone half-runs it, with sound still playing and timers still counting, and you return to a game that carried on without you."
                         description="Help text for the pause off-screen setting"
                         id="flipwarp.settings.pauseOffScreenHelp"
                     />
@@ -758,7 +760,7 @@ const GameplaySettings = () => {
                 help={<p>
                     <FormattedMessage
                         // eslint-disable-next-line max-len
-                        defaultMessage="Takes the mouse pointer away over the stage, for games that draw their own with a sprite. It is still there — clicking works exactly as before — you just cannot see two of them."
+                        defaultMessage="Takes the mouse pointer away over the stage, for games that draw their own with a sprite. It is still there, and clicking works exactly as before. You just cannot see two of them."
                         description="Help text for the hide pointer setting"
                         id="flipwarp.settings.hidePointerHelp"
                     />
@@ -781,7 +783,7 @@ const GameplaySettings = () => {
                 help={<p>
                     <FormattedMessage
                         // eslint-disable-next-line max-len
-                        defaultMessage="Runs the whole project slower so you can see what it is doing. Waits and timers slow down with it, so a wait of one second still lasts one second as far as the project is concerned — nothing gets out of step with anything else, it all just takes longer to watch."
+                        defaultMessage="Runs the whole project slower so you can see what it is doing. Waits and timers slow down with it, so a wait of one second still lasts one second as far as the project is concerned. Nothing gets out of step with anything else, it all just takes longer to watch."
                         description="Help text for the slow motion setting"
                         id="flipwarp.settings.slowMotionHelp"
                     />
@@ -844,7 +846,7 @@ const GameplaySettings = () => {
                     help={<p>
                         <FormattedMessage
                             // eslint-disable-next-line max-len
-                            defaultMessage="Which repeatable run you get. Any whole number will do, and every number gives a different run — this is the number to change when you want a different set of random answers that still repeats."
+                            defaultMessage="Which repeatable run you get. Any whole number will do, and every number gives a different run, so this is the number to change when you want a different set of random answers that still repeats."
                             description="Help text for the random seed"
                             id="flipwarp.settings.randomSeedHelp"
                         />
@@ -862,7 +864,7 @@ const GameplaySettings = () => {
                 help={<p>
                     <FormattedMessage
                         // eslint-disable-next-line max-len
-                        defaultMessage="Touching checks whether two sprites' rectangles overlap instead of comparing every pixel. It is the single most expensive thing a busy project does, so this can be the difference between a game that keeps up and one that does not — but sprites touch a little sooner than they look like they do, which matters most for thin or oddly shaped costumes."
+                        defaultMessage="Touching checks whether two sprites' rectangles overlap instead of comparing every pixel. It is the single most expensive thing a busy project does, so this can be the difference between a game that keeps up and one that does not. But sprites touch a little sooner than they look like they do, which matters most for thin or oddly shaped costumes."
                         description="Help text for the fast collisions setting"
                         id="flipwarp.settings.fastCollisionsHelp"
                     />
@@ -879,7 +881,7 @@ const GameplaySettings = () => {
                 help={<p>
                     <FormattedMessage
                         // eslint-disable-next-line max-len
-                        defaultMessage="When a frame takes longer than it had, leave the drawing out rather than letting the whole project fall behind. The project keeps its speed and the picture updates every other frame instead of every frame — the difference between a game that looks slightly choppy and one that runs in slow motion."
+                        defaultMessage="When a frame takes longer than it had, leave the drawing out rather than letting the whole project fall behind. The project keeps its speed and the picture updates every other frame instead of every frame, which is the difference between a game that looks slightly choppy and one that runs in slow motion."
                         description="Help text for the skip frames setting"
                         id="flipwarp.settings.skipFramesHelp"
                     />
@@ -894,14 +896,14 @@ const GameplaySettings = () => {
                     id="flipwarp.settings.renderScale"
                 />}
                 options={[
-                    {value: 0.5, label: 'Half — faster'},
+                    {value: 0.5, label: 'Half, faster'},
                     {value: 1, label: 'Normal'},
-                    {value: 2, label: 'Double — sharper'}
+                    {value: 2, label: 'Double, sharper'}
                 ]}
                 help={<p>
                     <FormattedMessage
                         // eslint-disable-next-line max-len
-                        defaultMessage="How many pixels the stage is drawn with. Double is sharper on a good screen and costs four times as much to draw; half is blurry and costs a quarter, which is often what keeps a phone at full speed. The project itself cannot tell the difference — coordinates and sizes are unchanged."
+                        defaultMessage="How many pixels the stage is drawn with. Double is sharper on a good screen and costs four times as much to draw; half is blurry and costs a quarter, which is often what keeps a phone at full speed. The project itself cannot tell the difference: coordinates and sizes are unchanged."
                         description="Help text for the render scale setting"
                         id="flipwarp.settings.renderScaleHelp"
                     />
@@ -918,7 +920,7 @@ const GameplaySettings = () => {
                 help={<p>
                     <FormattedMessage
                         // eslint-disable-next-line max-len
-                        defaultMessage="A project only looks at the keyboard once a frame, so a tap shorter than a frame can happen entirely between two looks and never be seen at all. This holds a key down until the project has had one look at it. Nothing is invented — the press really happened; this only decides when the release is allowed to."
+                        defaultMessage="A project only looks at the keyboard once a frame, so a tap shorter than a frame can happen entirely between two looks and never be seen at all. This holds a key down until the project has had one look at it. Nothing is invented. The press really happened; this only decides when the release is allowed to."
                         description="Help text for the input buffering setting"
                         id="flipwarp.settings.inputBufferingHelp"
                     />
@@ -940,16 +942,12 @@ const SettingsModalComponent = props => (
                 {'Flipwarp'}
             </Header>
             <FlipwarpSettings />
+            {/* Everything that changes how a project runs, under one
+                heading. These four used to sit under "Featured", which said
+                nothing about what they do and put the framerate in a
+                different part of the window from slow motion. */}
             <Header>
                 {'Gameplay'}
-            </Header>
-            <GameplaySettings />
-            <Header>
-                <FormattedMessage
-                    defaultMessage="Featured"
-                    description="Settings modal section"
-                    id="tw.settingsModal.featured"
-                />
             </Header>
             <CustomFPS
                 framerate={props.framerate}
@@ -968,6 +966,7 @@ const SettingsModalComponent = props => (
                 value={props.warpTimer}
                 onChange={props.onWarpTimerChange}
             />
+            <GameplaySettings />
             <Header>
                 <FormattedMessage
                     defaultMessage="Remove Limits"

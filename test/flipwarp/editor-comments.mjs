@@ -1,5 +1,5 @@
 // Comments in the real editor: type a # line, flip back, and see a real
-// Scratch comment on the workspace — the kind you can drag and resize.
+// Scratch comment on the workspace, the kind you can drag and resize.
 import { launchBrowser, repoPath, SITE } from './launch.mjs';
 
 const browser = await launchBrowser();
@@ -34,7 +34,7 @@ await page.evaluate(() => {
 await page.waitForTimeout(800);
 
 // The panel covers the editor, so the toggle is clicked by its own class
-// rather than by its label — "Blocks" also appears in the palette behind it.
+// rather than by its label, "Blocks" also appears in the palette behind it.
 const TOGGLE = '[class*="flipwarp-panel_toggle-button"]';
 const AREA = '[class*="flipwarp-panel"] textarea';
 const toggle = async () => {

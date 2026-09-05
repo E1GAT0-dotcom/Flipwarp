@@ -1,7 +1,7 @@
 // Folders for costumes.
 //
 // Scratch's save format has no idea of a folder. It keeps a costume's name,
-// its picture, and where its centre is, and that is all — so anything that
+// its picture, and where its centre is, and that is all, so anything that
 // wants folders has to put them somewhere.
 //
 // The usual answer, and what the Folders addon does, is to hide the folder in
@@ -32,8 +32,8 @@
 const KEY = 'flipwarp';
 
 // Kept on the runtime costume itself while the editor is open. It is dropped
-// when the project is saved — the serializer builds a fresh object with a
-// fixed set of fields — which is exactly why it is written out separately.
+// when the project is saved: the serializer builds a fresh object with a
+// fixed set of fields, which is exactly why it is written out separately.
 const FIELD = 'flipwarpFolder';
 
 /**
@@ -76,7 +76,7 @@ export const foldersIn = costumes => {
  * them.
  *
  * The numbers are the costume's real place in the sprite, not its place on
- * screen — everything that acts on a costume needs the real one.
+ * screen; everything that acts on a costume needs the real one.
  *
  * @param {Array} costumes the sprite's costumes
  * @returns {Array<{index: number, folder: ?string}>} the order to show
@@ -158,8 +158,8 @@ export const installCostumeFolders = vm => {
     if (installed || !vm) return;
     installed = true;
 
-    // Everything that saves goes through toJSON — the .sb3 zip puts its
-    // result in as project.json — so one place covers every way out.
+    // Everything that saves goes through toJSON: the .sb3 zip puts its
+    // result in as project.json, so one place covers every way out.
     const originalToJSON = vm.toJSON.bind(vm);
     vm.toJSON = (...args) => {
         const json = originalToJSON(...args);

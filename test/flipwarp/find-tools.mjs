@@ -18,7 +18,7 @@ await page.waitForSelector('text=Costumes', {timeout: 60000});
 await page.waitForTimeout(3000);
 
 // Four scripts far apart on the canvas, three of them using goToXY with
-// different numbers — which is exactly the case that made him ask.
+// different numbers, which is exactly the case that made him ask.
 await page.evaluate(() => {
     const vm = window.vm;
     const json = JSON.parse(vm.toJSON());
@@ -59,7 +59,7 @@ const countGoTo = () => page.evaluate(() => Object.values(
 const countAll = () => page.evaluate(() => Object.values(
     JSON.parse(window.vm.toJSON()).targets.find(t => !t.isStage).blocks)
     .filter(b => !b.shadow).length);
-// Where the camera is, read off the page rather than out of Blockly — there
+// Where the camera is, read off the page rather than out of Blockly, there
 // is more than one copy of Blockly loaded and only the DOM is unambiguous.
 const scrollNow = () => page.evaluate(() => {
     const canvases = [...document.querySelectorAll('.blocklyBlockCanvas')];
@@ -132,7 +132,7 @@ const goToAfter = await countGoTo();
 const allAfter = await countAll();
 const statusText = await page.$eval('[class*="flipwarp-tools_status"]', el => el.textContent);
 
-// The loop and its turn block must survive — only the goToXY inside it goes.
+// The loop and its turn block must survive, only the goToXY inside it goes.
 const survivors = await page.evaluate(() => {
     const blocks = JSON.parse(window.vm.toJSON()).targets.find(t => !t.isStage).blocks;
     return Object.values(blocks).filter(b => !b.shadow).map(b => b.opcode).sort();

@@ -14,12 +14,17 @@ const ctx = await browser.newContext({viewport: {width: 1280, height: 800}});
 const page = await ctx.newPage();
 page.on('pageerror', e => errs.push(`PAGEERROR: ${e.message.slice(0, 200)}`));
 
+// Storage is written, then the plain address is opened again. Not reloaded:
+// the settings now appear in the address bar, so by the time the first page
+// has finished loading the address says what the last test wanted, and a
+// reload would hand that straight back and quietly ignore the storage this
+// just wrote.
 const open = async settings => {
     await page.goto(`${SITE}/editor.html`, {waitUntil: 'domcontentloaded'});
     await page.evaluate(s => {
         localStorage.setItem('flipwarp:settings', JSON.stringify(s));
     }, settings);
-    await page.reload({waitUntil: 'domcontentloaded'});
+    await page.goto(`${SITE}/editor.html`, {waitUntil: 'domcontentloaded'});
     await page.waitForFunction(() => window.vm && window.vm.runtime, {timeout: 60000});
     await page.waitForTimeout(2500);
 };
@@ -102,8 +107,8 @@ const scaleHalf = await canvasWidth();
 
 // --- the pointer over the stage -------------------------------------------
 // The canvas itself carries no class; the box around it does, and several
-// other boxes have names that start the same way — stage-wrapper, and
-// stage-overlays — so this has to pick the one whose name ends there.
+// other boxes have names that start the same way, stage-wrapper, and
+// stage-overlays, so this has to pick the one whose name ends there.
 const stageCursor = () => page.evaluate(() => {
     const stage = [...document.querySelectorAll('[class*="stage_stage"]')]
         .find(e => /(^|\s)stage_stage_/.test(e.className));
@@ -169,7 +174,7 @@ const tap = () => page.evaluate(async () => {
     const wait = ms => new Promise(r => setTimeout(r, ms));
 
     // Straight after a frame, so the whole tap lands in the gap before the
-    // next one — which is the case the setting is about.
+    // next one, which is the case the setting is about.
     await new Promise(resolve => runtime.once('BEFORE_EXECUTE', resolve));
     window.vm.postIOData('keyboard', {key: 'q', keyCode: 81, isDown: true});
     window.vm.postIOData('keyboard', {key: 'q', keyCode: 81, isDown: false});

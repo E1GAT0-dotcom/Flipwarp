@@ -1,6 +1,6 @@
 // Adding Flipwarp to a phone's home screen.
 //
-// What makes that possible is a manifest — a small file saying what the app is
+// What makes that possible is a manifest, a small file saying what the app is
 // called, which icon to use, and that it should open without a browser bar
 // around it. The site had one all along and never linked to it: the link was
 // written only for a site at the root of a domain, and this one lives in a

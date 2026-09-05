@@ -35,7 +35,7 @@ const konami = async page => {
 };
 
 // An empty project has no scripts, so every cat you can see is in the block
-// palette — which is its own workspace, outside .blocklyDraggable. The whole
+// palette, which is its own workspace, outside .blocklyDraggable. The whole
 // page is searched for that reason.
 //
 // A cat's inner ears are pink and its face has no ellipse; a shiba's ears are

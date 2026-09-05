@@ -2,7 +2,7 @@
 //
 // The point of the check at the end is that the file this produces is opened
 // in a browser and the project inside it actually runs. Everything up to that
-// — a dialog appears, a button is pressed, a blob comes back — could pass
+//, a dialog appears, a button is pressed, a blob comes back, could pass
 // while producing a file that does nothing, which is the only failure that
 // would matter to anybody.
 import fs from 'node:fs';

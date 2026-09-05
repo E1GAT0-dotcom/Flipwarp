@@ -9,7 +9,7 @@ import {ART_BOARD_WIDTH, ART_BOARD_HEIGHT} from '../view';
  * The rectangular select already does the hard half of this: it makes a
  * sub-raster of the region, marks it selected, and hands it to the bounding
  * box tool, which is what actually moves, scales, deletes and commits it. So a
- * magic wand and a lasso do not need any of that again — they only need to
+ * magic wand and a lasso do not need any of that again, they only need to
  * decide which pixels are in, and then hand over a sub-raster that has
  * everything else in its rectangle rubbed out.
  *
@@ -27,7 +27,7 @@ const readBoard = () => {
 
 /**
  * The rectangle a mask actually occupies, which is usually far smaller than
- * the rectangle it was measured over — a wand click on one letter of a word
+ * the rectangle it was measured over, a wand click on one letter of a word
  * searches the whole board but ends up owning a few hundred pixels.
  *
  * @param {Uint8Array} mask One byte per pixel, board-sized.

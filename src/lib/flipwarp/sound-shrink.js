@@ -2,7 +2,7 @@
 //
 // Three things are going on here, and only one of them is new.
 //
-// Scratch already mixes your sound to mono the moment you touch any effect —
+// Scratch already mixes your sound to mono the moment you touch any effect,
 // but it does it by throwing the right channel away rather than mixing the two
 // together. Anything that was panned right gets quieter or vanishes. That has
 // been a known bug since 2019 and is fixed here by doing what mixing to mono
@@ -14,8 +14,8 @@
 // sample rate put together.
 //
 // And ADPCM is the way out of it. It is a compressed form Scratch has read
-// since its earliest days — 161 of the sounds in Scratch's own library are
-// stored this way — so a sound saved in it plays in Scratch, in TurboWarp, and
+// since its earliest days, 161 of the sounds in Scratch's own library are
+// stored this way, so a sound saved in it plays in Scratch, in TurboWarp, and
 // here, while taking about a quarter of the room. Nothing offers it as a
 // choice, which is the gap this fills.
 
@@ -38,7 +38,7 @@ export const channelsOf = buffer => {
  * Mix every channel down to one, by averaging them.
  *
  * This is the part Scratch gets wrong. Taking the left channel and calling it
- * mono loses whatever was only on the right — a sound panned hard right can
+ * mono loses whatever was only on the right, a sound panned hard right can
  * come back silent.
  *
  * @param {Array<Float32Array>} channels the channels to mix
@@ -59,8 +59,8 @@ export const mixToMono = channels => {
 /**
  * Change the sample rate, using the browser's own resampler.
  *
- * Doing it by hand — dropping every other sample, which is what Scratch falls
- * back to — folds high notes back down as a whine that was never in the
+ * Doing it by hand, dropping every other sample, which is what Scratch falls
+ * back to, folds high notes back down as a whine that was never in the
  * recording. The browser filters first, so it does not.
  *
  * @param {Array<Float32Array>} channels the channels
@@ -174,7 +174,7 @@ const writeString = (view, at, text) => {
 
 /**
  * A sound as an ADPCM wav file, shaped exactly the way Scratch's own reader
- * expects it — one channel, four bits a sample, blocks of a fixed size.
+ * expects it, one channel, four bits a sample, blocks of a fixed size.
  *
  * @param {Float32Array} samples one channel of audio
  * @param {number} sampleRate its rate
@@ -184,7 +184,7 @@ export const encodeAdpcm = (samples, sampleRate) => {
     // Scratch's reader works out how long a sound is with a sum that counts
     // one sample fewer per block than a block actually holds, after the first.
     // Nothing can be written that makes that sum come out right, so the
-    // shortfall is made up in silence instead — otherwise the last few
+    // shortfall is made up in silence instead, otherwise the last few
     // thousandths of a second are cut off.
     const blockCount = Math.max(1, Math.ceil(samples.length / SAMPLES_PER_BLOCK));
     const shortfall = blockCount - 1;
@@ -223,7 +223,7 @@ export const encodeAdpcm = (samples, sampleRate) => {
     writeString(view, 8, 'WAVE');
 
     // fmt: IMA ADPCM (17), one channel, four bits a sample, and how many
-    // samples each block holds — which is how the reader knows the size.
+    // samples each block holds, which is how the reader knows the size.
     writeString(view, 12, 'fmt ');
     view.setUint32(16, 20, true);
     view.setUint16(20, 17, true);

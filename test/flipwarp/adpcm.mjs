@@ -57,11 +57,11 @@ const silenceOut = (await new ADPCMSoundDecoder(fakeContext)
 // A hard square is the worst case this format has: it cannot jump the whole
 // way in one sample by design, it has to climb. So what is measured is that
 // it catches up quickly and tracks the flat parts, not that it turns on a
-// sixpence — expecting that would be expecting the wrong thing.
+// sixpence, expecting that would be expecting the wrong thing.
 const loud = new Float32Array(1000).fill(0).map((_, i) => (i % 40 < 20 ? 0.99 : -0.99));
 const loudOut = (await new ADPCMSoundDecoder(fakeContext)
     .decode(encodeAdpcm(loud, RATE))).getChannelData(0);
-// What matters is that it is never the wrong sound — never inverted, never
+// What matters is that it is never the wrong sound, never inverted, never
 // clipped into noise. Slew is inherent to four bits a sample.
 let agreed = 0;
 for (let i = 0; i < 1000; i++) {
