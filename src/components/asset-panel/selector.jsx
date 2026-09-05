@@ -110,6 +110,7 @@ SelectionBar.propTypes = {
 const Selector = props => {
     const {
         buttons,
+        className,
         containerRef,
         dragType,
         isRtl,
@@ -170,7 +171,7 @@ const Selector = props => {
 
     return (
         <Box
-            className={styles.wrapper}
+            className={classNames(styles.wrapper, className)}
             componentRef={containerRef}
         >
             {onMoveToFolder && chosen.length ? (
@@ -236,6 +237,7 @@ const Selector = props => {
 };
 
 Selector.propTypes = {
+    className: PropTypes.string,
     buttons: PropTypes.arrayOf(PropTypes.shape({
         title: PropTypes.string.isRequired,
         img: PropTypes.string.isRequired,

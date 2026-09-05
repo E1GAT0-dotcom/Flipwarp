@@ -59,3 +59,15 @@
     background: $motion-primary;
     color: $ui-white;
 }
+
+/*
+ * Out of the way while a dialog is open. The bar is fixed to the bottom of the
+ * screen, so without this it floats over the extension picker and the sprite
+ * library with a green flag on it, looking like part of them.
+ *
+ * react-modal marks the page while one is open, which is the only signal that
+ * covers every dialog rather than a list of them that would need adding to.
+ */
+:global(body.ReactModal__Body--open) .bar {
+    display: none !important;
+}

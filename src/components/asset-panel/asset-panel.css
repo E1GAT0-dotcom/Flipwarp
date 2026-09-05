@@ -34,3 +34,100 @@
 [dir="rtl"] .detail-area {
     border-right: 1px solid $ui-black-transparent;
 }
+
+/*
+ * The handle that folds the list of costumes away, and the folding itself.
+ * Both only exist on a phone: anywhere else the list is worth its 150 points.
+ */
+.handle {
+    display: none;
+}
+
+@media (max-width: 720px) {
+    :global(html[data-input="touch"]) .handle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: 1.25rem;
+        appearance: none;
+        border: none;
+        border-left: 1px solid $ui-black-transparent;
+        border-right: 1px solid $ui-black-transparent;
+        padding: 0;
+        background: $ui-primary;
+        color: $text-primary;
+        font-size: 1.1rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    :global(html[data-input="touch"][data-assets="shut"]) .selector {
+        display: none;
+    }
+}
+
+/*
+ * The paint editor asks for 524 points of width before it will lay out, and a
+ * phone has 460. That is why the costume tab ran off the side of the screen
+ * whatever the list of costumes did — folding the list away gave the room to
+ * something that had already decided how much room it needed.
+ *
+ * These are scratch-paint's own classes rather than this project's, so they
+ * are matched by the part of the name that survives the build. The same trick
+ * TurboWarp's addons use on the paint editor.
+ */
+@media (max-width: 720px) {
+    :global(html[data-input="touch"]) :global([class*="paint-editor_top-align-row"]),
+    :global(html[data-input="touch"]) :global([class*="paint-editor_canvas-container"]),
+    :global(html[data-input="touch"]) :global([class*="paint-editor_controls-container"]),
+    :global(html[data-input="touch"]) :global([class*="paint-editor_editor-container"]),
+    :global(html[data-input="touch"]) .detail-area,
+    :global(html[data-input="touch"]) .wrapper {
+        min-width: 0;
+    }
+
+    /*
+        The drawing itself is as wide as the project's stage — 480 points, on a
+        460 point screen — and the paint editor is built to scroll when there
+        is not room for it. It was not scrolling: the whole panel was growing
+        to fit the drawing instead and hanging off the side of the screen,
+        which took the right-hand half of the toolbar with it. Held to the
+        width of the screen, the scrolling it already knows how to do takes
+        over.
+    */
+    :global(html[data-input="touch"]) .wrapper {
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    /* The rows of buttons — undo, copy, flip above the canvas; the format
+       switch and the zoom controls below it — go onto as many lines as they
+       need rather than off the edge. */
+    :global(html[data-input="touch"]) :global([class*="paint-editor_row_"]),
+    :global(html[data-input="touch"]) :global([class*="paint-editor_canvas-controls"]),
+    :global(html[data-input="touch"]) :global([class*="paint-editor_zoom-controls"]),
+    :global(html[data-input="touch"]) :global([class*="fixed-tools_row"]),
+    :global(html[data-input="touch"]) :global([class*="mode-tools_mode-tools"]),
+    :global(html[data-input="touch"]) :global([class*="input-group_input-group"]) {
+        flex-wrap: wrap;
+        row-gap: 0.25rem;
+    }
+
+    /*
+        Icons without their words. Group, Ungroup, Forward, Backward, Copy,
+        Paste, Delete, Flip — spelled out they are more than twice as wide as
+        a phone, and the alternative to dropping the words is dropping half
+        the buttons off the edge of the screen. Each one still says what it is
+        when held.
+    */
+    :global(html[data-input="touch"]) :global([class*="labeled-icon-button_edit-field-title"]) {
+        display: none;
+    }
+
+    /* A row told to be exactly 36 points tall cannot wrap onto two. */
+    :global(html[data-input="touch"]) :global([class*="paint-editor_canvas-controls"]),
+    :global(html[data-input="touch"]) :global([class*="paint-editor_top-align-row"]) {
+        height: auto;
+    }
+}

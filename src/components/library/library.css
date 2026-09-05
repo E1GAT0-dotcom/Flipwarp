@@ -116,3 +116,33 @@
 .tag-banner-link:hover {
     background: $looks-secondary;
 }
+
+/*
+ * On a phone the row of category tabs — All, Scratch, TurboWarp, PenguinMod —
+ * plus the search box is wider than the screen, so everything past "All" was
+ * off the edge and there appeared to be only one category. It wraps now, and
+ * the list below is given whatever height is left rather than being told the
+ * filter bar is exactly one row tall, which it no longer is.
+ */
+@media (max-width: 720px) {
+    :global(html[data-input="touch"]) .filter-bar {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 0.5rem;
+        gap: 0.5rem 0;
+    }
+
+    :global(html[data-input="touch"]) .filter-bar-item {
+        margin-right: 0.5rem;
+    }
+
+    :global(html[data-input="touch"]) .library-scroll-grid.withFilterBar {
+        height: auto;
+        min-height: 0;
+        flex: 1 1 auto;
+    }
+
+    :global(html[data-input="touch"]) .library-scroll-grid {
+        padding: 0.25rem;
+    }
+}

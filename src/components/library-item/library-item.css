@@ -240,3 +240,45 @@
 .library-item:hover .favorite-container {
     display: block;
 }
+
+/*
+ * Extension cards are 300 points wide and about 260 tall, which is one per row
+ * on a phone and about two rows visible at a time — a list you scroll for a
+ * minute to find out what is in it.
+ *
+ * Two to a row, with a shallower picture and the description cut to two lines.
+ * The name and the picture are what you recognise an extension by; the rest is
+ * there once you have found the one you want.
+ */
+@media (max-width: 720px) {
+    :global(html[data-input="touch"]) .featured-item {
+        flex-basis: calc(50% - 0.5rem);
+        max-width: calc(50% - 0.5rem);
+        margin: 0.25rem;
+    }
+
+    :global(html[data-input="touch"]) .featured-text {
+        width: 100%;
+        padding: 8px;
+        font-size: 0.8rem;
+    }
+
+    :global(html[data-input="touch"]) .featured-image {
+        aspect-ratio: 2.2;
+    }
+
+    :global(html[data-input="touch"]) .featured-description {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        font-size: 0.7rem;
+        line-height: 1.1rem;
+    }
+
+    /* The small print under an extension — who made it, what it needs — is
+       worth a row of its own on a wide screen and half the card on a phone. */
+    :global(html[data-input="touch"]) .featured-extension-metadata {
+        display: none;
+    }
+}

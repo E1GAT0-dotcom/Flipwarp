@@ -235,23 +235,39 @@
 }
 
 /*
- * On a phone the menu bar is wider than the screen. Letting it slide sideways
- * keeps every menu reachable; the alternative is wrapping it onto a second
- * row, which costs a tenth of the screen for something used once a session.
+ * On a phone the menu bar is wider than the screen, so it wraps onto a second
+ * row and both rows are made shorter to pay for it.
+ *
+ * It used to slide sideways instead, which was a mistake worth writing down:
+ * a bar that scrolls has to clip what overflows it, and what overflows a menu
+ * bar is its menus. File, Edit and Settings opened perfectly and were clipped
+ * to a strip of nothing, while Addons and Advanced worked because they are
+ * buttons with nothing to drop down — which is a strange enough symptom to
+ * spend a while chasing.
  */
 @media (max-width: 720px) {
     :global(html[data-input="touch"]) .menu-bar {
-        overflow-x: auto;
-        overflow-y: hidden;
-        scrollbar-width: none;
+        height: auto;
+        flex-wrap: wrap;
+        align-items: stretch;
+        row-gap: 0;
     }
 
-    :global(html[data-input="touch"]) .menu-bar::-webkit-scrollbar {
-        display: none;
+    :global(html[data-input="touch"]) .main-menu,
+    :global(html[data-input="touch"]) .account-info-group {
+        flex-wrap: wrap;
     }
 
-    :global(html[data-input="touch"]) .main-menu {
-        width: max-content;
-        min-width: 100%;
+    :global(html[data-input="touch"]) .menu-bar-item {
+        height: 2rem;
+    }
+
+    /*
+        A menu hangs below the bar, and how far below was the height of the
+        whole bar — right when the bar was one row, wrong the moment it is two.
+        The height of one row is right for either.
+    */
+    :global(html[data-input="touch"]) .menu-bar-menu {
+        margin-top: 2rem;
     }
 }

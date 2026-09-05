@@ -1,14 +1,29 @@
 import bindAll from 'lodash.bindall';
 import PropTypes from 'prop-types';
 import React from 'react';
+import {connect} from 'react-redux';
 import VM from 'scratch-vm';
 
 import GreenFlag from '../green-flag/green-flag.jsx';
 import StopAll from '../stop-all/stop-all.jsx';
+import {
+    BLOCKS_TAB_INDEX,
+    COSTUMES_TAB_INDEX,
+    SOUNDS_TAB_INDEX
+} from '../../reducers/editor-tab.js';
 import styles from './pane-switcher.css';
 
 const CODE = 'code';
 const STAGE = 'stage';
+
+// What to call the editor half, which is whichever of the three tabs is open.
+// Calling it "Blocks" while someone is drawing a costume is a lie about where
+// they are, and the highlight makes it a confident one.
+const TAB_NAMES = {
+    [BLOCKS_TAB_INDEX]: 'Blocks',
+    [COSTUMES_TAB_INDEX]: 'Costumes',
+    [SOUNDS_TAB_INDEX]: 'Sounds'
+};
 
 /**
  * The bar along the bottom of a phone.
@@ -99,7 +114,7 @@ class PaneSwitcher extends React.Component {
                     <button
                         className={`${styles.pane} ${pane === CODE ? styles.current : ''}`}
                         onClick={this.handleShowCode}
-                    >{'Blocks'}</button>
+                    >{TAB_NAMES[this.props.activeTabIndex] || TAB_NAMES[BLOCKS_TAB_INDEX]}</button>
                     <button
                         className={`${styles.pane} ${pane === STAGE ? styles.current : ''}`}
                         onClick={this.handleShowStage}
@@ -111,7 +126,12 @@ class PaneSwitcher extends React.Component {
 }
 
 PaneSwitcher.propTypes = {
+    activeTabIndex: PropTypes.number,
     vm: PropTypes.instanceOf(VM).isRequired
 };
 
-export default PaneSwitcher;
+const mapStateToProps = state => ({
+    activeTabIndex: state.scratchGui.editorTab.activeTabIndex
+});
+
+export default connect(mapStateToProps)(PaneSwitcher);
