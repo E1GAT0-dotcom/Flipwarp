@@ -152,6 +152,26 @@ export const EXTENSION_BLOCKS = {
     flipwarpSaveSlots_deleteEverything: { kind: 'statement', name: 'saveSlots.deleteEverySlot', args: [], extension: true },
     flipwarpSaveSlots_sizeOf: { kind: 'reporter', name: 'saveSlots.sizeOfSlotInCharacters', args: ["SLOT"], extension: true },
     flipwarpSaveSlots_lastProblem: { kind: 'reporter', name: 'saveSlots.lastSaveProblem', args: [], extension: true },
+    flipwarpTilemap_load: { kind: 'statement', name: 'tiles.useMap', args: ["MAP"], extension: true },
+    flipwarpTilemap_setTileSize: { kind: 'statement', name: 'tiles.makeEachTileStepsAcross', args: ["SIZE"], extension: true },
+    flipwarpTilemap_setSolid: { kind: 'statement', name: 'tiles.treatAsWalls', args: ["CHARS"], extension: true },
+    flipwarpTilemap_tileAtColumnRow: { kind: 'reporter', name: 'tiles.tileAtColumnRow', args: ["COL","ROW"], extension: true },
+    flipwarpTilemap_tileAt: { kind: 'reporter', name: 'tiles.tileAtXY', args: ["X","Y"], extension: true },
+    flipwarpTilemap_tileUnderMe: { kind: 'reporter', name: 'tiles.tileUnderMe', args: [], extension: true },
+    flipwarpTilemap_setTile: { kind: 'statement', name: 'tiles.putAtColumnRow', args: ["TILE","COL","ROW"], extension: true },
+    flipwarpTilemap_isWallAt: { kind: 'boolean', name: 'tiles.wallAtXY', args: ["X","Y"], extension: true },
+    flipwarpTilemap_wouldHitWall: { kind: 'boolean', name: 'tiles.wouldIHitAWallMovingAcrossAndUp', args: ["DX","DY"], extension: true },
+    flipwarpTilemap_slideBy: { kind: 'statement', name: 'tiles.moveAcrossAndUpStoppingAtWalls', args: ["DX","DY"], extension: true },
+    flipwarpTilemap_tileCount: { kind: 'reporter', name: 'tiles.numberOfTiles', args: [], extension: true },
+    flipwarpTilemap_goToTile: { kind: 'statement', name: 'tiles.goToTheMiddleOfTile', args: ["N"], extension: true },
+    flipwarpTilemap_tileNumber: { kind: 'reporter', name: 'tiles.tileNumber', args: ["N"], extension: true },
+    flipwarpTilemap_columns: { kind: 'reporter', name: 'tiles.columns', args: [], extension: true },
+    flipwarpTilemap_rowCount: { kind: 'reporter', name: 'tiles.rows', args: [], extension: true },
+    flipwarpTilemap_firstX: { kind: 'reporter', name: 'tiles.xOfTheFirst', args: ["TILE"], extension: true },
+    flipwarpTilemap_firstY: { kind: 'reporter', name: 'tiles.yOfTheFirst', args: ["TILE"], extension: true },
+    flipwarpTilemap_countOf: { kind: 'reporter', name: 'tiles.howMany', args: ["TILE"], extension: true },
+    flipwarpTilemap_asText: { kind: 'reporter', name: 'tiles.theMapAsText', args: [], extension: true },
+    flipwarpTilemap_sendWallsToPathfinding: { kind: 'statement', name: 'tiles.giveTheWallsToPathfinding', args: [], extension: true },
 };
 
 export const EXTENSION_INPUT_SHADOWS = {
@@ -379,5 +399,54 @@ export const EXTENSION_INPUT_SHADOWS = {
     },
     "flipwarpSaveSlots_sizeOf": {
         "SLOT": "text"
+    },
+    "flipwarpTilemap_load": {
+        "MAP": "text"
+    },
+    "flipwarpTilemap_setTileSize": {
+        "SIZE": "math_number"
+    },
+    "flipwarpTilemap_setSolid": {
+        "CHARS": "text"
+    },
+    "flipwarpTilemap_tileAtColumnRow": {
+        "COL": "math_number",
+        "ROW": "math_number"
+    },
+    "flipwarpTilemap_tileAt": {
+        "X": "math_number",
+        "Y": "math_number"
+    },
+    "flipwarpTilemap_setTile": {
+        "TILE": "text",
+        "COL": "math_number",
+        "ROW": "math_number"
+    },
+    "flipwarpTilemap_isWallAt": {
+        "X": "math_number",
+        "Y": "math_number"
+    },
+    "flipwarpTilemap_wouldHitWall": {
+        "DX": "math_number",
+        "DY": "math_number"
+    },
+    "flipwarpTilemap_slideBy": {
+        "DX": "math_number",
+        "DY": "math_number"
+    },
+    "flipwarpTilemap_goToTile": {
+        "N": "math_number"
+    },
+    "flipwarpTilemap_tileNumber": {
+        "N": "math_number"
+    },
+    "flipwarpTilemap_firstX": {
+        "TILE": "text"
+    },
+    "flipwarpTilemap_firstY": {
+        "TILE": "text"
+    },
+    "flipwarpTilemap_countOf": {
+        "TILE": "text"
     }
 };

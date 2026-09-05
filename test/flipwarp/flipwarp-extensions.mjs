@@ -35,7 +35,7 @@ const credit = await page.$$eval('[class*="library_tag-banner"], [class*="tagBan
 const saved = await page.evaluate(async () => {
     const vm = window.vm;
     for (const file of ['save-slots.js', 'dialogue.js', 'record-replay.js',
-        'near.js', 'pathfinding.js']) {
+        'near.js', 'pathfinding.js', 'tilemap.js']) {
         await vm.extensionManager.loadExtensionURL(
             new URL(`flipwarp-extensions/${file}`, document.baseURI).href);
     }
@@ -138,6 +138,52 @@ const saved = await page.evaluate(async () => {
     }
     await call('flipwarpPathfinding_find', {FX: -200, FY: -100, TX: -200, TY: 100});
     const sealedFound = await call('flipwarpPathfinding_found', {});
+    // Tilemap: a map written as lines, read back as a level.
+    //
+    //   ####@#
+    //   #....#
+    //   #.##.#
+    //   #....#
+    //   ######
+    await call('flipwarpTilemap_setTileSize', {SIZE: 40});
+    await call('flipwarpTilemap_load', {
+        MAP: '####@#\n#....#\n#.##.#\n#....#\n######'
+    });
+    const mapColumns = await call('flipwarpTilemap_columns', {});
+    const mapRows = await call('flipwarpTilemap_rowCount', {});
+    const cornerTile = await call('flipwarpTilemap_tileAtColumnRow', {COL: 1, ROW: 1});
+    const insideTile = await call('flipwarpTilemap_tileAtColumnRow', {COL: 2, ROW: 2});
+    const wallCount = await call('flipwarpTilemap_countOf', {TILE: '#'});
+
+    // The marked square, found by name, then stood on and asked about.
+    const markX = await call('flipwarpTilemap_firstX', {TILE: '@'});
+    const markY = await call('flipwarpTilemap_firstY', {TILE: '@'});
+    me.setXY(markX, markY);
+    const underMe = await call('flipwarpTilemap_tileUnderMe', {});
+
+    // Six columns and five rows of forty steps is 240 by 200, centred, so the
+    // top-left corner of the map is at (-120, 100). Column 1 row 1 — counting
+    // from nothing — is therefore the middle of the square at (-60, 40), which
+    // the map says is floor, and column 2 row 2 is (-20, 0), which it says is
+    // one of the two blocks in the middle.
+    const openHere = await call('flipwarpTilemap_isWallAt', {X: -60, Y: 40});
+    const wallInTheMiddle = await call('flipwarpTilemap_isWallAt', {X: -20, Y: 0});
+
+    // Sliding into a wall stops at it rather than passing through, and a
+    // sprite thrown a long way at a thin wall must not tunnel past it.
+    me.setXY(-60, 60);
+    await call('flipwarpTilemap_slideBy', {DX: 0, DY: -400});
+    const stoppedAt = {x: Math.round(me.x), y: Math.round(me.y)};
+    const stoppedInsideWall = await call('flipwarpTilemap_isWallAt', {X: me.x, Y: me.y});
+
+    // Written back out, a map that came in as text is the same text.
+    const mapText = await call('flipwarpTilemap_asText', {});
+
+    // And the walls handed straight to Pathfinding rather than looped over.
+    await call('flipwarpTilemap_sendWallsToPathfinding', {});
+    const pathSeesWall = await call('flipwarpPathfinding_isBlocked', {X: -20, Y: 0});
+    const pathSeesOpen = await call('flipwarpPathfinding_isBlocked', {X: -60, Y: 40});
+
     for (const clone of clones) vm.runtime.disposeTarget(clone);
 
     const loaded = vm.extensionManager.isExtensionLoaded('flipwarpSaveSlots');
@@ -145,7 +191,10 @@ const saved = await page.evaluate(async () => {
         atEnd, complaint, recorded, asText, stillRecording,
         pressedDuringPlayback, releasedAfter,
         noted, close, far, nearestDistance, nothingNear,
-        routeFound, routeSteps, throughWall, sealedFound};
+        routeFound, routeSteps, throughWall, sealedFound,
+        mapColumns, mapRows, cornerTile, insideTile, wallCount,
+        markX, markY, underMe, openHere, wallInTheMiddle,
+        stoppedAt, stoppedInsideWall, mapText, pathSeesWall, pathSeesOpen};
 });
 
 // --- and they convert to text --------------------------------------------
@@ -196,7 +245,7 @@ await browser.close();
 
 const checks = [
     ['there is a Flipwarp tab', tabs.includes('Flipwarp'), tabs],
-    ['it lists all five', onTab.length >= 5, onTab],
+    ['it lists all six', onTab.length >= 6, onTab],
     ['and says who made them', /E1GAT0_/.test(credit), credit.slice(0, 120)],
     ['an extension served from this site loads', saved.loaded === true, saved.loaded],
     ['a slot remembers what was put in it', saved.readBack === '42', saved],
@@ -230,6 +279,23 @@ const checks = [
         /dialogue\.useConversation/.test(text) && /dialogue\.whatIsSaidHere/.test(text), text],
     ['and come back as the same blocks',
         blocksAfter === blocksBefore && stillThere, {blocksBefore, blocksAfter, stillThere}],
+    ['a map read from text has the shape it was written in',
+        saved.mapColumns === 6 && saved.mapRows === 5,
+        {columns: saved.mapColumns, rows: saved.mapRows}],
+    ['and the tiles are where they were written',
+        saved.cornerTile === '#' && saved.insideTile === '.',
+        {corner: saved.cornerTile, inside: saved.insideTile}],
+    ['every wall is counted', saved.wallCount === 19, saved.wallCount],
+    ['a marked square can be found and stood on',
+        saved.underMe === '@', {x: saved.markX, y: saved.markY, under: saved.underMe}],
+    ['open floor is not a wall', saved.openHere === false, saved.openHere],
+    ['and the block in the middle is', saved.wallInTheMiddle === true, saved.wallInTheMiddle],
+    ['a long fall stops on top of the floor rather than inside it',
+        saved.stoppedInsideWall === false, saved.stoppedAt],
+    ['the map written back out is the map that went in',
+        saved.mapText === '####@#\n#....#\n#.##.#\n#....#\n######', saved.mapText],
+    ['Pathfinding is given the walls', saved.pathSeesWall === true, saved.pathSeesWall],
+    ['and not given the floor', saved.pathSeesOpen === false, saved.pathSeesOpen],
     ['the editor raised no errors', errs.length === 0, errs]
 ];
 

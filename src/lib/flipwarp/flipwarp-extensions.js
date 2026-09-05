@@ -62,6 +62,14 @@ const EXTENSIONS = [
         icon: 'pathfinding.svg',
         name: 'Pathfinding',
         description: 'Find a way round the walls instead of walking into them, and step along it.'
+    },
+    {
+        id: 'flipwarpTilemap',
+        file: 'tilemap.js',
+        icon: 'tilemap.svg',
+        name: 'Tilemap',
+        description: 'A level built out of squares, written down as text you can read. ' +
+            'Knows which squares are walls, and can hand them to Pathfinding.'
     }
 ];
 
