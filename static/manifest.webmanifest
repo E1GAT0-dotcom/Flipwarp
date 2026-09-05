@@ -1,4 +1,5 @@
 {
+  "id": "flipwarp",
   "short_name": "Flipwarp",
   "name": "Flipwarp",
   "description": "A Scratch editor that turns blocks into text and back with one button.",
@@ -6,16 +7,26 @@
     {
       "src": "images/192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any"
     },
     {
       "src": "images/512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "images/maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
-  "start_url": "editor",
-  "background_color": "#00cc00",
+  "start_url": "editor.html",
+  "scope": "./",
+  "background_color": "#ffffff",
   "display": "standalone",
+  "orientation": "any",
   "theme_color": "#00cc00"
 }
