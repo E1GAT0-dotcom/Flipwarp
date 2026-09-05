@@ -34,7 +34,8 @@ import CloudVariablesToggler from '../../containers/tw-cloud-toggler.jsx';
 import TWSaveStatus from './tw-save-status.jsx';
 import TWNews from './tw-news.jsx';
 
-import {openTipsLibrary, openSettingsModal, openRestorePointModal} from '../../reducers/modals';
+import {openTipsLibrary, openSettingsModal, openRestorePointModal,
+    openPackageModal} from '../../reducers/modals';
 import {setPlayer} from '../../reducers/mode';
 import {
     isTimeTravel220022BC,
@@ -267,7 +268,11 @@ class MenuBar extends React.Component {
         this.props.onRequestCloseFile();
     }
     handleClickPackager () {
-        this.props.onClickPackager();
+        // Flipwarp's own dialog rather than the packager website. The website
+        // has to ask about sixty things because it has never seen the project;
+        // this one is standing in front of it and can copy most of the
+        // answers. The full packager is still one link away, inside.
+        this.props.onOpenPackageModal();
         this.props.onRequestCloseFile();
     }
     handleClickDesktopSettings () {
@@ -1092,6 +1097,7 @@ MenuBar.propTypes = {
     onClickAddonSettings: PropTypes.func,
     onClickDesktopSettings: PropTypes.func,
     onClickPackager: PropTypes.func,
+    onOpenPackageModal: PropTypes.func,
     onClickRestorePoints: PropTypes.func,
     onClickEdit: PropTypes.func,
     onClickFile: PropTypes.func,
@@ -1193,6 +1199,7 @@ const mapDispatchToProps = dispatch => ({
     onRequestOpenAbout: () => dispatch(openAboutMenu()),
     onRequestCloseAbout: () => dispatch(closeAboutMenu()),
     onClickRestorePoints: () => dispatch(openRestorePointModal()),
+    onOpenPackageModal: () => dispatch(openPackageModal()),
     onClickSettings: () => dispatch(openSettingsMenu()),
     onClickSettingsModal: () => {
         dispatch(closeEditMenu());

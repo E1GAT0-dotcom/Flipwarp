@@ -1,0 +1,142 @@
+@import "../../css/colors.css";
+@import "../../css/units.css";
+
+.modal-content {
+    width: 30rem;
+    max-width: 100%;
+}
+
+.body {
+    padding: 1rem 1.5rem 1.5rem;
+    color: $text-primary;
+    font-size: 0.875rem;
+}
+
+.lead {
+    margin: 0 0 1rem;
+    line-height: 1.5;
+}
+
+.field {
+    margin-bottom: 1rem;
+}
+
+.field-label {
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    /* The whole row is the target, not the dot: this is opened on a phone as
+       often as anywhere else. */
+    padding: 0.4rem;
+    border-radius: 0.4rem;
+    cursor: pointer;
+}
+
+.choice:hover {
+    background: $ui-primary;
+}
+
+.choice > span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.choice-detail {
+    opacity: 0.8;
+    line-height: 1.4;
+}
+
+.inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.text {
+    flex-grow: 1;
+    min-width: 0;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.4rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.hint {
+    margin: 0.4rem 0 0 1.5rem;
+    opacity: 0.8;
+    line-height: 1.4;
+}
+
+.progress {
+    margin-bottom: 1rem;
+}
+
+.progress-label {
+    margin-bottom: 0.35rem;
+}
+
+.progress-track {
+    height: 0.5rem;
+    border-radius: 0.25rem;
+    background: $ui-black-transparent;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: $motion-primary;
+    /* Several of the packager's stages report no percentage at all, so the bar
+       goes back to nothing between them rather than jumping about. A smooth
+       move makes that look deliberate instead of broken. */
+    transition: width 0.2s;
+}
+
+.error {
+    margin-bottom: 1rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.4rem;
+    background: $error-light;
+    color: $error-primary;
+    line-height: 1.4;
+}
+
+.buttons {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.go {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1.25rem;
+    border: none;
+    border-radius: 0.4rem;
+    background: $motion-primary;
+    color: $ui-white;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: bold;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.go:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.more {
+    margin: 1rem 0 0;
+    opacity: 0.85;
+    line-height: 1.5;
+}

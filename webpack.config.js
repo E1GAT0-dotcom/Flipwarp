@@ -29,6 +29,16 @@ const htmlWebpackPluginCommon = {
 const CACHE_EPOCH = 'pentapod';
 
 const base = {
+    // The packager is a library that runs both in Node and in a browser. Its
+    // Node half reaches for the file system to cache the large downloads a
+    // desktop build needs; the half we use — a web page or a zip — never
+    // touches it, but the reference is in the bundle either way and webpack
+    // will not build without being told what to do with it. What it gets
+    // instead is the shim aliased below, which refuses rather than being
+    // absent — see that file for why the difference matters.
+    node: {
+        path: true
+    },
     mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
     devtool: process.env.SOURCEMAP || (process.env.NODE_ENV === 'production' ? false : 'cheap-module-source-map'),
     devServer: {
@@ -62,7 +72,8 @@ const base = {
         symlinks: false,
         alias: {
             'text-encoding$': path.resolve(__dirname, 'src/lib/tw-text-encoder'),
-            'scratch-render-fonts$': path.resolve(__dirname, 'src/lib/tw-scratch-render-fonts')
+            'scratch-render-fonts$': path.resolve(__dirname, 'src/lib/tw-scratch-render-fonts'),
+            fs: path.resolve(__dirname, 'src/lib/flipwarp/no-file-system.js')
         }
     },
     module: {
@@ -230,6 +241,16 @@ module.exports = [
                     {
                         from: 'static',
                         to: ''
+                    },
+                    {
+                        // The packager fetches these at the moment it packages
+                        // something, by a path relative to the page. They are
+                        // served from here rather than from TurboWarp's own
+                        // server so that packaging works on a network that can
+                        // reach this site and nothing else — and so that it
+                        // keeps working if that server ever moves.
+                        from: 'node_modules/@turbowarp/packager/dist/scaffolding',
+                        to: 'scaffolding'
                     }
                 ]
             }),
