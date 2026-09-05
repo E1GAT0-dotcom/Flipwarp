@@ -32,6 +32,8 @@ import ProjectFetcherHOC from '../lib/project-fetcher-hoc.jsx';
 import TitledHOC from '../lib/titled-hoc.jsx';
 import ProjectSaverHOC from '../lib/project-saver-hoc.jsx';
 import storage from '../lib/storage';
+import {installGameplay} from '../lib/flipwarp/gameplay.js';
+import {watchGameplaySettings} from '../lib/flipwarp/gameplay-settings.js';
 import vmListenerHOC from '../lib/vm-listener-hoc.jsx';
 import vmManagerHOC from '../lib/vm-manager-hoc.jsx';
 import cloudManagerHOC from '../lib/cloud-manager-hoc.jsx';
@@ -59,6 +61,11 @@ class GUI extends React.Component {
         this.props.onStorageInit(storage);
         this.props.onVmInit(this.props.vm);
         setProjectIdMetadata(this.props.projectId);
+        // The settings that change how a project runs. Put on here rather
+        // than beside each setting, because they wrap the VM itself and have
+        // to be in place before a project is loaded into it.
+        installGameplay(this.props.vm);
+        watchGameplaySettings();
     }
     componentDidUpdate (prevProps) {
         if (this.props.projectId !== prevProps.projectId) {

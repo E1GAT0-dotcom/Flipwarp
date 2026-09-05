@@ -31,8 +31,10 @@ const flipwarpBoxes = async () => page.$$eval(
     })).filter(x => x.checked !== undefined));
 
 const before = await flipwarpBoxes();
-// The first eight are Flipwarp's, in the order they are written.
-const mine = before.slice(0, 8);
+// The first fifteen are Flipwarp's, in the order they are written: eight for
+// the editor, then seven for how a project runs. Everything after them is
+// TurboWarp's own and is not this test's business.
+const mine = before.slice(0, 15);
 
 const results = [];
 for (const box of mine) {
@@ -78,7 +80,7 @@ const stuckBack = results.filter(r => !r.flippedBack);
 const badStorage = results.filter(r => !r.savedIsBoolean);
 
 const checks = [
-    ['there are eight Flipwarp switches', mine.length === 8, mine.length],
+    ['there are fifteen Flipwarp switches', mine.length === 15, mine.length],
     ['every one of them changes when clicked', stuck.length === 0, stuck.map(r => r.label)],
     ['and every one goes back again', stuckBack.length === 0, stuckBack.map(r => r.label)],
     ['what is saved is a real yes or no', badStorage.length === 0, badStorage.map(r => r.label)],

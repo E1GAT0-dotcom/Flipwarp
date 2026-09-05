@@ -157,3 +157,21 @@ stage doesn't "spill" out from under its rounded corners. instead, shift these o
     0% { opacity: 1; }
     100% { opacity: 0; }
 }
+
+/*
+ * Games that draw their own pointer — a crosshair sprite following the
+ * mouse — end up with two of them. Hiding the real one is a setting rather
+ * than something a project can ask for, because a page that takes your
+ * pointer away without being asked is a page you cannot use.
+ *
+ * On the root element rather than the stage, so that it still applies in full
+ * screen, where the stage is somewhere else in the page entirely. The
+ * overlays sit on top of the canvas and would each show a pointer of their
+ * own, so they are covered too.
+ */
+:global(html[data-hide-pointer="true"]) .stage,
+:global(html[data-hide-pointer="true"]) .stage-overlays,
+:global(html[data-hide-pointer="true"]) .monitor-wrapper,
+:global(html[data-hide-pointer="true"]) .frame-wrapper {
+    cursor: none;
+}

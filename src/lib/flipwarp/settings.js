@@ -33,7 +33,38 @@ const DEFAULTS = {
     // The other half of Copy as text: right-click the workspace to turn text
     // back into blocks.
     pasteAsBlocks: true,
-    blockSheet: true
+    blockSheet: true,
+
+    // --- how a project runs ------------------------------------------------
+    // These change the project itself rather than the editor around it, and
+    // every one is off by default: a project made on Flipwarp should behave
+    // the same as it does anywhere else unless somebody chose otherwise.
+
+    // Stop the project when the tab goes to the background, instead of
+    // letting a phone half-run it and hand you a game that moved on without
+    // you.
+    pauseOffScreen: false,
+    // Hide the mouse pointer over the stage, for games that draw their own.
+    hidePointer: false,
+    // Run at a fraction of speed: 1 is normal, 2 is half, 4 a quarter, 8 an
+    // eighth.
+    slowMotion: 1,
+    // A button beside pause that runs exactly one frame.
+    stepButton: false,
+    // Make "pick random" repeat itself, so the same run happens twice.
+    fixedRandom: false,
+    // The seed it repeats from. Any whole number; changing it changes the run.
+    randomSeed: 1,
+    // Compare boxes rather than pixels for "touching". Much faster, and
+    // sprites touch a little sooner than they look like they do.
+    fastCollisions: false,
+    // When a frame runs long, drop the drawing rather than the simulation.
+    skipFrames: false,
+    // How many pixels the stage is drawn with: 0.5, 1 or 2 times normal.
+    renderScale: 1,
+    // Hold a key down for at least one frame, so a tap between frames is not
+    // thrown away.
+    inputBuffering: false
 };
 
 const bool = (value, fallback) => (typeof value === 'boolean' ? value : fallback);
@@ -58,7 +89,23 @@ const read = () => {
             findReplace: bool(parsed.findReplace, DEFAULTS.findReplace),
             copyAsText: bool(parsed.copyAsText, DEFAULTS.copyAsText),
             pasteAsBlocks: bool(parsed.pasteAsBlocks, DEFAULTS.pasteAsBlocks),
-            blockSheet: bool(parsed.blockSheet, DEFAULTS.blockSheet)
+            blockSheet: bool(parsed.blockSheet, DEFAULTS.blockSheet),
+            pauseOffScreen: bool(parsed.pauseOffScreen, DEFAULTS.pauseOffScreen),
+            hidePointer: bool(parsed.hidePointer, DEFAULTS.hidePointer),
+            slowMotion: [1, 2, 4, 8].includes(parsed.slowMotion) ?
+                parsed.slowMotion : DEFAULTS.slowMotion,
+            stepButton: bool(parsed.stepButton, DEFAULTS.stepButton),
+            fixedRandom: bool(parsed.fixedRandom, DEFAULTS.fixedRandom),
+            // A seed is any whole number. Anything else — a word, a decimal,
+            // something that came back from storage mangled — is not an
+            // argument for refusing to run, so it becomes the default.
+            randomSeed: Number.isSafeInteger(parsed.randomSeed) ?
+                parsed.randomSeed : DEFAULTS.randomSeed,
+            fastCollisions: bool(parsed.fastCollisions, DEFAULTS.fastCollisions),
+            skipFrames: bool(parsed.skipFrames, DEFAULTS.skipFrames),
+            renderScale: [0.5, 1, 2].includes(parsed.renderScale) ?
+                parsed.renderScale : DEFAULTS.renderScale,
+            inputBuffering: bool(parsed.inputBuffering, DEFAULTS.inputBuffering)
         };
     } catch (e) {
         return {...DEFAULTS};

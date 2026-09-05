@@ -8,6 +8,7 @@ import StopAll from '../stop-all/stop-all.jsx';
 import TurboMode from '../turbo-mode/turbo-mode.jsx';
 import FramerateIndicator from '../tw-framerate-indicator/framerate-indicator.jsx';
 import RadioControl from '../flipwarp/radio-control.jsx';
+import StepControl from '../flipwarp/step-control.jsx';
 
 import styles from './controls.css';
 
@@ -64,6 +65,8 @@ const Controls = function (props) {
             {/* Shows itself or not according to its own setting, so the
                 controls bar does not have to be told about it. */}
             {!isSmall && <RadioControl running={active} />}
+            {/* Same arrangement: it decides for itself whether to be here. */}
+            {!isSmall && <StepControl />}
         </div>
     );
 };

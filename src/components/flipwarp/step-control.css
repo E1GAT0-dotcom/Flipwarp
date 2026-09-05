@@ -1,0 +1,43 @@
+@import "../../css/colors.css";
+
+/* Sits in the controls bar beside the green flag, so it takes its height from
+   the buttons already there rather than setting one of its own. */
+.group {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 0.75rem;
+}
+
+.button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.95rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: inherit;
+    /* The symbols are drawn from the font rather than from a picture: two of
+       them, on a control most people will never switch on, is not worth two
+       more files to keep in step with the themes. */
+    font-size: 0.6rem;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+}
+
+.button:hover {
+    background: $ui-primary;
+}
+
+.note {
+    color: $text-primary;
+    font-size: 0.7rem;
+    /* A project that is being held still looks exactly like a project that
+       has stopped, or one that has crashed. This says which. */
+    opacity: 0.8;
+}

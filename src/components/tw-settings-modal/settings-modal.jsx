@@ -678,6 +678,256 @@ const FlipwarpSettings = () => {
     );
 };
 
+// A choice rather than a switch, written so the explanation goes behind the
+// "?" like every other setting rather than sitting under the control taking
+// up room whether or not anyone wanted it.
+const ChoiceSetting = ({value, onChange, label, help, options}) => (
+    <Setting
+        active={options.findIndex(o => o.value === value) > 0}
+        help={help}
+        primary={
+            <label className={styles.label}>
+                {label}
+                {' '}
+                <select
+                    value={value}
+                    onChange={onChange}
+                >
+                    {options.map(option => (
+                        <option
+                            key={String(option.value)}
+                            value={option.value}
+                        >{option.label}</option>
+                    ))}
+                </select>
+            </label>
+        }
+    />
+);
+ChoiceSetting.propTypes = {
+    value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    onChange: PropTypes.func.isRequired,
+    label: PropTypes.node.isRequired,
+    help: PropTypes.node,
+    options: PropTypes.arrayOf(PropTypes.shape({
+        value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        label: PropTypes.string
+    })).isRequired
+};
+
+// The settings that change how a project runs rather than how the editor
+// looks. Every one is off to begin with: a project made here should behave
+// the way it behaves everywhere else until somebody decides otherwise.
+//
+// The labels are deliberately two or three words. What each one actually does
+// takes a paragraph, and a paragraph belongs behind the "?" — a column of
+// sentences is a column nobody reads.
+const GameplaySettings = () => {
+    const [settings, setLocal] = React.useState(getSettings());
+    const change = changes => {
+        setSettings(changes);
+        setLocal(getSettings());
+    };
+    return (
+        <React.Fragment>
+            <BooleanSetting
+                value={settings.pauseOffScreen}
+                onChange={e => change({pauseOffScreen: e.target.checked})}
+                label={<FormattedMessage
+                    defaultMessage="Pause off-screen"
+                    description="Flipwarp gameplay setting"
+                    id="flipwarp.settings.pauseOffScreen"
+                />}
+                help={<p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Holds the project still while its tab is in the background, and starts it again when you come back. Without this a phone half-runs it — sound keeps playing, timers keep counting — and you return to a game that carried on without you."
+                        description="Help text for the pause off-screen setting"
+                        id="flipwarp.settings.pauseOffScreenHelp"
+                    />
+                </p>}
+            />
+            <BooleanSetting
+                value={settings.hidePointer}
+                onChange={e => change({hidePointer: e.target.checked})}
+                label={<FormattedMessage
+                    defaultMessage="Hide pointer"
+                    description="Flipwarp gameplay setting"
+                    id="flipwarp.settings.hidePointer"
+                />}
+                help={<p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Takes the mouse pointer away over the stage, for games that draw their own with a sprite. It is still there — clicking works exactly as before — you just cannot see two of them."
+                        description="Help text for the hide pointer setting"
+                        id="flipwarp.settings.hidePointerHelp"
+                    />
+                </p>}
+            />
+            <ChoiceSetting
+                value={settings.slowMotion}
+                onChange={e => change({slowMotion: Number(e.target.value)})}
+                label={<FormattedMessage
+                    defaultMessage="Slow motion"
+                    description="Flipwarp gameplay setting"
+                    id="flipwarp.settings.slowMotion"
+                />}
+                options={[
+                    {value: 1, label: 'Normal speed'},
+                    {value: 2, label: 'Half speed'},
+                    {value: 4, label: 'Quarter speed'},
+                    {value: 8, label: 'An eighth'}
+                ]}
+                help={<p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Runs the whole project slower so you can see what it is doing. Waits and timers slow down with it, so a wait of one second still lasts one second as far as the project is concerned — nothing gets out of step with anything else, it all just takes longer to watch."
+                        description="Help text for the slow motion setting"
+                        id="flipwarp.settings.slowMotionHelp"
+                    />
+                </p>}
+            />
+            <BooleanSetting
+                value={settings.stepButton}
+                onChange={e => change({stepButton: e.target.checked})}
+                label={<FormattedMessage
+                    defaultMessage="Step buttons"
+                    description="Flipwarp gameplay setting"
+                    id="flipwarp.settings.stepButton"
+                />}
+                help={<p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Puts two buttons beside the green flag: one holds the project still, the other runs exactly one frame. Between them you can walk a project forward a frame at a time and watch what moves. This stops the project between frames; the Pause addon stops each script between blocks, so with both on you get two pause buttons that do different things."
+                        description="Help text for the step buttons setting"
+                        id="flipwarp.settings.stepButtonHelp"
+                    />
+                </p>}
+            />
+            <BooleanSetting
+                value={settings.fixedRandom}
+                onChange={e => change({fixedRandom: e.target.checked})}
+                label={<FormattedMessage
+                    defaultMessage="Fixed randomness"
+                    description="Flipwarp gameplay setting"
+                    id="flipwarp.settings.fixedRandom"
+                />}
+                help={<p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Makes pick random give the same answers every run, so the same project with the same inputs does the same thing twice. That is what makes a bug you only saw once findable. Change the number to get a different run that also repeats."
+                        description="Help text for the fixed randomness setting"
+                        id="flipwarp.settings.fixedRandomHelp"
+                    />
+                </p>}
+            />
+            {settings.fixedRandom ? (
+                <Setting
+                    active
+                    primary={
+                        <label className={styles.label}>
+                            <FormattedMessage
+                                defaultMessage="Seed"
+                                description="Flipwarp gameplay setting"
+                                id="flipwarp.settings.randomSeed"
+                            />
+                            {' '}
+                            <BufferedInput
+                                value={settings.randomSeed}
+                                onSubmit={value => change({randomSeed: Math.round(Number(value)) || 1})}
+                                className={styles.customStageSizeInput}
+                                type="number"
+                                step="1"
+                            />
+                        </label>
+                    }
+                    help={<p>
+                        <FormattedMessage
+                            // eslint-disable-next-line max-len
+                            defaultMessage="Which repeatable run you get. Any whole number will do, and every number gives a different run — this is the number to change when you want a different set of random answers that still repeats."
+                            description="Help text for the random seed"
+                            id="flipwarp.settings.randomSeedHelp"
+                        />
+                    </p>}
+                />
+            ) : null}
+            <BooleanSetting
+                value={settings.fastCollisions}
+                onChange={e => change({fastCollisions: e.target.checked})}
+                label={<FormattedMessage
+                    defaultMessage="Fast collisions"
+                    description="Flipwarp gameplay setting"
+                    id="flipwarp.settings.fastCollisions"
+                />}
+                help={<p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Touching checks whether two sprites' rectangles overlap instead of comparing every pixel. It is the single most expensive thing a busy project does, so this can be the difference between a game that keeps up and one that does not — but sprites touch a little sooner than they look like they do, which matters most for thin or oddly shaped costumes."
+                        description="Help text for the fast collisions setting"
+                        id="flipwarp.settings.fastCollisionsHelp"
+                    />
+                </p>}
+            />
+            <BooleanSetting
+                value={settings.skipFrames}
+                onChange={e => change({skipFrames: e.target.checked})}
+                label={<FormattedMessage
+                    defaultMessage="Skip frames"
+                    description="Flipwarp gameplay setting"
+                    id="flipwarp.settings.skipFrames"
+                />}
+                help={<p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="When a frame takes longer than it had, leave the drawing out rather than letting the whole project fall behind. The project keeps its speed and the picture updates every other frame instead of every frame — the difference between a game that looks slightly choppy and one that runs in slow motion."
+                        description="Help text for the skip frames setting"
+                        id="flipwarp.settings.skipFramesHelp"
+                    />
+                </p>}
+            />
+            <ChoiceSetting
+                value={settings.renderScale}
+                onChange={e => change({renderScale: Number(e.target.value)})}
+                label={<FormattedMessage
+                    defaultMessage="Render scale"
+                    description="Flipwarp gameplay setting"
+                    id="flipwarp.settings.renderScale"
+                />}
+                options={[
+                    {value: 0.5, label: 'Half — faster'},
+                    {value: 1, label: 'Normal'},
+                    {value: 2, label: 'Double — sharper'}
+                ]}
+                help={<p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="How many pixels the stage is drawn with. Double is sharper on a good screen and costs four times as much to draw; half is blurry and costs a quarter, which is often what keeps a phone at full speed. The project itself cannot tell the difference — coordinates and sizes are unchanged."
+                        description="Help text for the render scale setting"
+                        id="flipwarp.settings.renderScaleHelp"
+                    />
+                </p>}
+            />
+            <BooleanSetting
+                value={settings.inputBuffering}
+                onChange={e => change({inputBuffering: e.target.checked})}
+                label={<FormattedMessage
+                    defaultMessage="Input buffering"
+                    description="Flipwarp gameplay setting"
+                    id="flipwarp.settings.inputBuffering"
+                />}
+                help={<p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="A project only looks at the keyboard once a frame, so a tap shorter than a frame can happen entirely between two looks and never be seen at all. This holds a key down until the project has had one look at it. Nothing is invented — the press really happened; this only decides when the release is allowed to."
+                        description="Help text for the input buffering setting"
+                        id="flipwarp.settings.inputBufferingHelp"
+                    />
+                </p>}
+            />
+        </React.Fragment>
+    );
+};
+
 const SettingsModalComponent = props => (
     <Modal
         className={styles.modalContent}
@@ -690,6 +940,10 @@ const SettingsModalComponent = props => (
                 {'Flipwarp'}
             </Header>
             <FlipwarpSettings />
+            <Header>
+                {'Gameplay'}
+            </Header>
+            <GameplaySettings />
             <Header>
                 <FormattedMessage
                     defaultMessage="Featured"
