@@ -23,7 +23,10 @@ const STAGE_DIMENSION_DEFAULTS = {
     fullScreenSpacingBorderAdjustment: 8,
     // referencing css/units.css,
     // menuHeightAdjustment = $stage-menu-height
-    menuHeightAdjustment: 44
+    menuHeightAdjustment: 44,
+    // Room left either side of the stage on the player page, so it does not
+    // sit hard against the edge of a phone screen.
+    playerSideMargin: 8
 };
 
 /**
@@ -84,6 +87,23 @@ const getStageDimensions = (stageSize, customStageSize, isFullScreen) => {
             stageDimensions.height = stageDimensions.scale * stageDimensions.heightDefault;
             stageDimensions.width = stageDimensions.scale * stageDimensions.widthDefault;
         }
+
+        // The player shows the stage at its true size, which is right until
+        // the window is narrower than the stage. Then the page slides sideways
+        // and half the project is off the edge of the screen, which on a phone
+        // is every project. Shrink to fit instead.
+        //
+        // Only this size: the editor's stage sizes are part of a layout that
+        // is already given a minimum width to work in, and second-guessing
+        // them here would fight it.
+        if (stageSize === STAGE_DISPLAY_SIZES.full && typeof window !== 'undefined') {
+            const room = window.innerWidth - STAGE_DIMENSION_DEFAULTS.playerSideMargin;
+            if (room > 0 && stageDimensions.width > room) {
+                stageDimensions.scale = room / stageDimensions.widthDefault;
+                stageDimensions.width = room;
+                stageDimensions.height = stageDimensions.scale * stageDimensions.heightDefault;
+            }
+        }
     }
 
     // Round off dimensions to prevent resampling/blurriness
@@ -99,10 +119,15 @@ const getStageDimensions = (stageSize, customStageSize, isFullScreen) => {
  */
 const getMinWidth = stageSize => {
     const metadata = STAGE_DISPLAY_SCALE_METADATA[stageSize];
-    if (metadata.width) {
-        return metadata.width;
+    const wanted = metadata.width ? metadata.width : FIXED_WIDTH * metadata.scale;
+    // The player's stage shrinks to fit a window narrower than it is, so the
+    // area around it must be allowed to shrink as well — otherwise the stage
+    // fits and the box it is in still hangs over the edge of the screen.
+    if (stageSize === STAGE_DISPLAY_SIZES.full && typeof window !== 'undefined') {
+        const room = window.innerWidth - STAGE_DIMENSION_DEFAULTS.playerSideMargin;
+        if (room > 0 && wanted > room) return room;
     }
-    return FIXED_WIDTH * metadata.scale;
+    return wanted;
 };
 
 /**

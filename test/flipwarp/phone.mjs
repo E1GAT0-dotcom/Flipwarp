@@ -87,6 +87,22 @@ const keptFocus = await page.evaluate(() =>
     document.activeElement && document.activeElement.tagName === 'TEXTAREA');
 
 await page.screenshot({path: '/tmp/phone.png'});
+
+// --- the player page ------------------------------------------------------
+// A different layout with the same problem: the stage there is shown at the
+// project's own size, which is wider than a phone.
+const player = await ctx.newPage();
+player.on('pageerror', e => errs.push(`PAGEERROR: ${e.message.slice(0, 160)}`));
+await player.goto(`${SITE}/index.html`, {waitUntil: 'domcontentloaded'});
+await player.waitForTimeout(9000);
+const playerOverflow = await player.evaluate(() =>
+    document.documentElement.scrollWidth - document.documentElement.clientWidth);
+const stageFits = await player.evaluate(() => {
+    const canvas = [...document.querySelectorAll('canvas')].find(c => c.width > 100);
+    return canvas ? canvas.getBoundingClientRect().width <= window.innerWidth : false;
+});
+await player.screenshot({path: '/tmp/phone-player.png'});
+
 await browser.close();
 
 const checks = [
@@ -101,7 +117,9 @@ const checks = [
         symbols.includes('{') && symbols.includes(';'), symbols],
     ['tapping one types it', lengthAfter === lengthBefore + 1, {lengthBefore, lengthAfter}],
     ['without taking the keyboard away', keptFocus],
-    ['the editor raised no errors', errs.length === 0, errs]
+    ['the player page does not run off the side either', playerOverflow === 0, playerOverflow],
+    ['and its stage is shrunk to fit', stageFits],
+    ['neither page raised an error', errs.length === 0, errs]
 ];
 
 let failed = 0;

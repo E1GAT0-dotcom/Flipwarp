@@ -45,6 +45,27 @@ a {
     background-color: $page-background;
 }
 
+/*
+ * On a phone the stage shrinks to fit, but a few of the boxes stacked over it
+ * — the monitors, the green flag overlay — keep the project's own size and
+ * hang past the edge. They are all see-through and none of them is what you
+ * are looking at, so the page is told to stop offering to slide sideways to
+ * show them.
+ */
+@media (max-width: 720px) {
+    :global(html[data-input="touch"]) .container {
+        overflow-x: hidden;
+    }
+
+    /* And the writing under the stage wraps to the screen rather than being
+       laid out to the width of a stage that is no longer that wide. */
+    :global(html[data-input="touch"]) .center,
+    :global(html[data-input="touch"]) .section {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+}
+
 .editor {
     height: 100%;
 }

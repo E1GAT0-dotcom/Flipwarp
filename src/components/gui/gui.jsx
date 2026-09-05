@@ -12,6 +12,7 @@ import VM from 'scratch-vm';
 import Blocks from '../../containers/blocks.jsx';
 import FlipwarpPanel from '../flipwarp/flipwarp-panel.jsx';
 import PaneSwitcher from '../flipwarp/pane-switcher.jsx';
+import FitToWindow from '../flipwarp/fit-to-window.jsx';
 import CostumeTab from '../../containers/costume-tab.jsx';
 import TargetPane from '../../containers/target-pane.jsx';
 import SoundTab from '../../containers/sound-tab.jsx';
@@ -210,19 +211,24 @@ const GUIComponent = props => {
                         }}
                     />
                 ) : null}
-                <StageWrapper
-                    isFullScreen={isFullScreen}
-                    isEmbedded={isEmbedded}
-                    isRendererSupported={isRendererSupported()}
-                    isRtl={isRtl}
-                    loading={loading}
-                    stageSize={STAGE_SIZE_MODES.full}
-                    vm={vm}
-                >
-                    {alertsVisible ? (
-                        <Alerts className={styles.alertsContainer} />
-                    ) : null}
-                </StageWrapper>
+                {/* The player works its size out from the window, so it needs
+                    telling when the window changes — turning a phone sideways
+                    otherwise leaves the stage the shape it was. */}
+                <FitToWindow>
+                    <StageWrapper
+                        isFullScreen={isFullScreen}
+                        isEmbedded={isEmbedded}
+                        isRendererSupported={isRendererSupported()}
+                        isRtl={isRtl}
+                        loading={loading}
+                        stageSize={STAGE_SIZE_MODES.full}
+                        vm={vm}
+                    >
+                        {alertsVisible ? (
+                            <Alerts className={styles.alertsContainer} />
+                        ) : null}
+                    </StageWrapper>
+                </FitToWindow>
                 {alwaysEnabledModals}
             </React.Fragment>
         ) : (
