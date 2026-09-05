@@ -3,7 +3,8 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import VM from 'scratch-vm';
 
-import Controls from '../../containers/controls.jsx';
+import GreenFlag from '../green-flag/green-flag.jsx';
+import StopAll from '../stop-all/stop-all.jsx';
 import styles from './pane-switcher.css';
 
 const CODE = 'code';
@@ -35,7 +36,7 @@ const STAGE = 'stage';
 class PaneSwitcher extends React.Component {
     constructor (props) {
         super(props);
-        bindAll(this, ['handleShowCode', 'handleShowStage', 'handleResize']);
+        bindAll(this, ['handleShowCode', 'handleShowStage', 'handleResize', 'handleGo', 'handleStop']);
         this.state = {pane: CODE};
     }
     componentDidMount () {
@@ -47,6 +48,16 @@ class PaneSwitcher extends React.Component {
     componentWillUnmount () {
         window.removeEventListener('resize', this.handleResize);
         delete document.documentElement.dataset.pane;
+    }
+    handleGo () {
+        // The same two steps the controls above the stage take: a project that
+        // has never been started has to be started before the flag means
+        // anything.
+        if (!this.props.vm.runtime._steppingInterval) this.props.vm.start();
+        this.props.vm.greenFlag();
+    }
+    handleStop () {
+        this.props.vm.stopAll();
     }
     handleResize () {
         this.scrollTo(this.state.pane, 'auto');
@@ -71,11 +82,19 @@ class PaneSwitcher extends React.Component {
         const {pane} = this.state;
         return (
             <div className={styles.bar}>
-                <Controls
-                    isSmall
-                    className={styles.controls}
-                    vm={this.props.vm}
-                />
+                {/* The two buttons themselves rather than the whole control
+                    strip: that also carries the radio, and a second radio
+                    player in a hidden bar is a second radio player. */}
+                <div className={styles.controls}>
+                    <GreenFlag
+                        title={'Go'}
+                        onClick={this.handleGo}
+                    />
+                    <StopAll
+                        title={'Stop'}
+                        onClick={this.handleStop}
+                    />
+                </div>
                 <div className={styles.panes}>
                     <button
                         className={`${styles.pane} ${pane === CODE ? styles.current : ''}`}

@@ -13,6 +13,24 @@
 .stage-canvas-wrapper {
     /* Hides negative space between edge of rounded corners + container, when selected */
     user-select: none;
+
+    /*
+        The on-screen controls sit over the stage, so this is what they sit in.
+        See src/components/flipwarp/stage-controls.jsx.
+
+        Positioning it has a side effect worth knowing about: a positioned box
+        paints over its unpositioned siblings, and this one reaches up under
+        the row of stage buttons — which is what the padding above is for. So
+        that row is given a place in the order too, above this one, or it stops
+        taking clicks at all.
+    */
+    position: relative;
+    z-index: 0;
+}
+
+.stage-menu-wrapper {
+    position: relative;
+    z-index: 1;
 }
 
 .offset-controls .stage-canvas-wrapper {

@@ -8,6 +8,7 @@ import {STAGE_DISPLAY_SIZES} from '../../lib/layout-constants.js';
 import StageHeader from '../../containers/stage-header.jsx';
 import Stage from '../../containers/stage.jsx';
 import Loader from '../loader/loader.jsx';
+import StageControls from '../flipwarp/stage-controls.jsx';
 
 import styles from './stage-wrapper.css';
 
@@ -50,6 +51,9 @@ const StageWrapperComponent = function (props) {
                         /> :
                         null
                 }
+                {/* Only on a touchscreen, and only for the keys the project
+                    itself asks about; the stylesheet and the blocks decide. */}
+                <StageControls vm={vm} />
             </Box>
             {loading ? (
                 <Loader isFullScreen={isFullScreen} />
