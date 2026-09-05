@@ -910,6 +910,23 @@ const GameplaySettings = () => {
                 </p>}
             />
             <BooleanSetting
+                value={settings.statsReadout}
+                onChange={e => change({statsReadout: e.target.checked})}
+                label={<FormattedMessage
+                    defaultMessage="Stats readout"
+                    description="Flipwarp gameplay setting"
+                    id="flipwarp.settings.statsReadout"
+                />}
+                help={<p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="A small panel in the corner of the stage: frames a second as counted rather than as asked for, how long a frame is taking against how long it has, how many scripts are running, and how many sprites and clones are about. The frame time turns red when it goes over, which is the moment a project starts feeling slow. Editor only; a packaged project never shows it."
+                        description="Help text for the stats readout setting"
+                        id="flipwarp.settings.statsReadoutHelp"
+                    />
+                </p>}
+            />
+            <BooleanSetting
                 value={settings.inputBuffering}
                 onChange={e => change({inputBuffering: e.target.checked})}
                 label={<FormattedMessage

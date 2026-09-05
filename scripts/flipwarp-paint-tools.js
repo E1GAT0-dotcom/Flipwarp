@@ -275,6 +275,26 @@ import bitWandIcon from '../bit-wand-mode/wand.svg';`
     }
 ];
 
+// Whether an edit has already been made.
+//
+// Comparing the text exactly was wrong, and wrong in a way that only showed up
+// months later: several of these edits add a comment explaining themselves,
+// and rewording one of those comments makes an installed copy that was patched
+// by the older version of this script look unpatched. It is not unpatched, so
+// the anchor it wants is gone too, and the script stops with a message about
+// TurboWarp having rewritten a file that TurboWarp had not touched.
+//
+// So the comparison ignores comments and how the code is spaced, and asks only
+// whether the code this edit adds is there.
+const bones = text => text
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/\/\/[^\n]*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const alreadyDone = (fileText, added) => fileText.includes(added) ||
+    bones(fileText).includes(bones(added));
+
 const main = () => {
     if (!fs.existsSync(INTO)) {
         // A bare checkout with nothing installed yet. Nothing to lay over.
@@ -293,7 +313,7 @@ const main = () => {
     for (const edit of EDITS) {
         const target = path.join(INTO, edit.file);
         const before = fs.readFileSync(target, 'utf8');
-        if (before.includes(edit.put)) continue; // already done
+        if (alreadyDone(before, edit.put)) continue;
         if (!before.includes(edit.find)) {
             missing.push(`${edit.file}: ${edit.named}`);
             continue;

@@ -378,6 +378,11 @@ export const installGameplay = virtualMachine => {
             return realStep.call(this);
         } finally {
             lastFrameCost = Date.now() - started;
+            // Left where the stats readout can find it. It is measured here
+            // anyway, to decide whether to drop a drawing, so reporting it
+            // costs nothing and measuring it a second time somewhere else
+            // would cost twice.
+            runtime.flipwarpFrameCost = lastFrameCost;
             skipThisDraw = false;
         }
     };

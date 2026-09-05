@@ -7,8 +7,15 @@
 }
 
 .body {
+    /* The dialog's own background. Without it the box is see-through and the
+       blocks behind show through the words, which is what it did. The frame
+       and the title bar come from the modal around it and are painted
+       already; the middle is ours to fill. */
+    background: $ui-modal-background;
+    color: $ui-modal-foreground;
     padding: 1rem 1.5rem 1.5rem;
-    color: $text-primary;
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
     font-size: 0.875rem;
 }
 
@@ -39,7 +46,8 @@
 }
 
 .choice:hover {
-    background: $ui-primary;
+    /* A wash rather than a colour, so it reads the same on either theme. */
+    background: $ui-black-transparent;
 }
 
 .choice > span {
@@ -65,8 +73,8 @@
     padding: 0.35rem 0.5rem;
     border: 1px solid $ui-black-transparent;
     border-radius: 0.4rem;
-    background: $ui-white;
-    color: $text-primary;
+    background: $ui-modal-background;
+    color: $ui-modal-foreground;
     font-family: inherit;
     font-size: inherit;
 }

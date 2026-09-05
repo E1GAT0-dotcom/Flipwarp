@@ -64,7 +64,10 @@ const DEFAULTS = {
     renderScale: 1,
     // Hold a key down for at least one frame, so a tap between frames is not
     // thrown away.
-    inputBuffering: false
+    inputBuffering: false,
+    // A small readout over the stage: frames a second, how long a frame is
+    // taking, how many scripts are running, how many clones are about.
+    statsReadout: false
 };
 
 const bool = (value, fallback) => (typeof value === 'boolean' ? value : fallback);
@@ -105,7 +108,8 @@ const read = () => {
             skipFrames: bool(parsed.skipFrames, DEFAULTS.skipFrames),
             renderScale: [0.5, 1, 2].includes(parsed.renderScale) ?
                 parsed.renderScale : DEFAULTS.renderScale,
-            inputBuffering: bool(parsed.inputBuffering, DEFAULTS.inputBuffering)
+            inputBuffering: bool(parsed.inputBuffering, DEFAULTS.inputBuffering),
+            statsReadout: bool(parsed.statsReadout, DEFAULTS.statsReadout)
         };
     } catch (e) {
         return {...DEFAULTS};

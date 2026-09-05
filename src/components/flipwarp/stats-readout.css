@@ -1,0 +1,44 @@
+@import "../../css/colors.css";
+
+/* Over the stage, in the corner furthest from anything you click. Taps pass
+   straight through it: a readout that swallows a click on the stage would
+   change the very thing it is measuring. */
+.readout {
+    position: absolute;
+    /* Where exactly is set by the component, from the stage canvas's own
+       position: the box this sits in is taller than the stage in the editor
+       and a different shape again in full screen. */
+    z-index: 5;
+    padding: 0.3rem 0.45rem;
+    border-radius: 0.3rem;
+    background: rgba(0, 0, 0, 0.62);
+    color: #ffffff;
+    /* A fixed-width font so the numbers do not shuffle sideways every time
+       they change, which is unreadable at two samples a second. */
+    font-family: monospace;
+    font-size: 0.7rem;
+    line-height: 1.35;
+    pointer-events: none;
+    user-select: none;
+}
+
+.line {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+
+.label {
+    opacity: 0.7;
+}
+
+.value {
+    font-variant-numeric: tabular-nums;
+}
+
+/* The one number worth looking at twice. */
+.over {
+    color: #ffb0b0;
+    font-variant-numeric: tabular-nums;
+    font-weight: bold;
+}

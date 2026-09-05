@@ -9,6 +9,7 @@ import StageHeader from '../../containers/stage-header.jsx';
 import Stage from '../../containers/stage.jsx';
 import Loader from '../loader/loader.jsx';
 import StageControls from '../flipwarp/stage-controls.jsx';
+import StatsReadout from '../flipwarp/stats-readout.jsx';
 
 import styles from './stage-wrapper.css';
 
@@ -54,6 +55,10 @@ const StageWrapperComponent = function (props) {
                 {/* Only on a touchscreen, and only for the keys the project
                     itself asks about; the stylesheet and the blocks decide. */}
                 <StageControls vm={vm} />
+                {/* Shows itself or not according to its own setting. Inside
+                    the canvas wrapper so it can sit over the stage rather
+                    than beside it. */}
+                <StatsReadout vm={vm} />
             </Box>
             {loading ? (
                 <Loader isFullScreen={isFullScreen} />

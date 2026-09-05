@@ -54,6 +54,21 @@ await page.waitForTimeout(600);
 const dialogShowing = await page.evaluate(() =>
     Boolean(document.querySelector('[class*="package-modal_body"]')));
 
+// A dialog with no background of its own is see-through, and the blocks
+// behind it show through the words. The frame and the title bar come from the
+// modal; the middle is this file's to paint, and it was not painting it.
+const dialogIsSolid = await page.evaluate(() => {
+    const body = document.querySelector('[class*="package-modal_body"]');
+    if (!body) return null;
+    const paint = getComputedStyle(body).backgroundColor;
+    const numbers = (paint.match(/[\d.]+/g) || []).map(Number);
+    return {
+        paint,
+        // rgb() with no alpha, or rgba() with an alpha of one.
+        opaque: numbers.length === 3 || (numbers.length === 4 && numbers[3] === 1)
+    };
+});
+
 // --- making a web page ----------------------------------------------------
 await page.evaluate(() => {
     const input = document.querySelector('[class*="package-modal_text"]');
@@ -143,6 +158,8 @@ const checks = [
     ['Package project is in it', clicked === true, clicked],
     ['and opens Flipwarp\'s own dialog, not the packager website',
         dialogShowing === true, dialogShowing],
+    ['and the dialog is not see-through',
+        dialogIsSolid && dialogIsSolid.opaque === true, dialogIsSolid],
     ['it makes a file', outcome.made === true, outcome],
     ['named after what you called it', outcome.name === 'Test Package.html', outcome],
     ['and says how big it is', /MB/.test(outcome.said || ''), outcome],
