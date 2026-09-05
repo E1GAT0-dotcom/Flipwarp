@@ -11,7 +11,7 @@ import {handleFileUpload, costumeUpload} from '../lib/file-uploader.js';
 import errorBoundaryHOC from '../lib/error-boundary-hoc.jsx';
 import DragConstants from '../lib/drag-constants';
 import {emptyCostume} from '../lib/empty-assets';
-import {setFolder, folderOf, foldersIn, groupedOrder, installCostumeFolders} from '../lib/flipwarp/costume-folders.js';
+import {setFolder, folderOf, foldersIn, groupedOrder} from '../lib/flipwarp/costume-folders.js';
 import sharedMessages from '../lib/shared-messages';
 import downloadBlob from '../lib/download-blob';
 
@@ -112,7 +112,7 @@ class CostumeTab extends React.Component {
         //
         // Read from the click itself rather than taken from whoever forwards
         // it, because the Folders addon replaces the costume list's items and
-        // calls back with the number alone — the keys never survive the trip.
+        // calls back with the number alone, so the keys never survive the trip.
         // Watching in the capture phase means this runs before anything that
         // could swallow the event, whoever ends up handling it.
         // Folders the person has closed, by name. Kept per sprite and only
@@ -129,22 +129,8 @@ class CostumeTab extends React.Component {
         };
     }
 
-    // The keys from the click happening now. Anything older than a moment ago
-    // belongs to a different click and is ignored, so a stale ctrl can never
-    // turn an ordinary click into an adding one.
-    heldKeys () {
-        const fresh = Date.now() - this.lastKeys.at < 1000;
-        return fresh ? this.lastKeys : {ctrl: false, shift: false};
-    }
     componentDidMount () {
         document.addEventListener('mousedown', this.rememberKeys, true);
-        // Makes folders survive being saved and opened again. Safe to call
-        // more than once; only the first does anything.
-        installCostumeFolders(this.props.vm);
-    }
-
-    componentWillUnmount () {
-        document.removeEventListener('mousedown', this.rememberKeys, true);
     }
 
     componentWillReceiveProps (nextProps) {
@@ -177,6 +163,18 @@ class CostumeTab extends React.Component {
             this.anchorIndex = null;
             this.setState({selectedCostumeIndex: target.currentCostume, selectedIndices: []});
         }
+    }
+
+    componentWillUnmount () {
+        document.removeEventListener('mousedown', this.rememberKeys, true);
+    }
+
+    // The keys from the click happening now. Anything older than a moment ago
+    // belongs to a different click and is ignored, so a stale ctrl can never
+    // turn an ordinary click into an adding one.
+    heldKeys () {
+        const fresh = Date.now() - this.lastKeys.at < 1000;
+        return fresh ? this.lastKeys : {ctrl: false, shift: false};
     }
     // Clicking a costume. Plain click picks that one and forgets any others;
     // ctrl or cmd adds and removes one at a time; shift takes everything
@@ -220,7 +218,7 @@ class CostumeTab extends React.Component {
 
     // The chosen ones, newest index first. Deleting or duplicating from the
     // end means the numbers of the ones still to come cannot shift underneath
-    // us — which is the whole reason a batch delete goes wrong when it does.
+    // us, which is the whole reason a batch delete goes wrong when it does.
     selectedDescending () {
         return [...new Set(this.state.selectedIndices)].sort((a, b) => b - a);
     }
@@ -362,12 +360,41 @@ class CostumeTab extends React.Component {
     handleFileUploadClick () {
         this.fileInput.click();
     }
+    // Where a drop landed, as a costume rather than as a row on screen.
+    //
+    // The list hands back a position counted down the rows it can see, which
+    // with folders in use is not the position in the costume list: the rows
+    // are in a different order, and the ones inside a closed folder are not
+    // there at all. Handing that number straight to the VM moved whichever
+    // costume happened to be at that position in the real list, which was
+    // usually not the one under the finger.
+    costumeIndexForRow (row) {
+        const costumes = (this.props.vm.editingTarget.sprite.costumes) || [];
+        const onScreen = costumes
+            .map((costume, index) => ({costume, index}))
+            .filter(({costume}) => !(folderOf(costume) && this.isCollapsed(folderOf(costume))))
+            .sort((a, b) => this.displayPositionOf(a.index) - this.displayPositionOf(b.index))
+            .map(({index}) => index);
+        if (!onScreen.length) return 0;
+        const clamped = Math.max(0, Math.min(onScreen.length - 1, row));
+        return onScreen[clamped];
+    }
+
+    // The same arrangement render() shows, worked out again here because a
+    // drop has to be turned into a costume before anything is moved.
+    displayPositionOf (costumeIndex) {
+        const costumes = (this.props.vm.editingTarget.sprite.costumes) || [];
+        const rows = groupedOrder(costumes);
+        const at = rows.findIndex(row => row.index === costumeIndex);
+        return at === -1 ? costumeIndex : at;
+    }
+
     handleDrop (dropInfo) {
         if (dropInfo.dragType === DragConstants.COSTUME) {
             const sprite = this.props.vm.editingTarget.sprite;
             const activeCostume = sprite.costumes[this.state.selectedCostumeIndex];
             this.props.vm.reorderCostume(this.props.vm.editingTarget.id,
-                dropInfo.index, dropInfo.newIndex);
+                dropInfo.index, this.costumeIndexForRow(dropInfo.newIndex));
             this.setState({selectedCostumeIndex: sprite.costumes.indexOf(activeCostume)});
         } else if (dropInfo.dragType === DragConstants.BACKPACK_COSTUME) {
             this.props.vm.addCostume(dropInfo.payload.body, {
@@ -424,7 +451,7 @@ class CostumeTab extends React.Component {
 
         // Where each costume sits on screen once folders are taken into
         // account, and where each folder's own line goes. The costumes are
-        // not moved — only shown in a different order.
+        // not moved; only shown in a different order.
         const costumes = target.costumes || [];
         const rows = groupedOrder(costumes);
         const displayOrder = new Array(costumes.length).fill(0);

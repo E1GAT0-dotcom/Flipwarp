@@ -36,7 +36,18 @@ class FitToWindow extends React.Component {
         });
     }
     render () {
-        return this.props.children;
+        // Handing back the very same element is what this used to do, and it
+        // did nothing at all: React compares the element it is given with the
+        // one from last time, sees the same object, and skips the whole
+        // subtree. The state above changed and nothing was drawn again, which
+        // is the exact failure this component was written to prevent.
+        //
+        // Copying the element makes a new object with the same type and the
+        // same key, so React updates what is already there rather than
+        // building it again. Nothing is remounted: the stage keeps its canvas
+        // and its renderer, and simply works out its size afresh.
+        const only = React.Children.only(this.props.children);
+        return React.isValidElement(only) ? React.cloneElement(only) : only;
     }
 }
 

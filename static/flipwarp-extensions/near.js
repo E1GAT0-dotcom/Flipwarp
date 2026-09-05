@@ -14,6 +14,11 @@
 // that moves everything and then asks one question should not pay for a rebuild
 // per question, and one that asks a hundred questions between moves should not
 // pay for a hundred rebuilds.
+//
+// It is thrown away, though, at the moments it is certainly wrong: the green
+// flag, the stop button, and a sprite or a clone coming or going. None of those
+// is movement, they are the project becoming a different set of sprites, and a
+// note of where the old set was is worse than no note at all.
 
 (function (Scratch) {
     'use strict';
@@ -30,6 +35,7 @@
             this.grid = new Map();
             this.built = false;
             this.counted = 0;
+            this.watchTheProject();
         }
 
         getInfo () {
@@ -115,6 +121,46 @@
             // A square of nothing would put every sprite in its own square and
             // make the grid slower than the thing it replaces.
             this.square = size >= 4 ? size : 4;
+            this.forget();
+        }
+
+        /**
+         * Watch for the moments the note is certainly out of date.
+         *
+         * The grid is a note of where everything was, and a note is only ever
+         * wrong at some particular moment. Three of those moments are not
+         * about movement at all: the project starting again, which puts every
+         * sprite back where it began; the project being stopped, which throws
+         * every clone away; and a sprite or a clone appearing or going away,
+         * which changes who is in the grid rather than where they are. The
+         * last one is why this matters beyond wrong answers: a deleted clone
+         * that is still sitting in a bucket cannot be freed, so a project that
+         * makes and deletes clones all day would hold every one of them until
+         * something happened to ask for a rebuild.
+         *
+         * Movement is deliberately not on the list. Sprites moving is the
+         * commonest thing that happens in a project, and treating it as news
+         * would mean a rebuild every frame, which is exactly the cost this
+         * extension exists to avoid. A project that moves everything and then
+         * wants a fresh answer says so with "note where every sprite is".
+         */
+        watchTheProject () {
+            const runtime = vm && vm.runtime;
+            if (!runtime || typeof runtime.on !== 'function') return;
+            const forget = () => this.forget();
+            runtime.on('PROJECT_START', forget);
+            runtime.on('PROJECT_STOP_ALL', forget);
+            runtime.on('targetWasCreated', forget);
+            runtime.on('targetWasRemoved', forget);
+        }
+
+        // Thrown away rather than rebuilt on the spot: a project that never
+        // asks another question should not pay for a rebuild, and the sprites
+        // in the old grid are let go of straight away rather than being held
+        // until whenever the next question comes.
+        forget () {
+            this.grid = new Map();
+            this.counted = 0;
             this.built = false;
         }
 

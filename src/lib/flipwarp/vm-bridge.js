@@ -54,6 +54,28 @@ const restorePositions = (text, positions) => {
         return k >= lines.length || lines[k].trim() === '';
     };
 
+    // How deep into a block body a line is. A blank line inside a body is
+    // somebody spacing their code out, not the end of a script, and treating
+    // it as the end of one used to split the script in two: in a brace style
+    // the tail detached onto the canvas as its own script, and in an
+    // indentation style the marker went in at column 0 and the next line was
+    // reported as wrongly indented, pointing at a line nobody had touched.
+    //
+    // Braces answer this exactly. An indentation style has no braces, so the
+    // indent of the line does instead: a line indented at all is inside
+    // something.
+    let depth = 0;
+    const insideABody = index => {
+        if (depth > 0) return true;
+        // Look ahead: in an indentation style the blank line sits between two
+        // indented lines, and both of those are inside the same body.
+        for (let k = index + 1; k < lines.length; k++) {
+            if (lines[k].trim() === '') continue;
+            return /^\s+\S/.test(lines[k]);
+        }
+        return false;
+    };
+
     for (let index = 0; index < lines.length; index++) {
         const line = lines[index];
         const blank = line.trim() === '';
@@ -73,8 +95,14 @@ const restorePositions = (text, positions) => {
             scriptIndex++;
             atScriptStart = false;
         }
-        if (blank) atScriptStart = true;
+        if (blank && !insideABody(index)) atScriptStart = true;
         out.push(line);
+        // Counted after the line is kept, so a line that closes a body is
+        // itself still inside it.
+        for (const ch of line.replace(/"(\\.|[^"\\])*"/g, '')) {
+            if (ch === '{') depth++;
+            else if (ch === '}') depth = Math.max(0, depth - 1);
+        }
     }
     return out.join('\n');
 };
@@ -136,6 +164,32 @@ export const checkText = (vm, text, positions = [], style) => {
  * @param {string} text the edited text
  * @returns {Promise<{blocks: number, changed: boolean}>} what was applied
  */
+// Variables and lists the text names that the project does not have.
+//
+// Writing a name into a declaration is how you make one here, the same way
+// typing a new name in a text editor makes a new thing. What must not happen
+// is what happened before: the blocks were pointed at an id nothing owned, so
+// the variable was in no palette, on no monitor, and saving the project wrote
+// out blocks referring to something that was not there.
+//
+// This is also what a rename looks like from here. Changing "variable score"
+// to "variable points" makes points and leaves score alone, with its value and
+// its monitor, now used by nothing. That is deliberate: the two are the same
+// keystrokes and only the person typing knows which they meant, and making a
+// new one is the half that can be undone by deleting it. Find and replace
+// renames properly, and says so.
+const makeMissingVariables = (vm, liveTarget, created = []) => {
+    if (!created.length) return;
+    const stage = vm.runtime.getTargetForStage();
+    for (const item of created) {
+        if (item.kind === 'broadcast') continue;
+        const owner = item.global ? stage : liveTarget;
+        if (!owner || owner.lookupVariableById(item.id)) continue;
+        owner.createVariable(item.id, item.name, item.kind === 'list' ? 'list' : '');
+    }
+    vm.emitTargetsUpdate();
+};
+
 export const applyText = async (vm, text, positions = [], style) => {
     const project = projectOf(vm);
     const name = editingName(vm);
@@ -154,6 +208,7 @@ export const applyText = async (vm, text, positions = [], style) => {
     if (!liveTarget) throw new Error('No sprite is selected.');
 
     vm.stopAll();
+    makeMissingVariables(vm, liveTarget, rebuilt.created);
     replaceTargetBlocks(liveTarget, rebuilt.blocks, rebuilt.comments);
     vm.emitWorkspaceUpdate();
     vm.runtime.emitProjectChanged();

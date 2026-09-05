@@ -44,7 +44,22 @@ let lastRealNow = Date.now();
 let frozen = false;
 let framesOwed = 0;
 
-const timeIsBent = () => frozen || framesOwed > 0 || getSettings().slowMotion > 1;
+// Slowing asked for by something other than the settings, which in practice
+// means the Accessibility extension's block for letting a player choose the
+// speed. It goes through here rather than wrapping the step function a second
+// time, because two owners of the clock is not a clock: the second wrapper
+// stopped calling the first while it was slowing, so the first never noticed
+// the time going by and handed the whole of it over in one lump the moment
+// the speed went back to normal. Every wait fired at once and everything
+// gliding teleported, which is precisely what this file exists to prevent.
+let extraSlowdown = 1;
+
+// How much slower than normal the project is running, from both reasons at
+// once. Half speed asked for twice is a quarter, which is what somebody
+// setting both would expect.
+const slowdown = () => Math.max(1, getSettings().slowMotion) * Math.max(1, extraSlowdown);
+
+const timeIsBent = () => frozen || framesOwed > 0 || slowdown() > 1;
 
 const advanceClock = () => {
     const realNow = Date.now();
@@ -345,6 +360,18 @@ export const installGameplay = virtualMachine => {
         this.currentMSecs = Math.round(advanceClock());
     };
 
+    // The one way in for anything else that wants the project to run slower.
+    // An extension inside a packaged project has no editor around it and
+    // installs its own; in the editor it finds this and uses it, so there is
+    // still only one clock.
+    runtime.flipwarpTime = {
+        setSlowdown: value => {
+            const n = Number(value);
+            extraSlowdown = Number.isFinite(n) && n >= 1 ? n : 1;
+        },
+        getSlowdown: () => extraSlowdown
+    };
+
     // --- frames: freeze, slow motion, stepping, skipping the drawing -------
     const realStep = runtime._step;
     // How long the last frame took, and whether the last one skipped its
@@ -363,8 +390,9 @@ export const installGameplay = virtualMachine => {
             framesOwed--;
         } else if (frozen) {
             return;
-        } else if (settings.slowMotion > 1) {
-            tick = (tick + 1) % settings.slowMotion;
+        } else if (slowdown() > 1) {
+            const every = slowdown();
+            tick = (tick + 1) % every;
             if (tick !== 0) return;
         }
 

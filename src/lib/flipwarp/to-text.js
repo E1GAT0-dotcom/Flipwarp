@@ -70,8 +70,20 @@ export function targetToText(target, ctx, options = {}) {
   }
   for (const [id, name] of Object.entries(ctx.broadcasts)) names.add(id, name, 'broadcast', true);
 
+  // Custom blocks, before any script is written out. Their names are handed
+  // out in a fixed order rather than in the order the scripts happen to sit on
+  // the canvas, so moving a script about cannot rename a custom block.
+  const proccodes = new Set();
+  for (const b of Object.values(blocks)) {
+    if (b && typeof b === 'object' && b.mutation && b.mutation.proccode) proccodes.add(b.mutation.proccode);
+  }
+  for (const proccode of [...proccodes].sort()) procIdentFromProccode(proccode, st, names);
+
   const out = [];
-  const decls = names.all().filter(r => usedIn(target, ctx, r));
+  // Custom blocks live in the same table so that they cannot take a name a
+  // variable is using, but they are not declared: their define line is their
+  // declaration.
+  const decls = names.all().filter(r => r.kind !== 'proc' && usedIn(target, ctx, r));
   for (const r of decls) out.push(declLine(r, st));
   if (decls.length) out.push('');
 
@@ -146,7 +158,19 @@ function blockToLines(id, block, blocks, names, depth, ctx, byBlock, st, ind) {
   }
 
   const def = BLOCKS[op];
-  if (!def) throw new ConversionError(unknownBlockMessage(op), { opcode: op });
+  if (!def) {
+    // A block that reports a value, sitting on the canvas on its own. Dragging
+    // a variable out of the palette to watch it is a common habit, and it left
+    // the sprite unconvertible with a message blaming the "data" extension,
+    // which was both wrong and no help in finding the block. Reporters are
+    // known to the phrasebook, they are just not statements, so it is written
+    // as the expression it is and read back as a block standing alone.
+    if (GETTERS[op]) {
+      const text = exprToText([3, id], blocks, names, 0, ctx, undefined, st);
+      return { lines: [`${pad}${text}${st.terminator}`] };
+    }
+    throw new ConversionError(unknownBlockMessage(op), { opcode: op });
+  }
 
   // if / if-else get real JavaScript shape
   if (def.syntax === 'if' || def.syntax === 'ifElse') {
@@ -334,10 +358,28 @@ export function slugParam(name, st) {
   return getStyle(st).slug(name);
 }
 
-export function procIdentFromProccode(proccode, st) {
+// What a custom block is called in the text.
+//
+// This used to be a pure function of the proccode, which meant two different
+// custom blocks could quietly end up with the same name, and a custom block
+// could take the name of a real Scratch block. Both were silent and both
+// changed what a project did: `jump %s` and `%s jump` both slugged to `jump`,
+// so a round trip merged them and every call to one ran the other; and a
+// custom block called `say %s` swallowed every real say block in the sprite,
+// because the reader looks at custom blocks before built-in ones.
+//
+// So a name is asked for rather than computed. The name table already knows
+// every name taken by a variable, a list or a broadcast, refuses the ones
+// Scratch's own blocks use, and adds a number when a name is taken twice: the
+// second `jump` becomes `jump2`, and a custom `say` becomes `say_`. The
+// proccode stands in for an id, which is what makes the definition and every
+// call to it agree on the same name.
+export function procIdentFromProccode(proccode, st, names) {
   const style = getStyle(st);
   const label = proccode.replace(/%[sbn]/g, ' ').trim();
-  return slugParam(label, style) || style.slug('custom block');
+  const wanted = label || 'custom block';
+  if (!names) return slugParam(wanted, style) || style.slug('custom block');
+  return names.identFor(proccode) ?? names.add(proccode, wanted, 'proc');
 }
 
 function procSignature(proto, names, st) {
@@ -347,10 +389,10 @@ function procSignature(proto, names, st) {
     const slug = slugParam(n, st);
     return slug === n ? slug : `${slug} as ${quote(n)}`;
   });
-  return { ident: procIdentFromProccode(proccode, st), params, proccode };
+  return { ident: procIdentFromProccode(proccode, st, names), params, proccode };
 }
 
 function callSignature(block, names, st) {
   const proccode = block.mutation.proccode;
-  return { ident: procIdentFromProccode(proccode, st), proccode };
+  return { ident: procIdentFromProccode(proccode, st, names), proccode };
 }

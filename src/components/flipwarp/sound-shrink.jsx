@@ -32,6 +32,10 @@ class SoundShrink extends React.Component {
         super(props);
         bindAll(this, ['handleApply', 'handlePreview', 'handleOriginal', 'handleStop']);
         this.source = null;
+        // Shrinking a long sound takes time, and the dialog can be closed in
+        // the middle of it. Everything that comes back afterwards checks this
+        // before touching anything.
+        this.unmounted = false;
         this.state = {
             sampleRate: 0,
             mono: props.channels > 1,
@@ -44,6 +48,9 @@ class SoundShrink extends React.Component {
     }
 
     componentWillUnmount () {
+        // Set before stopping, not after: handleStop is one of the things
+        // that must not set state once the dialog is gone.
+        this.unmounted = true;
         this.handleStop();
     }
 
@@ -76,7 +83,8 @@ class SoundShrink extends React.Component {
             }
             this.source = null;
         }
-        this.setState({playing: null});
+        // Also called on the way out, where there is nothing left to render.
+        if (!this.unmounted) this.setState({playing: null});
     }
 
     playChannels (channels, sampleRate, which) {
@@ -115,9 +123,15 @@ class SoundShrink extends React.Component {
         try {
             const buffer = this.props.vm.getSoundBuffer(this.props.soundIndex);
             const result = await shrink(buffer, this.plan());
+            // Closing the dialog while this was being prepared means the
+            // preview is not wanted any more. Starting it here would be worse
+            // than pointless: the sound would play all the way through with
+            // the dialog, and the stop button, already gone.
+            if (this.unmounted) return;
             this.setState({busy: false, preview: result});
             this.playChannels(result.channels, result.sampleRate, 'shrunk');
         } catch (e) {
+            if (this.unmounted) return;
             this.setState({busy: false, error: describe(e)});
         }
     }
@@ -129,6 +143,12 @@ class SoundShrink extends React.Component {
             const {vm, soundIndex} = this.props;
             const buffer = vm.getSoundBuffer(soundIndex);
             const result = await shrink(buffer, this.plan());
+            // Closing the dialog before this came back is a change of mind,
+            // and the sound is left as it was. It has to be: the index this
+            // started with only means anything while the dialog is open, and
+            // by now the person may be looking at another sprite entirely,
+            // where that same index is a different sound.
+            if (this.unmounted) return;
 
             const context = vm.runtime.audioEngine.audioContext;
             const played = context.createBuffer(
@@ -138,6 +158,7 @@ class SoundShrink extends React.Component {
             vm.updateSoundBuffer(soundIndex, played, new Uint8Array(result.data));
             this.props.onDone(result.data.byteLength);
         } catch (e) {
+            if (this.unmounted) return;
             this.setState({busy: false, error: describe(e)});
         }
     }

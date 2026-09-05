@@ -196,10 +196,27 @@
         load (args) {
             const data = readSlot(Scratch.Cast.toString(args.SLOT));
             if (!data) return '';
-            const value = data[Scratch.Cast.toString(args.NAME)];
-            // Never undefined: a reporter that says "undefined" in the middle
-            // of a sentence is worse than one that says nothing.
-            return value === undefined ? '' : value;
+            const name = Scratch.Cast.toString(args.NAME);
+            // Only names something was actually saved under. A slot read back
+            // from the store is an ordinary object, and an ordinary object
+            // answers to "constructor" and "toString" whether or not anything
+            // was ever saved under them.
+            if (!Object.prototype.hasOwnProperty.call(data, name)) return '';
+            const value = data[name];
+            // What "save list" put here is a list of items, and a reporter can
+            // only report one thing, so the items are read out in a line the
+            // way this extension writes every other list of things. Handing
+            // the list itself back would report an object, which a project
+            // cannot join, compare or say, and which shows up in a variable as
+            // nothing at all. The block for getting the items back as items is
+            // "load ... into list".
+            if (Array.isArray(value)) return value.join(', ');
+            // Never undefined, and never anything else that is not a plain
+            // value: a reporter that says "undefined" in the middle of a
+            // sentence is worse than one that says nothing.
+            if (typeof value === 'string' || typeof value === 'number' ||
+                typeof value === 'boolean') return value;
+            return '';
         }
 
         has (args) {

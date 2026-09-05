@@ -31,6 +31,9 @@ class PasteBlocks extends React.Component {
         // read at that point, and whatever it comes back with must not land
         // on top of what they wrote.
         this.touched = false;
+        // The clipboard read can come back after the box has been closed, and
+        // there is nothing to fill in by then.
+        this.unmounted = false;
         this.state = {
             text: '',
             error: null,
@@ -44,6 +47,7 @@ class PasteBlocks extends React.Component {
     }
 
     componentWillUnmount () {
+        this.unmounted = true;
         document.removeEventListener('keydown', this.handleKeyDown, true);
         clearTimeout(this.giveUp);
     }
@@ -54,6 +58,11 @@ class PasteBlocks extends React.Component {
             if (settled) return;
             settled = true;
             clearTimeout(this.giveUp);
+            // A browser that asks permission first keeps the promise waiting
+            // for as long as the person leaves the question on the screen,
+            // and closing the box is one of the things they can do while it
+            // is up. The answer, whenever it turns up, has nowhere to go.
+            if (this.unmounted) return;
             if (this.touched) {
                 this.setState({reading: false});
                 return;

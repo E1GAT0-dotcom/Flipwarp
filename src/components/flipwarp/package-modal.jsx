@@ -58,9 +58,14 @@ class PackageModal extends React.Component {
             error: null,
             made: null
         };
+        // Packaging a project takes a while, and the dialog can be closed
+        // part way through. Everything that comes back afterwards checks this
+        // before touching anything.
+        this.unmounted = false;
     }
 
     componentWillUnmount () {
+        this.unmounted = true;
         // A file offered but never saved would otherwise sit in memory for as
         // long as the tab is open.
         if (this.state.made) URL.revokeObjectURL(this.state.made.url);
@@ -79,6 +84,9 @@ class PackageModal extends React.Component {
     }
 
     handleProgress ({stage, percent}) {
+        // The packager goes on reporting its progress after the dialog has
+        // been closed, because nothing can tell it to stop.
+        if (this.unmounted) return;
         this.setState({stage, percent: Number.isFinite(percent) ? percent : 0});
     }
 
@@ -94,9 +102,17 @@ class PackageModal extends React.Component {
                 autoplay: this.state.autoplay,
                 onProgress: this.handleProgress
             });
+            // Nothing offers this file if the dialog has gone, so nothing
+            // should be made to hold it either. An address made here would
+            // never be given up: componentWillUnmount has already been and
+            // gone, so it would keep the whole packaged project, which is
+            // routinely tens of megabytes, in memory for as long as the tab
+            // is open, with nothing left anywhere holding a way to free it.
+            if (this.unmounted) return;
             const url = URL.createObjectURL(new Blob([file.data], {type: file.type}));
             this.setState({busy: false, made: {url, name: file.name, size: file.data.length}});
         } catch (e) {
+            if (this.unmounted) return;
             // Shown rather than only logged: a dialog that goes quiet is a
             // dialog nobody can act on.
             this.setState({busy: false, error: e && e.message ? e.message : String(e)});

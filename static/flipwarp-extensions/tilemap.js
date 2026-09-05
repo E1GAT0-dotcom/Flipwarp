@@ -462,19 +462,56 @@
          * Without this, giving a route-finder a level means a loop that reads
          * every tile and writes it back one block at a time, hundreds of
          * blocks running to say something both extensions already know.
+         *
+         * The fiddly part is that the two grids are not laid out the same way.
+         * Pathfinding's squares are anchored at the middle of the stage: an
+         * edge falls at every whole multiple of its square size. This map's
+         * are anchored at its top-left corner, which is half the map to the
+         * left of the middle, so a map with an odd number of columns has its
+         * tile edges half a tile away from Pathfinding's square edges, and the
+         * same for rows. Two grids half a step out of line cannot be made to
+         * agree by moving the walls about: whichever square a wall is put in,
+         * half of it is in the wrong place, and a route walks through the half
+         * that was missed.
+         *
+         * So the squares are made small enough to divide both. Half a tile
+         * lands an edge on every tile edge whatever the map's size, so that is
+         * what an odd side gets; an even one is already in step and keeps
+         * whole tiles, which are fewer squares to search and put the route's
+         * steps through the middles of the tiles.
          */
         sendWallsToPathfinding () {
             const other = vm && vm.runtime && vm.runtime.ext_flipwarpPathfinding;
             if (!other || typeof other.clearWalls !== 'function') return;
-            // Its squares are its own business, but a route through squares
-            // that are not the tiles will go through walls, so they are made
-            // to agree.
-            other.setSquare({SIZE: this.size});
+            const halved = (this.width % 2 !== 0) || (this.height % 2 !== 0);
+            const wanted = halved ? this.size / 2 : this.size;
+            other.setSquare({SIZE: wanted});
             other.clearWalls();
-            for (let row = 0; row < this.height; row++) {
-                for (let col = 0; col < this.width; col++) {
+            // What it settled on, not what it was asked for. Pathfinding has
+            // its own idea of how small a square may be, and with tiles a few
+            // steps across it will refuse to go as fine as half of one.
+            const square = (typeof other.square === 'number' && other.square > 0) ?
+                other.square : wanted;
+
+            // Every square the map covers, marked if its middle is inside a
+            // wall. With squares that divide the tiles, which is the usual
+            // case, that is exactly the wall tiles and nothing else. If the
+            // tiles were too small for Pathfinding to match, each square still
+            // ends up as whatever is under its middle, which is the nearest
+            // thing to the truth that can be said in squares that size.
+            const left = Math.floor(this.originX / square);
+            const right = Math.floor((this.originX + (this.width * this.size)) / square);
+            const bottom = Math.floor((this.originY - (this.height * this.size)) / square);
+            const top = Math.floor(this.originY / square);
+            for (let i = left; i <= right; i++) {
+                for (let j = bottom; j <= top; j++) {
+                    // The middle of the square, which is the point Pathfinding
+                    // itself names the square by.
+                    const x = (i * square) + (square / 2);
+                    const y = (j * square) + (square / 2);
+                    const [col, row] = this.cellOf(x, y);
+                    if (!this.inside(col, row)) continue;
                     if (!this.solid.has(this.rows[row][col])) continue;
-                    const [x, y] = this.middleOf(col, row);
                     other.blockAt({X: x, Y: y});
                 }
             }

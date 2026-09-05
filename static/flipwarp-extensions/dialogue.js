@@ -23,13 +23,24 @@
 (function (Scratch) {
     'use strict';
 
+    // Parts are looked up by whatever name the conversation gave them, and
+    // people name parts after what happens in them: "start", "end",
+    // "constructor". An ordinary object already answers to that last one, and
+    // to "toString", and to a handful of others, with something that is not a
+    // part at all. That reads as a part being there when it is not, so the
+    // reply pointing at it passes the check that catches replies leading
+    // nowhere, and then the project walks into it and falls over on a part
+    // with no lines and no replies. A bag with nothing in it to begin with
+    // knows only the names that were actually put in it.
+    const noParts = () => Object.create(null);
+
     /**
      * Turn the written conversation into parts that can be walked.
      * @param {string} text the conversation as written
      * @returns {object} parts by name, in order, and any complaints
      */
     const parse = text => {
-        const parts = {};
+        const parts = noParts();
         const order = [];
         const problems = [];
         let current = null;
@@ -92,7 +103,7 @@
 
     class FlipwarpDialogue {
         constructor () {
-            this.loaded = {parts: {}, order: [], problems: []};
+            this.loaded = {parts: noParts(), order: [], problems: []};
             this.at = '';
         }
 

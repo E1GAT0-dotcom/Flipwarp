@@ -78,6 +78,29 @@ export class Builder {
 
   // ------------------------------------------------------------- statements
 
+  // One reporter on its own, or nothing. Returns null when the script is
+  // anything else, so the ordinary path runs.
+  buildLooseReporter(stmts) {
+    if (!stmts || stmts.length !== 1) return null;
+    const only = stmts[0];
+    if (!only || (only.k !== 'call' && only.k !== 'ref')) return null;
+    if (only.bodies) return null;
+    // A custom block is a statement even when it is alone.
+    if (only.k === 'call' && this.procs.has(only.name)) return null;
+    const opcode = only.k === 'call' ? this.byName.get(only.name) : null;
+    const isReporter = opcode && (BLOCKS[opcode].kind === 'reporter' || BLOCKS[opcode].kind === 'boolean');
+    // A variable on its own line arrives as a call with no arguments, because
+    // that is what a bare word followed by nothing looks like to the parser.
+    // It is a variable if the declarations say so.
+    const bare = only.k === 'ref' || (only.k === 'call' && (!only.args || !only.args.length));
+    const isGetter = bare && !opcode && Boolean(this.names[only.name]);
+    if (!isReporter && !isGetter) return null;
+    const node = isGetter ? {...only, k: 'ref'} : only;
+    const built = this.buildExpr(node, null, false);
+    if (!built || built.kind !== 'block') return null;
+    return built.id;
+  }
+
   buildScript(stmts, parentId = null) {
     const ids = [];
     for (const s of stmts) {
@@ -104,14 +127,14 @@ export class Builder {
     const rec = this.resolve(node.ident, node, 'variable');
     const opcode = node.op === '=' ? 'data_setvariableto' : 'data_changevariableby';
     const id = this.put(opcode, { fields: { VARIABLE: [rec.name, rec.id] } });
-    this.blocks[id].inputs.VALUE = this.buildInput(node.value, opcode, 'VALUE', id);
+    this.setInput(id, 'VALUE', this.buildInput(node.value, opcode, 'VALUE', id));
     return id;
   }
 
   buildIf(node) {
     const opcode = node.elseBody ? 'control_if_else' : 'control_if';
     const id = this.put(opcode);
-    this.blocks[id].inputs.CONDITION = this.buildInput(node.cond, opcode, 'CONDITION', id);
+    this.setInput(id, 'CONDITION', this.buildInput(node.cond, opcode, 'CONDITION', id));
     const a = this.buildScript(node.body, id);
     if (a) this.blocks[id].inputs.SUBSTACK = [2, a];
     if (node.elseBody) {
@@ -235,9 +258,9 @@ export class Builder {
     }
     p.argIds.forEach((aid, i) => {
       const isBool = p.argTypes[i] === 'boolean';
-      this.blocks[id].inputs[aid] = isBool
+      this.setInput(id, aid, isBool
         ? this.buildBooleanInput(node.args[i], id)
-        : this.buildLiteralOrBlock(node.args[i], [10, 'TEXT'], id);
+        : this.buildLiteralOrBlock(node.args[i], [10, 'TEXT'], id));
     });
     return id;
   }
@@ -255,7 +278,7 @@ export class Builder {
       } else if (def.menu && def.menu[slot]) {
         this.blocks[id].inputs[slot] = this.buildMenu(def.menu[slot], arg, id, node);
       } else {
-        this.blocks[id].inputs[slot] = this.buildInput(arg, opcode, slot, id);
+        this.setInput(id, slot, this.buildInput(arg, opcode, slot, id));
       }
     });
   }
@@ -297,6 +320,23 @@ export class Builder {
 
   // --------------------------------------------------------------- inputs
 
+  // The word an empty pointed slot was written as. Both styles are accepted
+  // whichever style is being read, because a project written out in one and
+  // pasted into the other should still work.
+  isEmptyBoolean(arg) {
+    if (!arg || arg.k !== 'call' || (arg.args && arg.args.length)) {
+      return Boolean(arg && arg.k === 'ref' && /^(false|False)$/.test(arg.name));
+    }
+    return /^(false|False)$/.test(arg.name);
+  }
+
+  // An input that came back as nothing is left off the block rather than
+  // written as null, which is how a project file stores an empty slot.
+  setInput(id, slot, value) {
+    if (value === null || value === undefined) return;
+    this.blocks[id].inputs[slot] = value;
+  }
+
   buildInput(arg, opcode, slot, parentId) {
     const prim = primitiveFor(opcode, slot);
     if (prim === null) return this.buildBooleanInput(arg, parentId);
@@ -304,6 +344,14 @@ export class Builder {
   }
 
   buildBooleanInput(arg, parentId) {
+    // An empty pointed slot is written as the style's word for false, because
+    // a slot with nothing in it has to be written as something. Read back, it
+    // means the same thing: leave the slot empty. Without this an ordinary
+    // half-built script, an if with nothing in its hexagon, could be turned
+    // into text and then refused on the way back with "there is no variable
+    // called false", which is a sentence about a word this file wrote itself.
+    if (this.isEmptyBoolean(arg)) return null;
+
     const r = this.buildExpr(arg, parentId, true);
     const BOOLEAN_HINT = 'Use a pointed block such as touching("_mouse_") or keyPressed("space"), or a comparison such as score > 10.';
     if (r.kind !== 'block') {
@@ -406,14 +454,40 @@ export function buildTarget(ast, target, ctx, style) {
     for (const [id, v] of tables) if (v[0] === name) return id;
     return null;
   };
-  const varTables = [...Object.entries(ctx.globals.variables), ...Object.entries(target.variables || {})];
-  const listTables = [...Object.entries(ctx.globals.lists), ...Object.entries(target.lists || {})];
+  // Kept apart rather than run together, because which one a declaration
+  // means is written on the declaration. A sprite can have a local variable
+  // with the same name as one on the stage, which is what you get by dragging
+  // a sprite in from another project, and searching one flat list found the
+  // stage's every time: the sprite's own variable was orphaned and every block
+  // that used it was quietly pointed at the stage's instead.
+  const globalVars = Object.entries(ctx.globals.variables);
+  const globalLists = Object.entries(ctx.globals.lists);
+  const localVars = Object.entries(target.variables || {});
+  const localLists = Object.entries(target.lists || {});
   const bcTables = Object.entries(ctx.broadcasts).map(([id, n]) => [id, [n]]);
 
+  // Variables and lists the text names that the project does not have yet.
+  // They are made rather than invented: a fabricated id that nothing owns
+  // leaves every block using it pointing at a variable that is not there,
+  // which is worse than the typo that caused it.
+  const created = [];
+
   for (const d of ast.decls) {
-    const table = d.kind === 'list' ? listTables : d.kind === 'broadcast' ? bcTables : varTables;
+    let table;
+    if (d.kind === 'broadcast') table = bcTables;
+    else if (d.kind === 'list') table = d.global ? globalLists : localLists;
+    else table = d.global ? globalVars : localVars;
+
     let id = findByName(table, d.name);
-    if (!id) id = `${d.kind}-${d.name.replace(/\s+/g, '-')}`; // a name the text introduced
+    // A local name that is not there yet may still be the stage's: an older
+    // text, written before this told the two apart, has no "global" on it.
+    if (!id && !d.global && d.kind !== 'broadcast') {
+      id = findByName(d.kind === 'list' ? globalLists : globalVars, d.name);
+    }
+    if (!id) {
+      id = `${d.kind}-${d.name.replace(/\s+/g, '-')}`;
+      created.push({id, name: d.name, kind: d.kind, global: Boolean(d.global)});
+    }
     names[d.ident] = { id, name: d.name, kind: d.kind };
   }
 
@@ -421,7 +495,12 @@ export function buildTarget(ast, target, ctx, style) {
   b.registerProcs(ast.scripts);
   const tops = [];
   for (const script of ast.scripts) {
-    const head = b.buildScript(script.stmts, null);
+    // A script that is one reporter and nothing else is a reporter sitting on
+    // the canvas on its own, which Scratch allows and people do constantly to
+    // watch a value. It is not a statement, so it is built as the expression
+    // it is; refusing it told the person their sprite could not be converted
+    // at all over a block they had left lying about.
+    const head = b.buildLooseReporter(script.stmts) ?? b.buildScript(script.stmts, null);
     if (!head) continue;
     b.blocks[head].topLevel = true;
     b.blocks[head].x = script.at ? script.at.x : 0;
@@ -430,7 +509,7 @@ export function buildTarget(ast, target, ctx, style) {
     tops.push(head);
   }
 
-  return { blocks: b.blocks, comments: buildComments(b, ast, target) };
+  return { blocks: b.blocks, comments: buildComments(b, ast, target), created };
 }
 
 // Scratch comments carry a size and a place on the canvas as well as their

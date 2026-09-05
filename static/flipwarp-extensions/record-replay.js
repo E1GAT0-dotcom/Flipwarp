@@ -19,6 +19,14 @@
     // the clock, so a recording is the same length whenever it is played.
     const now = () => Date.now();
 
+    // A recording is a list in memory and nothing trims it, so a project that
+    // starts recording and never stops would grow it for as long as the tab is
+    // open. This is where it stops. The limit is generous on purpose: a mouse
+    // moved about without pause records at a few dozen events a second, so
+    // this is a good quarter of an hour of that, and ordinary play is a small
+    // fraction of it.
+    const MOST_EVENTS = 50000;
+
     class FlipwarpRecordReplay {
         constructor () {
             this.events = [];
@@ -31,9 +39,16 @@
             this.playSpeed = 1;
             this.held = new Set();
 
-            this.watchKeyboard();
-            this.watchMouse();
-            this.everyFrame();
+            // Nothing is listened for and no frames are asked for until
+            // something is actually being recorded or played. An extension
+            // that is in a project but not in use should cost the page
+            // nothing, and the listeners here are on the way down through the
+            // page, so leaving them on means every key and every mouse move
+            // anybody makes goes through this for the life of the tab.
+            this.listening = false;
+            this.frameAsked = false;
+            this.handlers = this.makeHandlers();
+            this.watchTheProject();
         }
 
         getInfo () {
@@ -120,23 +135,41 @@
             };
         }
 
-        // --- recording --------------------------------------------------
+        // --- starting and stopping with the project ----------------------
 
-        watchKeyboard () {
-            const note = (key, isDown) => {
-                if (!this.recording) return;
-                this.events.push({t: now() - this.startedAt, k: key, d: isDown ? 1 : 0});
-            };
-            // Watched on the way down through the page, so a key is recorded
-            // whether or not something else stops it later.
-            document.addEventListener('keydown', e => {
-                if (e.repeat) return; // a held key, not a new press
-                note(e.key, true);
-            }, true);
-            document.addEventListener('keyup', e => note(e.key, false), true);
+        /**
+         * The red stop button stops this too.
+         *
+         * Playback posts keys and mouse clicks straight into the runtime, so a
+         * recording still playing after the project was stopped looks exactly
+         * like a project that will not stop: keys arriving from nowhere, the
+         * mouse moving on its own. Recording is stopped for a quieter reason,
+         * that nobody is watching it any more and it would go on growing.
+         */
+        watchTheProject () {
+            const runtime = vm && vm.runtime;
+            if (!runtime || typeof runtime.on !== 'function') return;
+            runtime.on('PROJECT_STOP_ALL', () => {
+                this.stopPlaying();
+                this.stopRecording();
+            });
         }
 
-        watchMouse () {
+        // --- recording --------------------------------------------------
+
+        /**
+         * The listeners, made once so that they can be taken off again.
+         *
+         * A listener with no name is a listener that cannot be removed, which
+         * is what went wrong here before: they were added at load, as
+         * throwaway functions, and there was no way back.
+         * @returns {object} what to listen for, and with what
+         */
+        makeHandlers () {
+            const note = (key, isDown) => {
+                if (!this.recording) return;
+                this.remember({t: now() - this.startedAt, k: key, d: isDown ? 1 : 0});
+            };
             const stage = () => document.querySelector('canvas');
             const place = e => {
                 const canvas = stage();
@@ -150,30 +183,76 @@
                     y: (e.clientY - box.top) / box.height
                 };
             };
-            document.addEventListener('mousemove', e => {
-                if (!this.recording) return;
-                const at = place(e);
-                if (!at) return;
-                const last = this.events[this.events.length - 1];
-                // A mouse moving across the stage is a hundred events a
-                // second, nearly all of them the same. Only movements worth a
-                // pixel or two are kept.
-                if (last && last.m && Math.abs(last.x - at.x) < 0.004 &&
-                    Math.abs(last.y - at.y) < 0.004) return;
-                this.events.push({t: now() - this.startedAt, m: 1, x: at.x, y: at.y});
-            }, true);
             const button = isDown => e => {
                 if (!this.recording) return;
                 const at = place(e);
-                this.events.push({
+                this.remember({
                     t: now() - this.startedAt,
                     b: isDown ? 1 : 0,
                     x: at ? at.x : 0,
                     y: at ? at.y : 0
                 });
             };
-            document.addEventListener('mousedown', button(true), true);
-            document.addEventListener('mouseup', button(false), true);
+            return {
+                keydown: e => {
+                    if (e.repeat) return; // a held key, not a new press
+                    note(e.key, true);
+                },
+                keyup: e => note(e.key, false),
+                mousemove: e => {
+                    if (!this.recording) return;
+                    const at = place(e);
+                    if (!at) return;
+                    const last = this.events[this.events.length - 1];
+                    // A mouse moving across the stage is a hundred events a
+                    // second, nearly all of them the same. Only movements
+                    // worth a pixel or two are kept.
+                    if (last && last.m && Math.abs(last.x - at.x) < 0.004 &&
+                        Math.abs(last.y - at.y) < 0.004) return;
+                    this.remember({t: now() - this.startedAt, m: 1, x: at.x, y: at.y});
+                },
+                mousedown: button(true),
+                mouseup: button(false)
+            };
+        }
+
+        // Watched on the way down through the page, so a key is recorded
+        // whether or not something else stops it later.
+        listen () {
+            if (this.listening) return;
+            if (typeof document === 'undefined' ||
+                typeof document.addEventListener !== 'function') return;
+            for (const name of Object.keys(this.handlers)) {
+                document.addEventListener(name, this.handlers[name], true);
+            }
+            this.listening = true;
+        }
+
+        deafen () {
+            if (!this.listening) return;
+            this.listening = false;
+            // A page that let them be put on but has no way of taking them off
+            // is not a page this has ever run in, and is not worth stopping a
+            // project over.
+            if (typeof document.removeEventListener !== 'function') return;
+            for (const name of Object.keys(this.handlers)) {
+                document.removeEventListener(name, this.handlers[name], true);
+            }
+        }
+
+        // Everything recorded goes through here, so that the limit is in one
+        // place and nothing can get past it.
+        remember (event) {
+            if (this.events.length >= MOST_EVENTS) {
+                // Full. Recording stops rather than the oldest being thrown
+                // away: a recording that has lost its beginning plays back as
+                // nonsense, while one that stops early is still a recording of
+                // what happened, and the blocks that report its length and how
+                // much is in it say so.
+                this.stopRecording();
+                return;
+            }
+            this.events.push(event);
         }
 
         startRecording () {
@@ -181,10 +260,12 @@
             this.events = [];
             this.startedAt = now();
             this.recording = true;
+            this.listen();
         }
 
         stopRecording () {
             this.recording = false;
+            this.deafen();
         }
 
         isRecording () {
@@ -193,12 +274,25 @@
 
         // --- playing back -----------------------------------------------
 
+        /**
+         * Ask for the next frame, and only while something is playing.
+         *
+         * A frame loop that runs for the life of the page to find that there
+         * is nothing to do is the sort of thing that turns up later as a
+         * project being slow for no reason anybody can point at. This one ends
+         * as soon as playback does: the frame already asked for sees that
+         * nothing is playing and does not ask for another.
+         */
         everyFrame () {
-            const step = () => {
-                if (this.playing) this.advance();
-                requestAnimationFrame(step);
-            };
-            requestAnimationFrame(step);
+            if (this.frameAsked) return;
+            if (typeof requestAnimationFrame !== 'function') return;
+            this.frameAsked = true;
+            requestAnimationFrame(() => {
+                this.frameAsked = false;
+                if (!this.playing) return;
+                this.advance();
+                this.everyFrame();
+            });
         }
 
         advance () {
@@ -236,10 +330,11 @@
 
         play () {
             if (!this.events.length) return;
-            this.recording = false;
+            this.stopRecording();
             this.playing = true;
             this.playIndex = 0;
             this.playFrom = now();
+            this.everyFrame();
         }
 
         playAndWait () {
@@ -311,7 +406,7 @@
 
         clear () {
             this.stopPlaying();
-            this.recording = false;
+            this.stopRecording();
             this.events = [];
         }
     }

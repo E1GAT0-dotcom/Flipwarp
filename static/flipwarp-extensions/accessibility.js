@@ -27,7 +27,8 @@
     // project will never match it.
     const NAMED_KEYS = [
         'space', 'up arrow', 'down arrow', 'right arrow', 'left arrow', 'enter',
-        'backspace', 'delete', 'shift', 'escape'
+        'backspace', 'delete', 'shift', 'escape', 'caps lock', 'scroll lock',
+        'control', 'insert', 'home', 'end', 'page up', 'page down'
     ];
 
     const speech = typeof speechSynthesis === 'undefined' ? null : speechSynthesis;
@@ -288,6 +289,16 @@
             // project running at half speed where the waits still take their
             // real time would come apart.
             const self = this;
+
+            // Slowing the project down. In the editor Flipwarp already owns
+            // the clock and offers a way in; asking it is the whole of the
+            // job, and wrapping the step function a second time here would
+            // give the project two owners of its clock and one of them would
+            // stop telling the other the time. In a packaged project there is
+            // no editor, so the same work is done here instead.
+            this.timeKeeper = runtime.flipwarpTime || null;
+            if (this.timeKeeper) return this.installTheRest(runtime);
+
             if (typeof runtime._step === 'function') {
                 const realStep = runtime._step;
                 let tick = 0;
@@ -315,8 +326,13 @@
                 };
             }
 
+            return this.installTheRest(runtime);
+        }
+
+        installTheRest (runtime) {
             // Keys: the player's own names for them, and a held key that
             // counts as tapping.
+
             const keyboard = runtime.ioDevices && runtime.ioDevices.keyboard;
             if (keyboard && typeof keyboard.postData === 'function') {
                 const realPost = keyboard.postData.bind(keyboard);
@@ -337,6 +353,12 @@
                 this.stopSpeaking();
                 this.clearHeldKeys();
                 this.hideCaption();
+            });
+
+            // Blank line kept out of the middle of the wiring above on
+            // purpose: this one is about what the extension leaves behind.
+            runtime.on('PROJECT_START', () => {
+                if (this.timeKeeper) this.timeKeeper.setSlowdown(this.speed);
             });
         }
 
@@ -460,6 +482,9 @@
         setSpeed (args) {
             const asked = Scratch.Cast.toString(args.SPEED);
             this.speed = asked === 'half speed' ? 2 : asked === 'quarter speed' ? 4 : 1;
+            // In the editor the clock belongs to Flipwarp itself, so the speed
+            // is asked for rather than taken.
+            if (this.timeKeeper) this.timeKeeper.setSlowdown(this.speed);
         }
 
         gameSpeed () {
@@ -482,12 +507,34 @@
         }
 
         // Back the other way, into something the keyboard device understands.
+        // Back the other way, into something the keyboard device understands.
+        //
+        // Every name in NAMED_KEYS has to be here. The VM matches these
+        // against the browser's own spelling, "Escape" rather than "escape",
+        // and anything longer than one character that it does not recognise is
+        // thrown away, so a name missing from this list did not merely fail to
+        // remap: it swallowed the key press and left the key doing nothing at
+        // all, which is worse than not remapping it.
         domKey (key) {
             if (key === 'space') return ' ';
             const arrow = /^(up|down|left|right) arrow$/.exec(key);
             if (arrow) return `Arrow${arrow[1][0].toUpperCase()}${arrow[1].slice(1)}`;
-            if (key === 'enter') return 'Enter';
-            return key;
+            const named = {
+                enter: 'Enter',
+                backspace: 'Backspace',
+                delete: 'Delete',
+                shift: 'Shift',
+                escape: 'Escape',
+                'caps lock': 'CapsLock',
+                'scroll lock': 'ScrollLock',
+                control: 'Control',
+                insert: 'Insert',
+                home: 'Home',
+                end: 'End',
+                'page up': 'PageUp',
+                'page down': 'PageDown'
+            };
+            return named[key] || key;
         }
 
         remap (args) {

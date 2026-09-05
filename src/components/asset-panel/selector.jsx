@@ -107,6 +107,10 @@ SelectionBar.propTypes = {
     onMove: PropTypes.func
 };
 
+// Somewhere for a hidden row's ref to go, so that SortableAsset can call
+// something whether or not this row is offered as a drop target.
+const noSortable = () => {};
+
 const Selector = props => {
     const {
         buttons,
@@ -146,8 +150,8 @@ const Selector = props => {
     const many = chosen.length > 1;
     // Folders are shown by reordering the list with CSS rather than by
     // reordering the costumes themselves. A costume's number is its place in
-    // the sprite, and everything that acts on one — deleting it, switching to
-    // it, dragging it — needs that number to stay true.
+    // the sprite, and everything that acts on one (deleting it, switching to
+    // it, dragging it) needs that number to stay true.
     const order = displayOrder || null;
     const hidden = hiddenIndices || [];
 
@@ -206,8 +210,17 @@ const Selector = props => {
                         index={isRelevantDrag ? ordering.indexOf(index) :
                             (order ? order[index] : index)}
                         key={item.name}
-                        onAddSortable={onAddSortable}
-                        onRemoveSortable={onRemoveSortable}
+                        /*
+                            A row inside a closed folder is not offered as
+                            somewhere to drop. It is hidden, so its rectangle
+                            is nothing at all, and a rectangle of nothing sorts
+                            above every real row: with folders in use the drop
+                            position was counted from a list that began with
+                            however many rows were tucked away, and the costume
+                            that moved was not the one being dragged onto.
+                        */
+                        onAddSortable={hidden.includes(index) ? noSortable : onAddSortable}
+                        onRemoveSortable={hidden.includes(index) ? noSortable : onRemoveSortable}
                     >
                         <SpriteSelectorItem
                             asset={item.asset}

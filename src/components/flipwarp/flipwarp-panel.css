@@ -244,51 +244,60 @@
 /*
  * The row of symbols above a phone keyboard. Nothing else needs it: on a real
  * keyboard every one of these is a single key.
+ *
+ * Touch and nothing else, no width to it. The keyboard belongs to the device,
+ * not to the window: a tablet, or a phone turned on its side, puts one up at
+ * 800 CSS pixels as readily as a phone does at 380. A width rule here used to
+ * mean the strip vanished, and worse, the rule below it stopped holding the
+ * bottom of the panel clear, so the keyboard came up over "Undo my edits" and
+ * over the only way back to the blocks. src/lib/flipwarp/touch.js sets
+ * data-input="touch" from what the person is actually using, which is the
+ * same thing it measures the keyboard for, so the two now agree.
  */
 .symbols {
     display: none;
 }
 
-@media (max-width: 720px) {
-    :global(html[data-input="touch"]) .symbols {
-        display: flex;
-        flex: none;
-        gap: 0.25rem;
-        padding: 0.375rem 0.5rem;
-        overflow-x: auto;
-        scrollbar-width: none;
-        border-top: 1px solid $ui-black-transparent;
-        background: $ui-primary;
-    }
+:global(html[data-input="touch"]) .symbols {
+    display: flex;
+    flex: none;
+    gap: 0.25rem;
+    padding: 0.375rem 0.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-top: 1px solid $ui-black-transparent;
+    background: $ui-primary;
+}
 
-    :global(html[data-input="touch"]) .symbols::-webkit-scrollbar {
-        display: none;
-    }
+:global(html[data-input="touch"]) .symbols::-webkit-scrollbar {
+    display: none;
+}
 
-    .symbol {
-        appearance: none;
-        flex: none;
-        min-width: 2.25rem;
-        height: 2.25rem;
-        border: 1px solid $ui-black-transparent;
-        border-radius: 0.375rem;
-        background: $ui-white;
-        color: $text-primary;
-        font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
-        font-size: 1rem;
-        cursor: pointer;
-    }
+.symbol {
+    appearance: none;
+    flex: none;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.375rem;
+    background: $ui-white;
+    color: $text-primary;
+    font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+    font-size: 1rem;
+    cursor: pointer;
+}
 
-    .symbol:active {
-        background: $looks-transparent;
-    }
+.symbol:active {
+    background: $looks-transparent;
+}
 
-    /*
-     * The keyboard slides over the bottom of the page rather than making it
-     * shorter, so without this the buttons under the text would be behind it.
-     * src/lib/flipwarp/touch.js measures how much is covered.
-     */
-    :global(html[data-input="touch"]) .panel {
-        bottom: var(--flipwarp-keyboard, 0px);
-    }
+/*
+ * The keyboard slides over the bottom of the page rather than making it
+ * shorter, so without this the buttons under the text would be behind it.
+ * src/lib/flipwarp/touch.js measures how much is covered, and measures it on
+ * any touch device, so this asks the same question it does. With the keyboard
+ * down the measurement is 0px and nothing moves.
+ */
+:global(html[data-input="touch"]) .panel {
+    bottom: var(--flipwarp-keyboard, 0px);
 }

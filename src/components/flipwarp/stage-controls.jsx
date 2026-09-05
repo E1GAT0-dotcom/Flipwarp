@@ -46,7 +46,21 @@ class StageControls extends React.Component {
         // them under a finger that is holding one down.
         const same = keys.length === this.state.keys.length &&
             keys.every(key => this.state.keys.includes(key));
-        if (!same) this.setState({keys});
+        if (same) return;
+        // A button that is about to go takes its finger with it: the pointer
+        // is captured by that button, so once it is gone nothing will ever
+        // report the finger lifting, and the key stays down in the VM for
+        // good. The project goes on being told to move, with nothing on
+        // screen still being pressed and no way to make it stop. So let go of
+        // the keys that are leaving, while there is still something to let go
+        // of. Keys that stay keep their button, and their finger with it.
+        for (const scratchKey of Array.from(this.held.keys())) {
+            if (!keys.includes(scratchKey)) {
+                this.held.delete(scratchKey);
+                this.post(scratchKey, false);
+            }
+        }
+        this.setState({keys});
     }
     post (scratchKey, isDown) {
         const event = asEvent(scratchKey);
