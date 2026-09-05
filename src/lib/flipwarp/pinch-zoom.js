@@ -43,6 +43,11 @@ const installPinchZoom = (element, workspace, Blockly) => {
     const onStart = e => {
         const two = touchesOf(e);
         if (!two) return;
+        // Claim the gesture before the browser does. Waiting until the fingers
+        // have moved is too late: by then Chrome has decided this is a pinch
+        // on the page itself and is zooming the whole editor, which survives
+        // turning the phone and leaves it stuck too far in to get back out of.
+        if (e.cancelable) e.preventDefault();
         // Whatever Blockly thought was happening — dragging a block, drawing a
         // selection — a second finger means it was wrong.
         if (workspace.currentGesture_) workspace.currentGesture_.cancel();
@@ -79,7 +84,7 @@ const installPinchZoom = (element, workspace, Blockly) => {
 
     // Not passive: a pinch has to be able to stop the browser zooming the
     // whole page instead, which is the one thing that would make this useless.
-    element.addEventListener('touchstart', onStart, {passive: true});
+    element.addEventListener('touchstart', onStart, {passive: false});
     element.addEventListener('touchmove', onMove, {passive: false});
     element.addEventListener('touchend', onEnd, {passive: true});
     element.addEventListener('touchcancel', onEnd, {passive: true});

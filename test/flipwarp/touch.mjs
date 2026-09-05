@@ -102,6 +102,22 @@ await pinch(260, 100);
 await page.waitForTimeout(600);
 const afterSqueeze = await scaleNow();
 
+// --- a pinch must never zoom the page ------------------------------------
+// Two fingers on the workspace zoom the blocks. If the browser gets the
+// gesture first it zooms the whole editor instead, and a page left zoomed in
+// survives turning the phone and cannot always be zoomed back out — so the
+// browser is told to keep its hands off before any finger lands.
+const handsOff = await page.evaluate(() => {
+    const of = selector => {
+        const el = document.querySelector(selector);
+        return el ? getComputedStyle(el).touchAction : null;
+    };
+    return {
+        workspace: of('.injectionDiv'),
+        stage: of('[class*="stage_stage_"] canvas')
+    };
+});
+
 // --- a long press opens the workspace menu --------------------------------
 await page.evaluate(({x, y}) => {
     const el = document.elementFromPoint(x, y);
@@ -129,6 +145,9 @@ const checks = [
         {beforePinch, afterSpread}],
     ['squeezing them zooms back out', afterSqueeze < afterSpread * 0.85,
         {afterSpread, afterSqueeze}],
+    ['the browser is told not to zoom the page on the workspace',
+        handsOff.workspace === 'none', handsOff],
+    ['nor on the stage', handsOff.stage === 'none', handsOff],
     ['a long press opens the workspace menu', menu.length > 0, menu],
     ['with Paste as blocks on it', menu.some(item => item.includes('Paste as blocks')), menu],
     ['the editor raised no errors', errs.length === 0, errs]

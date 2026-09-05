@@ -385,6 +385,21 @@ $fade-out-distance: 15px;
  * a phone on its side has about 460, so the tabs were being pushed off the top
  * of the screen.
  */
+/*
+ * Two fingers on the block workspace zoom the blocks, and must never zoom the
+ * page. Telling the browser that up front is the only reliable way: a
+ * preventDefault once the fingers have moved is too late, and a page left
+ * zoomed in survives turning the phone and cannot always be zoomed back out.
+ *
+ * Blockly does its own scrolling inside here, so nothing is lost by taking the
+ * browser's out.
+ */
+:global(html[data-input="touch"]) .body-wrapper :global(.injectionDiv),
+:global(html[data-input="touch"]) .body-wrapper :global([class*="stage_stage_"]) canvas,
+:global(html[data-input="touch"]) .body-wrapper :global([class*="paper-canvas"]) {
+    touch-action: none;
+}
+
 @media (max-height: 560px) {
     :global(html[data-input="touch"]) .page-wrapper {
         min-width: 0 !important;
