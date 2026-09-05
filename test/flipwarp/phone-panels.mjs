@@ -120,6 +120,29 @@ const listStillShut = await listWidth();
 await openTab('code');
 const labelOnCode = await barLabel();
 
+// --- the run controls live in the bottom bar ------------------------------
+// Pinned in from above the stage rather than rebuilt, so there is one of each
+// in the page — which is what lets the pause button, added by an addon to
+// whichever strip it finds first, end up in the right place.
+const inTheBar = await page.evaluate(() => {
+    const bar = document.querySelector('[class*="pane-switcher_bar"]');
+    const strip = document.querySelector('[class*="controls_controls-container"]');
+    if (!bar || !strip) return null;
+    const barBox = bar.getBoundingClientRect();
+    const box = strip.getBoundingClientRect();
+    const inside = box.top >= barBox.top - 2 && box.bottom <= barBox.bottom + 2;
+    const middle = {x: box.x + 12, y: box.y + (box.height / 2)};
+    const onTop = document.elementFromPoint(middle.x, middle.y);
+    return {
+        inside,
+        strips: document.querySelectorAll('[class*="controls_controls-container"]').length,
+        flags: document.querySelectorAll('[class*="green-flag_green-flag"]').length,
+        // Painted, not merely positioned: the bar sits in a different stacking
+        // context, so an opaque bar hides these however high their z-index.
+        reachable: Boolean(onTop && onTop.closest('[class*="controls_controls-container"]'))
+    };
+});
+
 // --- the extension picker -------------------------------------------------
 await tapOn('[class*="gui_extension-button"]');
 await page.waitForTimeout(2500);
@@ -167,8 +190,14 @@ const checks = [
     ['the bottom bar names the tab you are in',
         labelOnCostumes === 'Costumes' && labelOnSounds === 'Sounds' && labelOnCode === 'Blocks',
         {labelOnCostumes, labelOnSounds, labelOnCode}],
+    ['the run controls sit in the bottom bar', inTheBar && inTheBar.inside, inTheBar],
+    ['there is only one of them in the page',
+        inTheBar && inTheBar.strips === 1 && inTheBar.flags === 1, inTheBar],
+    ['and they can actually be pressed', inTheBar && inTheBar.reachable, inTheBar],
     ['the extension picker shows every category, not just All',
         library.tabs.length >= 3, library.tabs],
+    ['with Flipwarp\'s own last, after the editors it is built on',
+        library.tabs[library.tabs.length - 1] === 'Flipwarp', library.tabs],
     ['and fits more than one extension to a row', library.perRow >= 2, library],
     ['the bottom bar gets out of the way of a dialog',
         library.switcherShowing === false, library],

@@ -411,6 +411,22 @@ $fade-out-distance: 15px;
     :global(html[data-input="touch"]) .body-wrapper :global([class*="backpack_backpack-container"]) {
         display: none;
     }
+
+    /* The tabs are finger-sized at 3.5rem, which is a fifth of the screen when
+       the screen is a phone lying on its side. They stay comfortably tappable
+       a good deal shorter than that. */
+    :global(html[data-input="touch"]) .tab-list {
+        height: 2.5rem;
+    }
+
+    :global(html[data-input="touch"]) .tab {
+        font-size: 0.78rem;
+    }
+
+    :global(html[data-input="touch"]) .tab img {
+        width: 1.1rem;
+        height: 1.1rem;
+    }
 }
 
 @media (max-width: 720px) {

@@ -2,10 +2,7 @@ import bindAll from 'lodash.bindall';
 import PropTypes from 'prop-types';
 import React from 'react';
 import {connect} from 'react-redux';
-import VM from 'scratch-vm';
 
-import GreenFlag from '../green-flag/green-flag.jsx';
-import StopAll from '../stop-all/stop-all.jsx';
 import {
     BLOCKS_TAB_INDEX,
     COSTUMES_TAB_INDEX,
@@ -43,15 +40,18 @@ const TAB_NAMES = {
  * at all — it is hidden unless the screen is narrow and a finger is what was
  * last used — so nothing here has to measure the window.
  *
- * The run buttons are here as well, and they are the reason the bar is worth
- * having rather than a plain pair of tabs. Green flag and stop live above the
- * stage, so without them here, running a project you are in the middle of
- * writing would mean swapping pane, pressing go, and swapping back.
+ * The run buttons belong here too — running a project you are in the middle of
+ * writing should not mean swapping pane, pressing go, and swapping back. They
+ * are not drawn here though: the strip above the stage that already holds the
+ * green flag, stop, pause and the radio is pinned into this bar by the
+ * stylesheet instead. Drawing a second green flag would mean two of everything
+ * in the page, and the pause button — which is added by an addon, to whichever
+ * strip it finds first — would attach to the wrong one.
  */
 class PaneSwitcher extends React.Component {
     constructor (props) {
         super(props);
-        bindAll(this, ['handleShowCode', 'handleShowStage', 'handleResize', 'handleGo', 'handleStop']);
+        bindAll(this, ['handleShowCode', 'handleShowStage', 'handleResize']);
         this.state = {pane: CODE};
     }
     componentDidMount () {
@@ -63,16 +63,6 @@ class PaneSwitcher extends React.Component {
     componentWillUnmount () {
         window.removeEventListener('resize', this.handleResize);
         delete document.documentElement.dataset.pane;
-    }
-    handleGo () {
-        // The same two steps the controls above the stage take: a project that
-        // has never been started has to be started before the flag means
-        // anything.
-        if (!this.props.vm.runtime._steppingInterval) this.props.vm.start();
-        this.props.vm.greenFlag();
-    }
-    handleStop () {
-        this.props.vm.stopAll();
     }
     handleResize () {
         this.scrollTo(this.state.pane, 'auto');
@@ -97,19 +87,8 @@ class PaneSwitcher extends React.Component {
         const {pane} = this.state;
         return (
             <div className={styles.bar}>
-                {/* The two buttons themselves rather than the whole control
-                    strip: that also carries the radio, and a second radio
-                    player in a hidden bar is a second radio player. */}
-                <div className={styles.controls}>
-                    <GreenFlag
-                        title={'Go'}
-                        onClick={this.handleGo}
-                    />
-                    <StopAll
-                        title={'Stop'}
-                        onClick={this.handleStop}
-                    />
-                </div>
+                {/* The run controls are pinned in from above the stage by the
+                    stylesheet; this is the room left for them. */}
                 <div className={styles.panes}>
                     <button
                         className={`${styles.pane} ${pane === CODE ? styles.current : ''}`}
@@ -126,8 +105,7 @@ class PaneSwitcher extends React.Component {
 }
 
 PaneSwitcher.propTypes = {
-    activeTabIndex: PropTypes.number,
-    vm: PropTypes.instanceOf(VM).isRequired
+    activeTabIndex: PropTypes.number
 };
 
 const mapStateToProps = state => ({

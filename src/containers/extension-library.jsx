@@ -171,11 +171,10 @@ class ExtensionLibrary extends React.PureComponent {
     render () {
         let library = null;
         if (this.state.gallery || this.state.galleryError || this.state.galleryTimedOut) {
-            // Flipwarp's own first: they are the only ones on this list whose
-            // blocks the Text button can read.
-            library = flipwarpLibrary().map(toLibraryItem);
-            library.push('---');
-            library.push(...extensionLibraryContent.map(toLibraryItem));
+            // The same order as the tabs, so the All tab reads as those tabs
+            // one after another rather than as its own arrangement: Scratch,
+            // then TurboWarp's, then PenguinMod's, then this editor's own.
+            library = extensionLibraryContent.map(toLibraryItem);
             library.push('---');
             if (this.state.gallery) {
                 library.push(toLibraryItem(galleryMore));
@@ -195,6 +194,9 @@ class ExtensionLibrary extends React.PureComponent {
             if (this.state.penguinMod && this.state.penguinMod.length) {
                 library.push(...this.state.penguinMod.map(toLibraryItem));
             }
+
+            library.push('---');
+            library.push(...flipwarpLibrary().map(toLibraryItem));
         }
 
         // These extensions belong to TurboWarp. Their blocks run here, but

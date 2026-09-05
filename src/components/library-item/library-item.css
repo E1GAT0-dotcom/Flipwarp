@@ -257,10 +257,29 @@
         margin: 0.25rem;
     }
 
-    :global(html[data-input="touch"]) .featured-text {
+    /*
+        Everything inside an extension card that was given the card's old
+        width of 300 points. The card is now about 210, and a 300 point block
+        inside a 210 point box that centres its children hangs over both edges
+        — which is why "Created by" arrived as "ed by".
+    */
+    :global(html[data-input="touch"]) .featured-text,
+    :global(html[data-input="touch"]) .extension-links {
         width: 100%;
+        box-sizing: border-box;
+    }
+
+    :global(html[data-input="touch"]) .featured-text {
         padding: 8px;
         font-size: 0.8rem;
+    }
+
+    :global(html[data-input="touch"]) .extension-links {
+        padding: 0 8px 8px;
+        font-size: 0.7rem;
+        flex-wrap: wrap;
+        gap: 0.25rem 0.5rem;
+        justify-content: flex-start;
     }
 
     :global(html[data-input="touch"]) .featured-image {

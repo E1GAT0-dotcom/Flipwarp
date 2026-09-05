@@ -19,24 +19,53 @@
         bottom: 0;
         z-index: 1000;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-end;
         gap: 0.5rem;
         padding: 0.375rem 0.75rem;
         box-sizing: border-box;
         height: 3.5rem;
-        background: $ui-primary;
+        /*
+            See-through, and not in the way. The run controls are pinned into
+            this strip from elsewhere in the page, and "elsewhere" turns out to
+            be a different stacking context — no z-index here can lift them
+            above a bar that is painted opaque, whatever the number says. The
+            strip is the same colour as the page behind it anyway, so there is
+            nothing to paint; only the line along the top is real, and taps
+            pass through everything except the buttons.
+        */
+        background: transparent;
         border-top: 1px solid $ui-black-transparent;
+        pointer-events: none;
     }
 }
 
-.controls {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0;
+/*
+ * The strip that already holds the green flag, stop, pause and the radio,
+ * pinned into this bar rather than rebuilt in it. Pinned rather than moved,
+ * because moving an element React owns is a fight; pinned rather than copied,
+ * because two green flags in a page means the pause button — which an addon
+ * adds to whichever strip it finds first — attaches to the wrong one.
+ *
+ * It comes along even while the stage is scrolled off the side, which is the
+ * point: you can run a project from the blocks.
+ */
+@media (max-width: 720px) {
+    :global(html[data-input="touch"]) :global([class*="controls_controls-container"]) {
+        position: fixed;
+        left: 0.75rem;
+        bottom: 0;
+        height: 3.5rem;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        z-index: 1001;
+    }
 }
 
 .panes {
+    pointer-events: auto;
     display: flex;
     border: 1px solid $ui-black-transparent;
     border-radius: 0.5rem;

@@ -464,7 +464,7 @@ const GUIComponent = props => {
                     </Box>
                     {/* Only ever visible on a narrow screen being used with a
                         finger; the stylesheet decides, not this. */}
-                    <PaneSwitcher vm={vm} />
+                    <PaneSwitcher />
                 </Box>
                 <DragLayer />
             </Box>
