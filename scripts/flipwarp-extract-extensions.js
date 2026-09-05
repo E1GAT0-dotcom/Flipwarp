@@ -24,7 +24,10 @@ const EXTENSIONS = {
 const stubRuntime = () => {
     const noop = () => {};
     return {
-        on: noop, off: noop, once: noop, emit: noop,
+        on: noop,
+        off: noop,
+        once: noop,
+        emit: noop,
         formatMessage: m => m.default,
         getTargetForStage: () => null,
         requestRedraw: noop,
@@ -54,6 +57,17 @@ const ARG_SHADOW = {
     note: 'note'
 };
 
+// What an extension is called in the text. Usually its own id, but Flipwarp's
+// own ids all start with "flipwarp" so they can never collide with anyone
+// else's in a project file — which is right there and unbearable in a line of
+// text you have to read. The id in the project is untouched; only the spelling
+// changes.
+const TEXT_PREFIX = {
+    flipwarpSaveSlots: 'saveSlots',
+    flipwarpRecordReplay: 'replay',
+    flipwarpDialogue: 'dialogue'
+};
+
 const camel = label => {
     const words = String(label)
         .replace(/\[[^\]]*\]/g, ' ')
@@ -72,8 +86,12 @@ const camel = label => {
 const timers = [];
 const realSetInterval = global.setInterval;
 const realSetTimeout = global.setTimeout;
-global.setInterval = (...a) => { const t = realSetInterval(...a); timers.push(t); return t; };
-global.setTimeout = (...a) => { const t = realSetTimeout(...a); timers.push(t); return t; };
+global.setInterval = (...a) => {
+    const t = realSetInterval(...a); timers.push(t); return t;
+};
+global.setTimeout = (...a) => {
+    const t = realSetTimeout(...a); timers.push(t); return t;
+};
 
 const results = {};
 const taken = new Set();
@@ -81,22 +99,110 @@ const shadows = {};
 const menus = {};
 const failures = [];
 
-for (const [id, dir] of Object.entries(EXTENSIONS)) {
-    let info;
-    try {
-        // eslint-disable-next-line global-require
-        const Klass = require(path.join('scratch-vm/src/extensions', dir, 'index.js'));
-        const instance = new Klass(stubRuntime());
-        info = instance.getInfo();
-    } catch (e) {
-        failures.push(`${id}: ${e.message}`);
-        continue;
+// Flipwarp's own extensions are not built into the virtual machine — they are
+// ordinary extension files served from this site, the same shape as anyone
+// else's. They are read here for the same reason: so that their blocks have a
+// text form, which is the one thing that makes them worth writing rather than
+// pointing people at somebody else's.
+const readOurOwn = () => {
+    const folder = path.join(__dirname, '..', 'static', 'flipwarp-extensions');
+    if (!fs.existsSync(folder)) return [];
+    const found = [];
+    for (const file of fs.readdirSync(folder).filter(f => f.endsWith('.js'))
+        .sort()) {
+        // An extension file expects a Scratch object to register itself with,
+        // and a browser to run in. It gets neither here — just enough of both
+        // to describe its own blocks and stop.
+        let registered = null;
+        const Scratch = {
+            BlockType: {
+                COMMAND: 'command',
+                REPORTER: 'reporter',
+                BOOLEAN: 'Boolean',
+                HAT: 'hat',
+                LOOP: 'loop',
+                CONDITIONAL: 'conditional',
+                BUTTON: 'button',
+                LABEL: 'label'
+            },
+            ArgumentType: {
+                STRING: 'string',
+                NUMBER: 'number',
+                BOOLEAN: 'Boolean',
+                ANGLE: 'angle',
+                COLOR: 'color',
+                MATRIX: 'matrix',
+                NOTE: 'note',
+                COSTUME: 'costume',
+                SOUND: 'sound',
+                IMAGE: 'image'
+            },
+            Cast: {toString: String, toNumber: Number, toBoolean: Boolean},
+            vm: {runtime: stubRuntime(), postIOData: () => {}},
+            extensions: {register: instance => {
+                registered = instance;
+            }}
+        };
+        const source = fs.readFileSync(path.join(folder, file), 'utf8');
+        try {
+            // eslint-disable-next-line no-new-func
+            new Function('Scratch', 'document', 'localStorage', 'requestAnimationFrame', 'Blob',
+                source)(
+                Scratch,
+                {addEventListener: () => {},
+                    querySelector: () => null,
+                    createElement: () => ({getContext: () => null})},
+                {getItem: () => null,
+                    setItem: () => {},
+                    removeItem: () => {},
+                    key: () => null,
+                    length: 0},
+                () => 0,
+                // Only ever asked its size, and only in the parts of an
+                // extension that do not run while it is describing itself.
+                class {
+                    get size () {
+                        return 0;
+                    }
+                }
+            );
+        } catch (e) {
+            failures.push(`${file}: ${e.message}`);
+            continue;
+        }
+        if (!registered) {
+            failures.push(`${file}: registered nothing`);
+            continue;
+        }
+        found.push(registered.getInfo());
+    }
+    return found;
+};
+
+const everything = [
+    ...Object.entries(EXTENSIONS).map(([id, dir]) => ({id, dir})),
+    ...readOurOwn().map(info => ({id: info.id, info}))
+];
+
+for (const entry of everything) {
+    const id = entry.id;
+    let info = entry.info;
+    if (!info) {
+        try {
+            // eslint-disable-next-line global-require
+            const Klass = require(path.join('scratch-vm/src/extensions', entry.dir, 'index.js'));
+            const instance = new Klass(stubRuntime());
+            info = instance.getInfo();
+        } catch (e) {
+            failures.push(`${id}: ${e.message}`);
+            continue;
+        }
     }
 
     const extId = info.id || id;
 
     for (const block of info.blocks || []) {
-        if (typeof block === 'string') continue;               // separators
+        if (typeof block === 'string') continue; // separators
         if (!block.opcode) continue;
         if (block.blockType === 'label' || block.blockType === 'button') continue;
 
@@ -143,17 +249,20 @@ for (const [id, dir] of Object.entries(EXTENSIONS)) {
         // for a colour and once for a hue number). A name has to be unique or
         // the round trip cannot come back, so a clash falls back to the
         // block's own opcode, which is unique by definition.
-        let name = `${extId}.${camel(text) || camel(block.opcode) || block.opcode}`;
-        if (taken.has(name)) name = `${extId}.${camel(block.opcode) || block.opcode}`;
+        const spoken = TEXT_PREFIX[extId] || extId;
+        let name = `${spoken}.${camel(text) || camel(block.opcode) || block.opcode}`;
+        if (taken.has(name)) name = `${spoken}.${camel(block.opcode) || block.opcode}`;
         let n = 2;
-        while (taken.has(name)) name = `${extId}.${camel(block.opcode)}${n++}`;
+        while (taken.has(name)) name = `${spoken}.${camel(block.opcode)}${n++}`;
         taken.add(name);
 
         results[opcode] = {opcode, name, kind, args: order, fields};
     }
 }
 
-for (const t of timers) { clearInterval(t); clearTimeout(t); }
+for (const t of timers) {
+    clearInterval(t); clearTimeout(t);
+}
 global.setInterval = realSetInterval;
 global.setTimeout = realSetTimeout;
 
@@ -179,7 +288,7 @@ for (const def of Object.values(results)) {
 }
 lines.push('};');
 lines.push('');
-lines.push('export const EXTENSION_INPUT_SHADOWS = ' + JSON.stringify(shadows, null, 4) + ';');
+lines.push(`export const EXTENSION_INPUT_SHADOWS = ${JSON.stringify(shadows, null, 4)};`);
 lines.push('');
 
 const out = path.join(__dirname, '..', 'src', 'lib', 'flipwarp', 'extension-blocks.js');

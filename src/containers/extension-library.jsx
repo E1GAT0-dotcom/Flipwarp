@@ -12,6 +12,7 @@ import extensionLibraryContent, {
 } from '../lib/libraries/extensions/index.jsx';
 import extensionTags from '../lib/libraries/tw-extension-tags';
 import {loadPenguinModLibrary} from '../lib/flipwarp/penguinmod-library';
+import {flipwarpLibrary} from '../lib/flipwarp/flipwarp-extensions';
 import libraryStyles from '../components/library/library.css';
 
 import LibraryComponent from '../components/library/library.jsx';
@@ -170,7 +171,11 @@ class ExtensionLibrary extends React.PureComponent {
     render () {
         let library = null;
         if (this.state.gallery || this.state.galleryError || this.state.galleryTimedOut) {
-            library = extensionLibraryContent.map(toLibraryItem);
+            // Flipwarp's own first: they are the only ones on this list whose
+            // blocks the Text button can read.
+            library = flipwarpLibrary().map(toLibraryItem);
+            library.push('---');
+            library.push(...extensionLibraryContent.map(toLibraryItem));
             library.push('---');
             if (this.state.gallery) {
                 library.push(toLibraryItem(galleryMore));
@@ -245,6 +250,14 @@ class ExtensionLibrary extends React.PureComponent {
             'folder called penguinmod sits beside it, and reload. This tab will list them.'
         );
 
+        const flipwarpNotice = notice(
+            'These are Flipwarp\'s own, by E1GAT0_.',
+            'They do the things Scratch projects keep rebuilding by hand — remembering a score ' +
+            'after the tab closes, replaying what was pressed, holding a branching conversation. ' +
+            'Unlike everything under the other tabs, their blocks convert to text like any other ' +
+            'block, so the Text button still works on a sprite that uses one.'
+        );
+
         const allTabNotice = notice(
             'Anything under the TurboWarp tab cannot be shown as text.',
             'Scratch\'s own extensions — Music, Pen, Video Sensing and the rest — convert to text ' +
@@ -259,7 +272,12 @@ class ExtensionLibrary extends React.PureComponent {
                 filterable
                 persistableKey="extensionId"
                 id="extensionLibrary"
-                tagBanners={{all: allTabNotice, tw: turboWarpNotice, pm: penguinModNotice}}
+                tagBanners={{
+                    all: allTabNotice,
+                    flipwarp: flipwarpNotice,
+                    tw: turboWarpNotice,
+                    pm: penguinModNotice
+                }}
                 tags={extensionTags}
                 title={this.props.intl.formatMessage(messages.extensionTitle)}
                 visible={this.props.visible}

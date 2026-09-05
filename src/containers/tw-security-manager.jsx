@@ -26,8 +26,13 @@ const manuallyTrustExtension = url => {
 const isBundledWithThisEditor = url => {
     try {
         const parsed = new URL(url, location.href);
-        const folder = new URL('penguinmod/', document.baseURI);
-        return parsed.origin === location.origin && parsed.href.startsWith(folder.href);
+        if (parsed.origin !== location.origin) return false;
+        // The PenguinMod extensions unzipped into this site, and Flipwarp's
+        // own, which ship with it.
+        return ['penguinmod/', 'flipwarp-extensions/'].some(name => {
+            const folder = new URL(name, document.baseURI);
+            return parsed.href.startsWith(folder.href);
+        });
     } catch (e) {
         return false;
     }

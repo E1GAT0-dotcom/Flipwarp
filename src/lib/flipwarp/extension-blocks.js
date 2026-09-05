@@ -93,6 +93,42 @@ export const EXTENSION_BLOCKS = {
     gdxfor_isFreeFalling: { kind: 'boolean', name: 'gdxfor.falling', args: [], extension: true },
     gdxfor_getSpinSpeed: { kind: 'reporter', name: 'gdxfor.spinSpeed', args: ["DIRECTION"], menu: {"DIRECTION":"gdxfor_menu_axisOptions"}, extension: true },
     gdxfor_getAcceleration: { kind: 'reporter', name: 'gdxfor.acceleration', args: ["DIRECTION"], menu: {"DIRECTION":"gdxfor_menu_axisOptions"}, extension: true },
+    flipwarpDialogue_use: { kind: 'statement', name: 'dialogue.useConversation', args: ["TEXT"], extension: true },
+    flipwarpDialogue_goTo: { kind: 'statement', name: 'dialogue.goToPart', args: ["NAME"], extension: true },
+    flipwarpDialogue_says: { kind: 'reporter', name: 'dialogue.whatIsSaidHere', args: [], extension: true },
+    flipwarpDialogue_replyCount: { kind: 'reporter', name: 'dialogue.numberOfReplies', args: [], extension: true },
+    flipwarpDialogue_reply: { kind: 'reporter', name: 'dialogue.reply', args: ["N"], extension: true },
+    flipwarpDialogue_choose: { kind: 'statement', name: 'dialogue.chooseReply', args: ["N"], extension: true },
+    flipwarpDialogue_here: { kind: 'reporter', name: 'dialogue.partIAmAt', args: [], extension: true },
+    flipwarpDialogue_isEnd: { kind: 'boolean', name: 'dialogue.conversationOver', args: [], extension: true },
+    flipwarpDialogue_partNames: { kind: 'reporter', name: 'dialogue.allPartNames', args: [], extension: true },
+    flipwarpDialogue_problems: { kind: 'reporter', name: 'dialogue.problemsWithTheConversation', args: [], extension: true },
+    flipwarpRecordReplay_startRecording: { kind: 'statement', name: 'replay.startRecordingInput', args: [], extension: true },
+    flipwarpRecordReplay_stopRecording: { kind: 'statement', name: 'replay.stopRecording', args: [], extension: true },
+    flipwarpRecordReplay_isRecording: { kind: 'boolean', name: 'replay.recording', args: [], extension: true },
+    flipwarpRecordReplay_play: { kind: 'statement', name: 'replay.playTheRecording', args: [], extension: true },
+    flipwarpRecordReplay_playAndWait: { kind: 'statement', name: 'replay.playTheRecordingAndWait', args: [], extension: true },
+    flipwarpRecordReplay_stopPlaying: { kind: 'statement', name: 'replay.stopPlaying', args: [], extension: true },
+    flipwarpRecordReplay_isPlaying: { kind: 'boolean', name: 'replay.playing', args: [], extension: true },
+    flipwarpRecordReplay_setSpeed: { kind: 'statement', name: 'replay.playAtTimesSpeed', args: ["SPEED"], extension: true },
+    flipwarpRecordReplay_length: { kind: 'reporter', name: 'replay.recordingLengthInSeconds', args: [], extension: true },
+    flipwarpRecordReplay_count: { kind: 'reporter', name: 'replay.thingsInTheRecording', args: [], extension: true },
+    flipwarpRecordReplay_asText: { kind: 'reporter', name: 'replay.recordingAsText', args: [], extension: true },
+    flipwarpRecordReplay_fromText: { kind: 'statement', name: 'replay.useRecording', args: ["TEXT"], extension: true },
+    flipwarpRecordReplay_clear: { kind: 'statement', name: 'replay.clearTheRecording', args: [], extension: true },
+    flipwarpSaveSlots_save: { kind: 'statement', name: 'saveSlots.saveAsInSlot', args: ["VALUE","NAME","SLOT"], extension: true },
+    flipwarpSaveSlots_load: { kind: 'reporter', name: 'saveSlots.fromSlot', args: ["NAME","SLOT"], extension: true },
+    flipwarpSaveSlots_has: { kind: 'boolean', name: 'saveSlots.slotHas', args: ["SLOT","NAME"], extension: true },
+    flipwarpSaveSlots_saveList: { kind: 'statement', name: 'saveSlots.saveListAsInSlot', args: ["LIST","NAME","SLOT"], extension: true },
+    flipwarpSaveSlots_loadList: { kind: 'statement', name: 'saveSlots.loadFromSlotIntoList', args: ["NAME","SLOT","LIST"], extension: true },
+    flipwarpSaveSlots_namesIn: { kind: 'reporter', name: 'saveSlots.namesSavedInSlot', args: ["SLOT"], extension: true },
+    flipwarpSaveSlots_slots: { kind: 'reporter', name: 'saveSlots.allSlots', args: [], extension: true },
+    flipwarpSaveSlots_slotExists: { kind: 'boolean', name: 'saveSlots.slotExists', args: ["SLOT"], extension: true },
+    flipwarpSaveSlots_forget: { kind: 'statement', name: 'saveSlots.forgetInSlot', args: ["NAME","SLOT"], extension: true },
+    flipwarpSaveSlots_deleteSlot: { kind: 'statement', name: 'saveSlots.deleteSlot', args: ["SLOT"], extension: true },
+    flipwarpSaveSlots_deleteEverything: { kind: 'statement', name: 'saveSlots.deleteEverySlot', args: [], extension: true },
+    flipwarpSaveSlots_sizeOf: { kind: 'reporter', name: 'saveSlots.sizeOfSlotInCharacters', args: ["SLOT"], extension: true },
+    flipwarpSaveSlots_lastProblem: { kind: 'reporter', name: 'saveSlots.lastSaveProblem', args: [], extension: true },
 };
 
 export const EXTENSION_INPUT_SHADOWS = {
@@ -209,5 +245,62 @@ export const EXTENSION_INPUT_SHADOWS = {
     },
     "wedo2_whenDistance": {
         "REFERENCE": "math_number"
+    },
+    "flipwarpDialogue_use": {
+        "TEXT": "text"
+    },
+    "flipwarpDialogue_goTo": {
+        "NAME": "text"
+    },
+    "flipwarpDialogue_reply": {
+        "N": "math_number"
+    },
+    "flipwarpDialogue_choose": {
+        "N": "math_number"
+    },
+    "flipwarpRecordReplay_setSpeed": {
+        "SPEED": "math_number"
+    },
+    "flipwarpRecordReplay_fromText": {
+        "TEXT": "text"
+    },
+    "flipwarpSaveSlots_save": {
+        "VALUE": "text",
+        "NAME": "text",
+        "SLOT": "text"
+    },
+    "flipwarpSaveSlots_load": {
+        "NAME": "text",
+        "SLOT": "text"
+    },
+    "flipwarpSaveSlots_has": {
+        "SLOT": "text",
+        "NAME": "text"
+    },
+    "flipwarpSaveSlots_saveList": {
+        "LIST": "text",
+        "NAME": "text",
+        "SLOT": "text"
+    },
+    "flipwarpSaveSlots_loadList": {
+        "NAME": "text",
+        "SLOT": "text",
+        "LIST": "text"
+    },
+    "flipwarpSaveSlots_namesIn": {
+        "SLOT": "text"
+    },
+    "flipwarpSaveSlots_slotExists": {
+        "SLOT": "text"
+    },
+    "flipwarpSaveSlots_forget": {
+        "NAME": "text",
+        "SLOT": "text"
+    },
+    "flipwarpSaveSlots_deleteSlot": {
+        "SLOT": "text"
+    },
+    "flipwarpSaveSlots_sizeOf": {
+        "SLOT": "text"
     }
 };
