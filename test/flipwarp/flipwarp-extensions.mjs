@@ -34,7 +34,8 @@ const credit = await page.$$eval('[class*="library_tag-banner"], [class*="tagBan
 // --- the blocks actually work --------------------------------------------
 const saved = await page.evaluate(async () => {
     const vm = window.vm;
-    for (const file of ['save-slots.js', 'dialogue.js', 'record-replay.js']) {
+    for (const file of ['save-slots.js', 'dialogue.js', 'record-replay.js',
+        'near.js', 'pathfinding.js']) {
         await vm.extensionManager.loadExtensionURL(
             new URL(`flipwarp-extensions/${file}`, document.baseURI).href);
     }
@@ -94,10 +95,57 @@ const saved = await page.evaluate(async () => {
     await new Promise(r => setTimeout(r, 400));
     const releasedAfter = !vm.runtime.ioDevices.keyboard._keysPressed.includes('right arrow');
 
+    // Near: the point of it is not that it answers, but that it answers by
+    // looking at a handful of sprites rather than at all of them.
+    const me = vm.runtime.targets[1];
+    me.setXY(0, 0);
+    const clones = [];
+    for (const [x, y] of [[20, 0], [-30, 10], [200, 200], [-210, -190], [35, -15]]) {
+        const clone = me.makeClone();
+        if (!clone) continue;
+        vm.runtime.addTarget(clone);
+        clone.setXY(x, y);
+        clones.push(clone);
+    }
+    await call('flipwarpNear_rebuild', {});
+    const noted = await call('flipwarpNear_noted', {});
+    const close = await call('flipwarpNear_countNear', {RANGE: 50});
+    const far = await call('flipwarpNear_countNear', {RANGE: 500});
+    const nearestDistance = await call('flipwarpNear_nearestDistance', {RANGE: 500});
+    const nothingNear = await call('flipwarpNear_anyNear', {RANGE: 5});
+
+    // Pathfinding: a wall right across the stage with one door in it.
+    await call('flipwarpPathfinding_setSquare', {SIZE: 24});
+    await call('flipwarpPathfinding_clearWalls', {});
+    for (let x = -240; x <= 240; x += 24) {
+        if (x > 60 && x < 110) continue;
+        await call('flipwarpPathfinding_blockAt', {X: x, Y: 0});
+    }
+    await call('flipwarpPathfinding_find', {FX: -200, FY: -100, TX: -200, TY: 100});
+    const routeFound = await call('flipwarpPathfinding_found', {});
+    const routeSteps = await call('flipwarpPathfinding_steps', {});
+    let throughWall = false;
+    for (let i = 1; i <= routeSteps; i++) {
+        const x = await call('flipwarpPathfinding_stepX', {N: i});
+        const y = await call('flipwarpPathfinding_stepY', {N: i});
+        if (await call('flipwarpPathfinding_isBlocked', {X: x, Y: y})) throughWall = true;
+    }
+    // With the door bricked up there is no way through, and none around
+    // either: a route that wandered off the side of the stage would make
+    // every wall pointless.
+    for (let x = 72; x < 110; x += 24) {
+        await call('flipwarpPathfinding_blockAt', {X: x, Y: 0});
+    }
+    await call('flipwarpPathfinding_find', {FX: -200, FY: -100, TX: -200, TY: 100});
+    const sealedFound = await call('flipwarpPathfinding_found', {});
+    for (const clone of clones) vm.runtime.disposeTarget(clone);
+
     const loaded = vm.extensionManager.isExtensionLoaded('flipwarpSaveSlots');
     return {loaded, readBack, listed, gone, firstLine, replies, secondLine, whereNow,
         atEnd, complaint, recorded, asText, stillRecording,
-        pressedDuringPlayback, releasedAfter};
+        pressedDuringPlayback, releasedAfter,
+        noted, close, far, nearestDistance, nothingNear,
+        routeFound, routeSteps, throughWall, sealedFound};
 });
 
 // --- and they convert to text --------------------------------------------
@@ -148,7 +196,7 @@ await browser.close();
 
 const checks = [
     ['there is a Flipwarp tab', tabs.includes('Flipwarp'), tabs],
-    ['it lists all three', onTab.length >= 3, onTab],
+    ['it lists all five', onTab.length >= 5, onTab],
     ['and says who made them', /E1GAT0_/.test(credit), credit.slice(0, 120)],
     ['an extension served from this site loads', saved.loaded === true, saved.loaded],
     ['a slot remembers what was put in it', saved.readBack === '42', saved],
@@ -168,6 +216,15 @@ const checks = [
     ['playing it back presses the key again',
         saved.pressedDuringPlayback === true, saved.pressedDuringPlayback],
     ['and lets go of it at the end', saved.releasedAfter === true, saved.releasedAfter],
+    ['near notices every sprite there is', saved.noted === 6, saved.noted],
+    ['and counts only the ones actually close', saved.close === 3, saved.close],
+    ['and the ones further out when asked further out', saved.far === 5, saved.far],
+    ['and measures the nearest', saved.nearestDistance === 20, saved.nearestDistance],
+    ['and says no when nothing is near', saved.nothingNear === false, saved.nothingNear],
+    ['a route is found through a door in a wall', saved.routeFound === true, saved],
+    ['and it does not go through the wall', saved.throughWall === false, saved],
+    ['bricking the door up leaves no route at all',
+        saved.sealedFound === false, saved.sealedFound],
     ['the Text button does not refuse them', refused.length === 0, refused],
     ['their blocks are written out as text',
         /dialogue\.useConversation/.test(text) && /dialogue\.whatIsSaidHere/.test(text), text],

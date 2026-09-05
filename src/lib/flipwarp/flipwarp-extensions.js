@@ -47,6 +47,21 @@ const EXTENSIONS = [
         name: 'Dialogue',
         description: 'Write a branching conversation as text and walk through it, instead of a ' +
             'hundred nested ifs.'
+    },
+    {
+        id: 'flipwarpNear',
+        file: 'near.js',
+        icon: 'near.svg',
+        name: 'Near',
+        description: 'Ask what is close by without checking every sprite against every other. ' +
+            'For projects with hundreds of clones.'
+    },
+    {
+        id: 'flipwarpPathfinding',
+        file: 'pathfinding.js',
+        icon: 'pathfinding.svg',
+        name: 'Pathfinding',
+        description: 'Find a way round the walls instead of walking into them, and step along it.'
     }
 ];
 

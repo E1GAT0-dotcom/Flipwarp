@@ -103,6 +103,29 @@ export const EXTENSION_BLOCKS = {
     flipwarpDialogue_isEnd: { kind: 'boolean', name: 'dialogue.conversationOver', args: [], extension: true },
     flipwarpDialogue_partNames: { kind: 'reporter', name: 'dialogue.allPartNames', args: [], extension: true },
     flipwarpDialogue_problems: { kind: 'reporter', name: 'dialogue.problemsWithTheConversation', args: [], extension: true },
+    flipwarpNear_rebuild: { kind: 'statement', name: 'near.noteWhereEverySpriteIs', args: [], extension: true },
+    flipwarpNear_setSquare: { kind: 'statement', name: 'near.useSquaresStepsAcross', args: ["SIZE"], extension: true },
+    flipwarpNear_countNear: { kind: 'reporter', name: 'near.howManyWithinOfMe', args: ["RANGE"], extension: true },
+    flipwarpNear_anyNear: { kind: 'boolean', name: 'near.anythingWithinOfMe', args: ["RANGE"], extension: true },
+    flipwarpNear_nearestDistance: { kind: 'reporter', name: 'near.distanceToTheNearestWithin', args: ["RANGE"], extension: true },
+    flipwarpNear_nearestDirection: { kind: 'reporter', name: 'near.directionOfTheNearestWithin', args: ["RANGE"], extension: true },
+    flipwarpNear_countNearPoint: { kind: 'reporter', name: 'near.howManyWithinOfXY', args: ["RANGE","X","Y"], extension: true },
+    flipwarpNear_noted: { kind: 'reporter', name: 'near.spritesNoted', args: [], extension: true },
+    flipwarpNear_looked: { kind: 'reporter', name: 'near.spritesLookedAtLastTime', args: [], extension: true },
+    flipwarpPathfinding_setSquare: { kind: 'statement', name: 'route.useSquaresStepsAcross', args: ["SIZE"], extension: true },
+    flipwarpPathfinding_clearWalls: { kind: 'statement', name: 'route.clearAllWalls', args: [], extension: true },
+    flipwarpPathfinding_blockAt: { kind: 'statement', name: 'route.putAWallAtXY', args: ["X","Y"], extension: true },
+    flipwarpPathfinding_unblockAt: { kind: 'statement', name: 'route.clearTheWallAtXY', args: ["X","Y"], extension: true },
+    flipwarpPathfinding_isBlocked: { kind: 'boolean', name: 'route.wallAtXY', args: ["X","Y"], extension: true },
+    flipwarpPathfinding_findFromMe: { kind: 'statement', name: 'route.findARouteFromMeToXY', args: ["X","Y"], extension: true },
+    flipwarpPathfinding_find: { kind: 'statement', name: 'route.findARouteFromXYToXY', args: ["FX","FY","TX","TY"], extension: true },
+    flipwarpPathfinding_found: { kind: 'boolean', name: 'route.routeFound', args: [], extension: true },
+    flipwarpPathfinding_steps: { kind: 'reporter', name: 'route.stepsInTheRoute', args: [], extension: true },
+    flipwarpPathfinding_stepX: { kind: 'reporter', name: 'route.xOfStep', args: ["N"], extension: true },
+    flipwarpPathfinding_stepY: { kind: 'reporter', name: 'route.yOfStep', args: ["N"], extension: true },
+    flipwarpPathfinding_goToStep: { kind: 'statement', name: 'route.goToStepOfTheRoute', args: ["N"], extension: true },
+    flipwarpPathfinding_directionOfNextStep: { kind: 'reporter', name: 'route.directionOfTheNextStepFromMe', args: [], extension: true },
+    flipwarpPathfinding_squaresLookedAt: { kind: 'reporter', name: 'route.squaresLookedAt', args: [], extension: true },
     flipwarpRecordReplay_startRecording: { kind: 'statement', name: 'replay.startRecordingInput', args: [], extension: true },
     flipwarpRecordReplay_stopRecording: { kind: 'statement', name: 'replay.stopRecording', args: [], extension: true },
     flipwarpRecordReplay_isRecording: { kind: 'boolean', name: 'replay.recording', args: [], extension: true },
@@ -256,6 +279,60 @@ export const EXTENSION_INPUT_SHADOWS = {
         "N": "math_number"
     },
     "flipwarpDialogue_choose": {
+        "N": "math_number"
+    },
+    "flipwarpNear_setSquare": {
+        "SIZE": "math_number"
+    },
+    "flipwarpNear_countNear": {
+        "RANGE": "math_number"
+    },
+    "flipwarpNear_anyNear": {
+        "RANGE": "math_number"
+    },
+    "flipwarpNear_nearestDistance": {
+        "RANGE": "math_number"
+    },
+    "flipwarpNear_nearestDirection": {
+        "RANGE": "math_number"
+    },
+    "flipwarpNear_countNearPoint": {
+        "RANGE": "math_number",
+        "X": "math_number",
+        "Y": "math_number"
+    },
+    "flipwarpPathfinding_setSquare": {
+        "SIZE": "math_number"
+    },
+    "flipwarpPathfinding_blockAt": {
+        "X": "math_number",
+        "Y": "math_number"
+    },
+    "flipwarpPathfinding_unblockAt": {
+        "X": "math_number",
+        "Y": "math_number"
+    },
+    "flipwarpPathfinding_isBlocked": {
+        "X": "math_number",
+        "Y": "math_number"
+    },
+    "flipwarpPathfinding_findFromMe": {
+        "X": "math_number",
+        "Y": "math_number"
+    },
+    "flipwarpPathfinding_find": {
+        "FX": "math_number",
+        "FY": "math_number",
+        "TX": "math_number",
+        "TY": "math_number"
+    },
+    "flipwarpPathfinding_stepX": {
+        "N": "math_number"
+    },
+    "flipwarpPathfinding_stepY": {
+        "N": "math_number"
+    },
+    "flipwarpPathfinding_goToStep": {
         "N": "math_number"
     },
     "flipwarpRecordReplay_setSpeed": {

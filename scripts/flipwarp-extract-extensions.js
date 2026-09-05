@@ -65,7 +65,9 @@ const ARG_SHADOW = {
 const TEXT_PREFIX = {
     flipwarpSaveSlots: 'saveSlots',
     flipwarpRecordReplay: 'replay',
-    flipwarpDialogue: 'dialogue'
+    flipwarpDialogue: 'dialogue',
+    flipwarpNear: 'near',
+    flipwarpPathfinding: 'route'
 };
 
 const camel = label => {
