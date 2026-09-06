@@ -710,6 +710,14 @@ class MenuBar extends React.Component {
                                                     description="Menu bar item to publish the project to Scratch"
                                                     id="flipwarp.menuBar.publish"
                                                 />
+                                                <span className={styles.unfinished}>
+                                                    <FormattedMessage
+                                                        defaultMessage="unfinished"
+                                                        // eslint-disable-next-line max-len
+                                                        description="Note beside a menu item that is not finished yet"
+                                                        id="flipwarp.menuBar.unfinished"
+                                                    />
+                                                </span>
                                             </MenuItem>
                                             <MenuItem
                                                 onClick={this.handleClickPackager}

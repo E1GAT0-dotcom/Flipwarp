@@ -271,3 +271,17 @@
         margin-top: 2rem;
     }
 }
+
+/*
+    A word beside a menu item saying it is not done yet. Quieter than the
+    item itself and pushed to the right, so it reads as a note about the
+    thing rather than part of its name.
+*/
+.unfinished {
+    margin-left: .5rem;
+    font-size: .7rem;
+    font-style: italic;
+    font-weight: normal;
+    opacity: .7;
+    white-space: nowrap;
+}
