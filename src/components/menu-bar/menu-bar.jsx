@@ -35,7 +35,7 @@ import TWSaveStatus from './tw-save-status.jsx';
 import TWNews from './tw-news.jsx';
 
 import {openTipsLibrary, openSettingsModal, openRestorePointModal,
-    openPackageModal} from '../../reducers/modals';
+    openPackageModal, openPublishModal} from '../../reducers/modals';
 import {setPlayer} from '../../reducers/mode';
 import {
     isTimeTravel220022BC,
@@ -219,6 +219,7 @@ class MenuBar extends React.Component {
             'handleClickSave',
             'handleClickSaveAsCopy',
             'handleClickPackager',
+            'handleClickPublish',
             'handleClickDesktopSettings',
             'handleClickRestorePoints',
             'handleClickSeeCommunity',
@@ -273,6 +274,10 @@ class MenuBar extends React.Component {
         // this one is standing in front of it and can copy most of the
         // answers. The full packager is still one link away, inside.
         this.props.onOpenPackageModal();
+        this.props.onRequestCloseFile();
+    }
+    handleClickPublish () {
+        this.props.onOpenPublishModal();
         this.props.onRequestCloseFile();
     }
     handleClickDesktopSettings () {
@@ -698,6 +703,15 @@ class MenuBar extends React.Component {
                                     {this.props.onClickPackager && (
                                         <MenuSection>
                                             <MenuItem
+                                                onClick={this.handleClickPublish}
+                                            >
+                                                <FormattedMessage
+                                                    defaultMessage="Publish to Scratch"
+                                                    description="Menu bar item to publish the project to Scratch"
+                                                    id="flipwarp.menuBar.publish"
+                                                />
+                                            </MenuItem>
+                                            <MenuItem
                                                 onClick={this.handleClickPackager}
                                             >
                                                 <FormattedMessage
@@ -1098,6 +1112,7 @@ MenuBar.propTypes = {
     onClickDesktopSettings: PropTypes.func,
     onClickPackager: PropTypes.func,
     onOpenPackageModal: PropTypes.func,
+    onOpenPublishModal: PropTypes.func,
     onClickRestorePoints: PropTypes.func,
     onClickEdit: PropTypes.func,
     onClickFile: PropTypes.func,
@@ -1200,6 +1215,7 @@ const mapDispatchToProps = dispatch => ({
     onRequestCloseAbout: () => dispatch(closeAboutMenu()),
     onClickRestorePoints: () => dispatch(openRestorePointModal()),
     onOpenPackageModal: () => dispatch(openPackageModal()),
+    onOpenPublishModal: () => dispatch(openPublishModal()),
     onClickSettings: () => dispatch(openSettingsMenu()),
     onClickSettingsModal: () => {
         dispatch(closeEditMenu());

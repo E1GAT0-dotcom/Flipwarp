@@ -35,6 +35,7 @@ import TelemetryModal from '../telemetry-modal/telemetry-modal.jsx';
 import TWUsernameModal from '../../containers/tw-username-modal.jsx';
 import TWSettingsModal from '../../containers/tw-settings-modal.jsx';
 import FlipwarpPackageModal from '../../containers/flipwarp-package-modal.jsx';
+import FlipwarpPublishModal from '../../containers/flipwarp-publish-modal.jsx';
 import TWSecurityManager from '../../containers/tw-security-manager.jsx';
 import TWCustomExtensionModal from '../../containers/tw-custom-extension-modal.jsx';
 import TWRestorePointManager from '../../containers/tw-restore-point-manager.jsx';
@@ -159,6 +160,7 @@ const GUIComponent = props => {
         usernameModalVisible,
         settingsModalVisible,
         packageModalVisible,
+        publishModalVisible,
         customExtensionModalVisible,
         fontsModalVisible,
         unknownPlatformModalVisible,
@@ -194,6 +196,7 @@ const GUIComponent = props => {
                 {usernameModalVisible && <TWUsernameModal />}
                 {settingsModalVisible && <TWSettingsModal />}
                 {packageModalVisible && <FlipwarpPackageModal />}
+                {publishModalVisible && <FlipwarpPublishModal />}
                 {customExtensionModalVisible && <TWCustomExtensionModal />}
                 {fontsModalVisible && <TWFontsModal />}
                 {unknownPlatformModalVisible && <TWUnknownPlatformModal />}
@@ -557,6 +560,7 @@ GUIComponent.propTypes = {
     usernameModalVisible: PropTypes.bool,
     settingsModalVisible: PropTypes.bool,
     packageModalVisible: PropTypes.bool,
+    publishModalVisible: PropTypes.bool,
     customExtensionModalVisible: PropTypes.bool,
     fontsModalVisible: PropTypes.bool,
     unknownPlatformModalVisible: PropTypes.bool,

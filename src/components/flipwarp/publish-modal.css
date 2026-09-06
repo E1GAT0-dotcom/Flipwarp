@@ -1,0 +1,145 @@
+@import "../../css/colors.css";
+
+.modal-content {
+    width: 32rem;
+    max-width: 100%;
+}
+
+.body {
+    background: $ui-modal-background;
+    color: $ui-modal-foreground;
+    padding: 1rem 1.5rem 1.5rem;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    font-size: 0.875rem;
+}
+
+.lead {
+    margin: 0 0 1rem;
+    line-height: 1.5;
+}
+
+.field {
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: bold;
+}
+
+.text,
+.area {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.4rem;
+    background: $ui-modal-background;
+    color: $ui-modal-foreground;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.area {
+    resize: vertical;
+    line-height: 1.4;
+}
+
+.choice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+    cursor: pointer;
+}
+
+.inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.4rem 0 0 1.5rem;
+}
+
+.inline .text {
+    width: 12rem;
+}
+
+.hint {
+    margin: 0.4rem 0 0;
+    opacity: 0.8;
+    line-height: 1.4;
+}
+
+/* The three steps, numbered, because the order is the whole point and the
+   middle one is the one people will try to skip. */
+.steps {
+    margin: 1rem 0 0;
+    padding-left: 1.3rem;
+    line-height: 1.5;
+}
+
+.steps li {
+    margin-bottom: 0.8rem;
+}
+
+.step-text {
+    display: block;
+    margin-top: 0.25rem;
+    opacity: 0.85;
+}
+
+.done {
+    display: block;
+    margin-top: 0.25rem;
+}
+
+.error {
+    margin-bottom: 1rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.4rem;
+    background: $error-light;
+    color: $error-primary;
+    line-height: 1.4;
+}
+
+.buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.go {
+    padding: 0.4rem 1rem;
+    border: none;
+    border-radius: 0.4rem;
+    background: $motion-primary;
+    color: $ui-white;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.go:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.quiet {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.4rem;
+    background: transparent;
+    color: $ui-modal-foreground;
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.quiet:hover {
+    background: $ui-black-transparent;
+}

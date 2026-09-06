@@ -19,6 +19,7 @@ const MODAL_FONTS = 'fontsModal';
 const MODAL_UNKNOWN_PLATFORM = 'unknownPlatformModal';
 const MODAL_INVALID_PROJECT = 'invalidProjectModal';
 const MODAL_PACKAGE = 'packageModal';
+const MODAL_PUBLISH = 'publishModal';
 
 const initialState = {
     [MODAL_BACKDROP_LIBRARY]: false,
@@ -38,7 +39,8 @@ const initialState = {
     [MODAL_FONTS]: false,
     [MODAL_UNKNOWN_PLATFORM]: false,
     [MODAL_INVALID_PROJECT]: false,
-    [MODAL_PACKAGE]: false
+    [MODAL_PACKAGE]: false,
+    [MODAL_PUBLISH]: false
 };
 
 const reducer = function (state, action) {
@@ -176,6 +178,12 @@ const openPackageModal = function () {
 const closePackageModal = function () {
     return closeModal(MODAL_PACKAGE);
 };
+const openPublishModal = function () {
+    return openModal(MODAL_PUBLISH);
+};
+const closePublishModal = function () {
+    return closeModal(MODAL_PUBLISH);
+};
 export {
     reducer as default,
     initialState as modalsInitialState,
@@ -197,6 +205,7 @@ export {
     openUnknownPlatformModal,
     openInvalidProjectModal,
     openPackageModal,
+    openPublishModal,
     closeBackdropLibrary,
     closeCostumeLibrary,
     closeExtensionLibrary,
@@ -214,5 +223,6 @@ export {
     closeFontsModal,
     closeUnknownPlatformModal,
     closeInvalidProjectModal,
-    closePackageModal
+    closePackageModal,
+    closePublishModal
 };
