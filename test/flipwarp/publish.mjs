@@ -5,12 +5,13 @@
 // that publishing the same project twice can offer to go over the top of the
 // first one.
 //
-// What cannot be tested here is the bookmarklet's three calls to Scratch,
-// because testing those means a Scratch account and a real project to write
-// to. So the bookmarklet is checked for the things that can be checked without
+// What cannot be tested here is anything the bookmarklet says to Scratch,
+// because testing that means a Scratch account and a real project to write to.
+// So the bookmarklet is checked for the things that can be checked without
 // one: that it is a valid bookmark address, that the program inside it parses,
-// that it refuses to do anything anywhere but Scratch, and that it names only
-// the endpoints it is supposed to name.
+// that it refuses to do anything anywhere but Scratch, that it names only the
+// endpoints it is supposed to name, and that it still asks before making a new
+// project, which is the guard against the thing that gets accounts banned.
 import {launchBrowser, SITE} from './launch.mjs';
 
 const browser = await launchBrowser();
@@ -130,6 +131,12 @@ const mark = await page.evaluate(async () => {
     };
 });
 
+const steps = await page.evaluate(() => {
+    const body = document.querySelector('[class*="publish-modal_body"]');
+    const list = body && body.querySelector('[class*="publish-modal_steps"]');
+    return list ? list.querySelectorAll('li').length : -1;
+});
+
 let parses = false;
 try {
     // eslint-disable-next-line no-new-func
@@ -145,6 +152,9 @@ await browser.close();
 // would be it reaching somewhere it was not asked to reach.
 const allowed = [
     'https://scratch.mit.edu/session/',
+    'https://scratch.mit.edu/projects/',
+    'https://projects.scratch.mit.edu/',
+    'https://assets.scratch.mit.edu/',
     'https://api.scratch.mit.edu/projects/',
     'https://api.scratch.mit.edu/proxy/projects/'
 ];
@@ -177,6 +187,12 @@ const checks = [
         /scratch\.mit\.edu/.test(mark.source) && /hostname/.test(mark.source), null],
     ['and it reaches nowhere it was not asked to',
         strays.length === 0, {addresses, strays}],
+    ['it asks before making a new project',
+        /confirm\(/.test(mark.source) && /banned/i.test(mark.source), null],
+    ['it can open the project file itself',
+        /DecompressionStream/.test(mark.source) && /0x06054b50/.test(mark.source), null],
+    ['and the dialog is down to two steps',
+        steps === 2, {steps}],
     ['no errors', errs.length === 0, errs]
 ];
 

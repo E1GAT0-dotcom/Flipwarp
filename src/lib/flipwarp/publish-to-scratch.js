@@ -17,14 +17,17 @@
 // On the other side: a bookmarklet, which is a bookmark whose address is a
 // small program. Pressed while you are on a Scratch page it is running inside
 // Scratch, with the cookie the browser was always willing to give that page,
-// and it can set the title and the notes and share the project. Those three
-// are documented and are the ones it uses.
+// so it can do the whole thing: open the file, send every costume and sound,
+// send the project, set the title and the notes, and share it.
 //
-// What it deliberately does not do is upload the file. Creating a project and
-// putting an .sb3 into it are not documented anywhere, and guessing at how to
-// write to somebody's account is not a thing to do with somebody's account.
-// Loading the file yourself is three clicks in Scratch's own editor, and it is
-// the part that cannot break.
+// It asks before making a new project rather than before writing over one,
+// which is the other way round from what you might expect. Writing over a
+// project you named is the ordinary thing to do and you said which one.
+// Making new ones is the thing that goes wrong at scale: people who have
+// automated this before have found that making a lot of them quickly gets
+// accounts banned, so that is the door with a handle on it.
+
+import {BOOKMARKLET_SOURCE} from './bookmarklet-source.js';
 
 const REMEMBERED = 'flipwarp:scratch-projects';
 
@@ -87,11 +90,14 @@ export const projectFile = async (vm, title) => {
  * @param {object} what the title, notes and whether to share
  * @returns {string} the ticket
  */
-export const ticketFor = ({title, instructions, share}) => JSON.stringify({
+export const ticketFor = ({title, instructions, share, id}) => JSON.stringify({
     flipwarp: 1,
     title: String(title || ''),
     instructions: String(instructions || ''),
-    share: Boolean(share)
+    share: Boolean(share),
+    // The project to write over. Empty means make a new one, which the
+    // bookmarklet asks about before doing.
+    id: idFrom(id)
 });
 
 // Where Scratch's editor opens a new, empty project.
@@ -103,66 +109,6 @@ export const NEW_PROJECT = 'https://scratch.mit.edu/projects/editor/';
  * @returns {string} the address
  */
 export const editorFor = id => `https://scratch.mit.edu/projects/${idFrom(id)}/editor/`;
-
-// The bookmarklet.
-//
-// Written out here rather than kept in a file of its own because it has to be
-// copied as one line into a bookmark, and because a bookmark cannot fetch it
-// from Flipwarp: this site may not be reachable from wherever the browser is,
-// and a bookmark that only works on one network is a bookmark that fails
-// silently on the day you need it.
-//
-// It only ever touches the project whose page you are standing on, and only
-// when you press it. Every call it makes is one Scratch documents.
-const BOOKMARKLET_SOURCE = `(async function () {
-  var say = function (m) { alert('Flipwarp: ' + m); };
-  if (!location.hostname.endsWith('scratch.mit.edu')) {
-    return say('Press this while you are on the Scratch page for your project.');
-  }
-  var id = (location.pathname.match(/projects\\/(\\d+)/) || [])[1];
-  if (!id) return say('Open your project on Scratch first, so its number is in the address.');
-
-  var ticket = null;
-  try {
-    ticket = JSON.parse(await navigator.clipboard.readText());
-  } catch (e) { ticket = null; }
-  if (!ticket || ticket.flipwarp !== 1) {
-    var pasted = prompt('Paste what Flipwarp copied for you:');
-    try { ticket = JSON.parse(pasted); } catch (e2) { ticket = null; }
-  }
-  if (!ticket || ticket.flipwarp !== 1) return say('That was not a Flipwarp ticket.');
-
-  var csrf = (document.cookie.match(/scratchcsrftoken=([^;]+)/) || [])[1];
-  if (!csrf) return say('You do not look signed in to Scratch in this browser.');
-
-  var session = await fetch('https://scratch.mit.edu/session/', {
-    credentials: 'include', headers: {'X-Requested-With': 'XMLHttpRequest'}
-  }).then(function (r) { return r.json(); }).catch(function () { return null; });
-  var token = session && session.user && session.user.token;
-  if (!token) return say('Could not read your Scratch session. Try reloading the page.');
-
-  var head = {
-    'Content-Type': 'application/json',
-    'X-CSRFToken': csrf,
-    'X-Token': token,
-    'X-Requested-With': 'XMLHttpRequest'
-  };
-
-  var wrote = await fetch('https://api.scratch.mit.edu/projects/' + id, {
-    method: 'PUT', credentials: 'include', headers: head,
-    body: JSON.stringify({title: ticket.title, instructions: ticket.instructions})
-  });
-  if (!wrote.ok) return say('Scratch refused the title and notes (' + wrote.status + ').');
-
-  if (ticket.share) {
-    var shared = await fetch('https://api.scratch.mit.edu/proxy/projects/' + id + '/share', {
-      method: 'PUT', credentials: 'include', headers: head
-    });
-    if (!shared.ok) return say('Title and notes set, but sharing was refused (' + shared.status + ').');
-    return say('Done. Title and notes set, and the project is shared.');
-  }
-  say('Done. Title and notes set. It is not shared; press Share when you are ready.');
-}())`;
 
 /**
  * The bookmarklet, as the single line a bookmark's address has to be.

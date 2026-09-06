@@ -22,10 +22,13 @@ const messages = defineMessages({
 /**
  * Getting a project onto Scratch, in as few presses as the web allows.
  *
- * Three, and the middle one cannot be helped. Flipwarp saves the file and puts
- * the words on the clipboard; you load the file in Scratch's own editor and
- * press Save, which is the part nobody outside Scratch is allowed to automate;
- * then the bookmarklet sets the title and the notes and shares it if you asked.
+ * Two. Flipwarp saves the file and puts the title, the notes and where it is
+ * going on the clipboard; then the bookmarklet, pressed on any Scratch page,
+ * does the rest of it in one go: it reads the file, sends the costumes and
+ * sounds, saves the project, sets the title and the notes, and shares it if
+ * that was asked for. The split is at the fence, not in the middle of the
+ * work: nothing served from here is allowed to hold a Scratch cookie, and
+ * nothing here tries to.
  */
 class PublishModal extends React.Component {
     constructor (props) {
@@ -145,7 +148,7 @@ class PublishModal extends React.Component {
                     <p className={styles.lead}>
                         <FormattedMessage
                             // eslint-disable-next-line max-len
-                            defaultMessage="Scratch will not let another website post to your account, which is the rule that stops any page you visit doing it while you are signed in. So this does the parts it can and hands you the one part it cannot: loading the file."
+                            defaultMessage="Scratch will not let another website post to your account, which is the rule that stops any page you visit doing it while you are signed in. So the work is split: Flipwarp gets the project ready, and a bookmarklet you press on Scratch does the rest."
                             description="Explanation at the top of the publish dialog"
                             id="flipwarp.publish.lead"
                         />
@@ -274,13 +277,15 @@ class PublishModal extends React.Component {
                                         href={file.url}
                                         download={file.name}
                                     >{file.name}</a>
-                                    {copied === 'ticket' ? ' saved, and the title and notes are on your clipboard.' :
-                                        ' saved. Copy the title and notes with the button below.'}
+                                    {copied === 'ticket' ?
+                                        ' saved, and everything else is on your clipboard.' :
+                                        ' saved. Copy the rest with the button below.'}
                                 </span>
                             ) : (
                                 <span className={styles.stepText}>
                                     <FormattedMessage
-                                        defaultMessage="Saves the project as a file and copies the title and notes."
+                                        // eslint-disable-next-line max-len
+                                        defaultMessage="Saves the project as a file, and copies the title, the notes and where it is going."
                                         description="What the first step does"
                                         id="flipwarp.publish.step1"
                                     />
@@ -295,26 +300,16 @@ class PublishModal extends React.Component {
                             >
                                 <FormattedMessage
                                     defaultMessage="Open Scratch"
-                                    description="Button that opens the Scratch editor"
+                                    description="Button that opens Scratch"
                                     id="flipwarp.publish.openScratch"
                                 />
                             </button>
                             <span className={styles.stepText}>
                                 <FormattedMessage
                                     // eslint-disable-next-line max-len
-                                    defaultMessage="In Scratch: File, then Load from your computer, pick the file, then File and Save now. This is the part nobody outside Scratch is allowed to do for you."
+                                    defaultMessage="Then press the Flipwarp bookmarklet and pick the file. It sends the costumes and sounds, saves the project, sets the title and the notes, shares it if you asked, and opens it."
                                     description="What the second step is"
                                     id="flipwarp.publish.step2"
-                                />
-                            </span>
-                        </li>
-                        <li>
-                            <span className={styles.stepText}>
-                                <FormattedMessage
-                                    // eslint-disable-next-line max-len
-                                    defaultMessage="Still on that Scratch page, press the Flipwarp bookmarklet. It sets the title and the notes, and shares the project if you asked it to."
-                                    description="What the third step is"
-                                    id="flipwarp.publish.step3"
                                 />
                             </span>
                         </li>
@@ -342,7 +337,7 @@ class PublishModal extends React.Component {
                     <p className={styles.hint}>
                         <FormattedMessage
                             // eslint-disable-next-line max-len
-                            defaultMessage="The bookmarklet is a bookmark whose address is a small program. Copy it, make a new bookmark in your bookmarks bar, and paste it in where the address goes. You only do this once."
+                            defaultMessage="The bookmarklet is a bookmark whose address is a small program. Copy it, make a new bookmark in your bookmarks bar, and paste it in where the address goes. You only do this once. It will ask before making a new project: making a lot of them quickly is what gets accounts banned, so writing over one you already have is the safer habit."
                             description="How to install the bookmarklet"
                             id="flipwarp.publish.bookmarkletHint"
                         />
