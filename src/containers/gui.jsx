@@ -36,6 +36,7 @@ import {installGameplay} from '../lib/flipwarp/gameplay.js';
 import {watchGameplaySettings} from '../lib/flipwarp/gameplay-settings.js';
 import {watchGameplayUrl} from '../lib/flipwarp/gameplay-url.js';
 import {installCostumeFolders} from '../lib/flipwarp/costume-folders.js';
+import {installProjectSettings} from '../lib/flipwarp/project-settings.js';
 import vmListenerHOC from '../lib/vm-listener-hoc.jsx';
 import vmManagerHOC from '../lib/vm-manager-hoc.jsx';
 import cloudManagerHOC from '../lib/cloud-manager-hoc.jsx';
@@ -74,6 +75,7 @@ class GUI extends React.Component {
         // ignored, actively stripped, because the wrapper that writes them was
         // never put on.
         installCostumeFolders(this.props.vm);
+        installProjectSettings(this.props.vm);
         watchGameplaySettings();
         // After the watcher above, so that a setting arriving from the
         // address is applied by it rather than sitting in storage unread.

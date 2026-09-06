@@ -402,32 +402,39 @@ CustomStageSize.propTypes = {
     onStageHeightChange: PropTypes.func
 };
 
-const StoreProjectOptions = ({onStoreProjectOptions}) => (
-    <div className={styles.setting}>
-        <div>
-            <button
-                onClick={onStoreProjectOptions}
-                className={styles.button}
-            >
-                <FormattedMessage
-                    defaultMessage="Store settings in project"
-                    description="Button in settings modal"
-                    id="tw.settingsModal.storeProjectOptions"
-                />
-            </button>
-            <p>
+// A switch rather than a button.
+//
+// The settings this saves are exactly the ones somebody fiddles with, so a
+// button meant every fiddle had to be followed by remembering to press it,
+// and forgetting was silent: the project opened somewhere else at thirty
+// frames a second and you heard about it from whoever you sent it to. On, the
+// project is kept up to date by itself. Off, the stored settings are taken
+// out, because a comment saying the wrong thing is worse than no comment.
+const StoreProjectOptions = () => {
+    const [settings, setLocal] = React.useState(getSettings());
+    const change = e => {
+        setSettings({keepSettingsInProject: e.target.checked});
+        setLocal(getSettings());
+    };
+    return (
+        <BooleanSetting
+            value={settings.keepSettingsInProject}
+            onChange={change}
+            label={<FormattedMessage
+                defaultMessage="Keep settings in the project"
+                description="Setting in settings modal"
+                id="tw.settingsModal.storeProjectOptions"
+            />}
+            help={<p>
                 <FormattedMessage
                     // eslint-disable-next-line max-len
-                    defaultMessage="Saves these settings inside the project file, so they are applied automatically the next time Flipwarp opens it. Warp timer and disable compiler are not saved."
-                    description="Help text for the store settings in project button"
+                    defaultMessage="Writes the settings above into the project itself, so it runs the same way wherever it is opened, and keeps them up to date as you change them rather than asking you to press a button each time. Turning it off takes them back out. Warp timer and disable compiler are never stored. What is stored is TurboWarp's list, so a project carrying it opens the same way there."
+                    description="Help text for the keep settings in project setting"
                     id="tw.settingsModal.storeProjectOptionsHelp"
                 />
-            </p>
-        </div>
-    </div>
-);
-StoreProjectOptions.propTypes = {
-    onStoreProjectOptions: PropTypes.func
+            </p>}
+        />
+    );
 };
 
 const Header = props => (
@@ -1019,11 +1026,7 @@ const SettingsModalComponent = props => (
                 value={props.disableCompiler}
                 onChange={props.onDisableCompilerChange}
             />
-            {!props.isEmbedded && (
-                <StoreProjectOptions
-                    {...props}
-                />
-            )}
+            {!props.isEmbedded && <StoreProjectOptions />}
         </Box>
     </Modal>
 );

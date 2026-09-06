@@ -34,6 +34,8 @@ const before = await flipwarpBoxes();
 // The first sixteen are Flipwarp's, in the order they are written: eight for
 // the editor, then eight for how a project runs and what it is costing.
 // Everything after them is TurboWarp's own and is not this test's business.
+// (The switch for keeping settings in the project is TurboWarp's setting with
+// a Flipwarp switch on it, and sits at the bottom with the rest of theirs.)
 const mine = before.slice(0, 16);
 
 const results = [];

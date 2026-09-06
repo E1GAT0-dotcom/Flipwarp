@@ -67,7 +67,11 @@ const DEFAULTS = {
     inputBuffering: false,
     // A small readout over the stage: frames a second, how long a frame is
     // taking, how many scripts are running, how many clones are about.
-    statsReadout: false
+    statsReadout: false,
+    // Keep the settings above inside the project file, so it runs the same way
+    // wherever it is opened. Off by default because it writes a comment into
+    // the project, and a project should not grow one without being asked.
+    keepSettingsInProject: false
 };
 
 const bool = (value, fallback) => (typeof value === 'boolean' ? value : fallback);
@@ -109,7 +113,8 @@ const read = () => {
             renderScale: [0.5, 1, 2].includes(parsed.renderScale) ?
                 parsed.renderScale : DEFAULTS.renderScale,
             inputBuffering: bool(parsed.inputBuffering, DEFAULTS.inputBuffering),
-            statsReadout: bool(parsed.statsReadout, DEFAULTS.statsReadout)
+            statsReadout: bool(parsed.statsReadout, DEFAULTS.statsReadout),
+            keepSettingsInProject: bool(parsed.keepSettingsInProject, DEFAULTS.keepSettingsInProject)
         };
     } catch (e) {
         return {...DEFAULTS};
