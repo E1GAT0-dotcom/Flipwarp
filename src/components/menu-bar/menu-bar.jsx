@@ -108,6 +108,12 @@ import sharedMessages from '../../lib/shared-messages';
 import SeeInsideButton from './tw-see-inside.jsx';
 import {notScratchDesktop} from '../../lib/isScratchDesktop.js';
 
+// Publishing to Scratch is written but untried: the half of it that talks to
+// Scratch cannot be tested without an account and a project to write over, so
+// it is out of the menu until it has been. Everything it needs is still here;
+// turning this back on is the whole of putting it back.
+const PUBLISHING_IS_READY = false;
+
 const ariaMessages = defineMessages({
     tutorials: {
         id: 'gui.menuBar.tutorialsLibrary',
@@ -702,23 +708,26 @@ class MenuBar extends React.Component {
                                     </MenuSection>
                                     {this.props.onClickPackager && (
                                         <MenuSection>
-                                            <MenuItem
-                                                onClick={this.handleClickPublish}
-                                            >
-                                                <FormattedMessage
-                                                    defaultMessage="Publish to Scratch"
-                                                    description="Menu bar item to publish the project to Scratch"
-                                                    id="flipwarp.menuBar.publish"
-                                                />
-                                                <span className={styles.unfinished}>
+                                            {PUBLISHING_IS_READY && (
+                                                <MenuItem
+                                                    onClick={this.handleClickPublish}
+                                                >
                                                     <FormattedMessage
-                                                        defaultMessage="unfinished"
+                                                        defaultMessage="Publish to Scratch"
                                                         // eslint-disable-next-line max-len
-                                                        description="Note beside a menu item that is not finished yet"
-                                                        id="flipwarp.menuBar.unfinished"
+                                                        description="Menu bar item to publish the project to Scratch"
+                                                        id="flipwarp.menuBar.publish"
                                                     />
-                                                </span>
-                                            </MenuItem>
+                                                    <span className={styles.unfinished}>
+                                                        <FormattedMessage
+                                                            defaultMessage="unfinished"
+                                                            // eslint-disable-next-line max-len
+                                                            description="Note beside a menu item that is not finished yet"
+                                                            id="flipwarp.menuBar.unfinished"
+                                                        />
+                                                    </span>
+                                                </MenuItem>
+                                            )}
                                             <MenuItem
                                                 onClick={this.handleClickPackager}
                                             >
