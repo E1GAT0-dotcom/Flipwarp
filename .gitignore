@@ -27,3 +27,8 @@ npm-*
 # for act
 .secrets
 shot-*.png
+
+# Patches on their way in, and anything kept beside them. Never committed:
+# this is also where the key that lets the push happen without you lives, and
+# a key that can be committed is a key that will be, once.
+/_incoming
