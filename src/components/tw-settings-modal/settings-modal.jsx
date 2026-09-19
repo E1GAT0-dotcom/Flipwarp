@@ -566,6 +566,32 @@ const FlipwarpSettings = () => {
                 </p>
             </BooleanSetting>
             <BooleanSetting
+                value={settings.projectHealth}
+                onChange={e => change({projectHealth: e.target.checked})}
+                label={<FormattedMessage
+                    defaultMessage="Project health"
+                    description="Flipwarp setting"
+                    id="flipwarp.settings.projectHealth"
+                />}
+            >
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="A tab under Tools that reads the whole project and lists what looks wrong with it: scripts with no hat on them so they never run, messages nobody listens for, variables nothing ever uses, costumes never worn. It sorts them into problems, things worth a look, and tidying, and steps through them with the same arrows as the find tool, scrolling to each one."
+                        description="Help text for the project health setting"
+                        id="flipwarp.settings.projectHealthHelp"
+                    />
+                </p>
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Some of them it can put right for you. Tick the ones you want and press the button; problems start ticked and tidying does not, because leaving a broken script alone costs nothing and deleting a costume you wanted costs the costume. It goes quiet wherever it cannot be sure: a sprite that picks its costume from a variable is left alone entirely."
+                        description="More help text for the project health setting"
+                        id="flipwarp.settings.projectHealthHelp2"
+                    />
+                </p>
+            </BooleanSetting>
+            <BooleanSetting
                 value={settings.blockSheet}
                 onChange={e => change({blockSheet: e.target.checked})}
                 label={<FormattedMessage

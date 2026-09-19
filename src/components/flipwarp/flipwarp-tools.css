@@ -275,3 +275,137 @@
     font-style: italic;
     color: $text-primary;
 }
+
+/* Tick all, tick none: the same button as the arrows, wide enough for a word. */
+.word-step {
+    width: auto;
+    padding: 0 0.5rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+/*
+    A band across the list naming the grade of everything under it. This is
+    what actually tells you which of the three a row is: the dot beside each
+    row agrees with it, but a colour on its own is not something everybody can
+    read, and three warm colours at the size of a dot are not something anyone
+    can read reliably.
+*/
+.heading {
+    padding: 0.25rem 0.5rem;
+    color: $ui-white;
+    font-size: 0.72rem;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+    position: sticky;
+    top: 0;
+}
+
+/*
+    The health check's own list.
+
+    A finding is a row you can press, because pressing it is how you go and
+    look at the thing it is talking about, and a tick box beside it for the
+    ones that can be acted on. A row with nothing to tick still reads as a
+    row: the box is there and disabled rather than missing, so the titles all
+    start in the same place down the list.
+*/
+.counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+}
+
+.count {
+    padding: 0.1rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: $ui-white;
+}
+
+/*
+    Three colours for three kinds of news, from the palette the editor already
+    uses so they read as part of it: the red it already says "this went wrong"
+    in, the amber of the control blocks, and a plain grey for the things that
+    are only weight.
+
+    They have to be told apart at the size of a dot, so they are red, amber and
+    grey rather than three warm colours a step apart. The wording beside every
+    dot says the same thing in words, because a colour on its own is not
+    something everybody can read.
+*/
+.problem {
+    background: $red-tertiary;
+}
+
+.warning {
+    background: $control-primary;
+}
+
+.tidy {
+    background: $text-primary-transparent;
+}
+
+.finding {
+    display: flex;
+    gap: 0.4rem;
+    align-items: flex-start;
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid $ui-black-transparent;
+}
+
+.tick {
+    flex: 0 0 auto;
+    padding-top: 0.15rem;
+}
+
+.finding-body {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0 0.4rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    color: $text-primary;
+}
+
+/* The colour of the grade, small, next to the title rather than instead of
+   it: colour alone is not something everybody can read. */
+.dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    margin-top: 0.35rem;
+}
+
+.finding-title {
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.finding-detail,
+.by-hand {
+    grid-column: 2;
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.by-hand {
+    font-style: italic;
+    opacity: 0.6;
+}
+
+.finding-body:hover .finding-title {
+    text-decoration: underline;
+}
+
+/* The one the arrows are on. */
+.at {
+    background: $looks-transparent;
+}

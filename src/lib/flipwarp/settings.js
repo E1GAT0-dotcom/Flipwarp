@@ -29,6 +29,7 @@ const DEFAULTS = {
     // nothing until pressed.
     searchProject: true,
     findReplace: true,
+    projectHealth: true,
     copyAsText: true,
     // The other half of Copy as text: right-click the workspace to turn text
     // back into blocks.
@@ -96,6 +97,7 @@ const read = () => {
             findReplace: bool(parsed.findReplace, DEFAULTS.findReplace),
             copyAsText: bool(parsed.copyAsText, DEFAULTS.copyAsText),
             pasteAsBlocks: bool(parsed.pasteAsBlocks, DEFAULTS.pasteAsBlocks),
+            projectHealth: bool(parsed.projectHealth, DEFAULTS.projectHealth),
             blockSheet: bool(parsed.blockSheet, DEFAULTS.blockSheet),
             pauseOffScreen: bool(parsed.pauseOffScreen, DEFAULTS.pauseOffScreen),
             hidePointer: bool(parsed.hidePointer, DEFAULTS.hidePointer),

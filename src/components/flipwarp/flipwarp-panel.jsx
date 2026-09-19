@@ -557,7 +557,8 @@ class FlipwarpPanel extends React.Component {
 
     render () {
         const {open, text, name, error, status, busy, suggestions, suggestIndex, settings} = this.state;
-        const anyTool = settings.searchProject || settings.findReplace || settings.blockSheet;
+        const anyTool = settings.searchProject || settings.findReplace ||
+            settings.projectHealth || settings.blockSheet;
         return (
             <React.Fragment>
                 {open ? null : (

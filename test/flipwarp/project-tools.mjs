@@ -124,7 +124,7 @@ try {
 await browser.close();
 
 const checks = [
-    ['the Tools button opens three tools', tabs.length === 3],
+    ['the Tools button opens all four tools', tabs.length === 4, tabs],
     ['search looked through more than one sprite',
         new Set(searchRows.map(r => r.split(':')[0])).size > 1],
     ['search said how many lines', /line/.test(searchStatus)],

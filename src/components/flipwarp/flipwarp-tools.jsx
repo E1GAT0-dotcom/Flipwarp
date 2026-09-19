@@ -1,8 +1,14 @@
-// The project-wide tools: search, find and replace, and the block sheet.
+// The project-wide tools: search, find and replace, the block sheet, and the
+// health check.
 //
-// They share one panel because they share one idea: the project as text,
+// They share one panel because they share one idea: the project as a whole,
 // rather than the sprite you happen to be looking at. Each one can be turned
 // off under Advanced, and a panel with nothing turned on never appears.
+//
+// The health check shares more than the panel. It walks its findings with the
+// same arrows, scrolls the workspace to each one the same way, and ticks the
+// ones it is going to act on in the same list, because stepping through
+// results and choosing which to accept is one habit, not four.
 
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -10,6 +16,7 @@ import bindAll from 'lodash.bindall';
 import VM from 'scratch-vm';
 
 import {findInProject, planReplace, applyReplacements, revealScript} from '../../lib/flipwarp/project-text.js';
+import {checkProject, applyFixes, GRADE_LABEL} from '../../lib/flipwarp/health.js';
 import {BLOCKS} from '../../lib/flipwarp/phrasebook.js';
 import {currentStyle} from '../../lib/flipwarp/settings.js';
 import styles from './flipwarp-tools.css';
@@ -47,6 +54,21 @@ const sheetFor = style => {
 
 const describe = e => (e && e.message ? e.message : String(e));
 
+// Which tab opens first: the leftmost one that is switched on.
+const TABS = [
+    ['search', 'Search all sprites', 'searchProject'],
+    ['replace', 'Find and replace', 'findReplace'],
+    ['health', 'Project health', 'projectHealth'],
+    ['sheet', 'Block sheet', 'blockSheet']
+];
+const tabsFor = settings => TABS.filter(([, , setting]) => settings[setting]);
+const firstTab = settings => {
+    const on = tabsFor(settings);
+    return on.length ? on[0][0] : 'sheet';
+};
+
+const GRADE_ORDER = ['problem', 'warning', 'tidy'];
+
 // A rename and an edited line are different things and are counted
 // separately: renaming a variable changes every block that uses it without
 // any line being rewritten, and saying "nothing changed" there would be a lie.
@@ -77,14 +99,16 @@ class FlipwarpTools extends React.Component {
     constructor (props) {
         super(props);
         bindAll(this, ['handleSearch', 'handlePreview', 'handleApply', 'handleClose',
-            'handleNext', 'handlePrevious', 'handleQueryKey']);
+            'handleNext', 'handlePrevious', 'handleQueryKey',
+            'handleCheck', 'handleFix']);
         this.state = {
-            mode: props.settings.searchProject ? 'search' : (props.settings.findReplace ? 'replace' : 'sheet'),
+            mode: firstTab(props.settings),
             query: '',
             replacement: '',
             caseSensitive: false,
             wholeWord: false,
             matches: null,
+            findings: null,
             // Which match the arrows are on. Kept so the panel can be walked
             // through without being closed and reopened for every one.
             current: -1,
@@ -175,15 +199,78 @@ class FlipwarpTools extends React.Component {
         }
     }
 
+    handleCheck () {
+        this.setState({busy: true, error: null});
+        try {
+            const findings = checkProject(this.props.vm);
+            // Problems start ticked and tidying does not. The difference is
+            // what happens if the guess is wrong: leaving a broken script in
+            // costs nothing, and deleting a costume that turns out to be
+            // wanted costs the costume.
+            const chosen = {};
+            for (const item of findings) {
+                if (item.fix && item.grade === 'problem') chosen[item.id] = true;
+            }
+            const fixable = findings.filter(f => f.fix).length;
+            this.setState({
+                busy: false,
+                findings,
+                chosen,
+                current: -1,
+                status: findings.length ?
+                    `${findings.length} ${findings.length === 1 ? 'thing' : 'things'} found, ` +
+                    `${fixable} of them fixable from here` :
+                    'Nothing to report. The project looks healthy.'
+            });
+        } catch (e) {
+            this.setState({busy: false, error: describe(e), findings: null});
+        }
+    }
+
+    handleFix () {
+        const findings = this.state.findings || [];
+        const doing = findings.filter(f => this.state.chosen[f.id] && f.fix);
+        if (!doing.length) return;
+        this.setState({busy: true, error: null});
+        try {
+            const {done, skipped} = applyFixes(this.props.vm, doing);
+            // Checked again rather than trusting the old list: a fix can make
+            // another finding untrue, and a list that still says so is a lie
+            // one press old.
+            const findingsNow = checkProject(this.props.vm);
+            this.setState({
+                busy: false,
+                findings: findingsNow,
+                chosen: {},
+                current: -1,
+                status: [
+                    `Fixed ${done} ${done === 1 ? 'thing' : 'things'}`,
+                    skipped ? `, left ${skipped} alone` : '',
+                    `. ${findingsNow.length} left.`
+                ].join('')
+            });
+        } catch (e) {
+            this.setState({busy: false, error: describe(e), status: 'Nothing was changed.'});
+        }
+    }
+
     // Walking the results. The panel stays open the whole time, having to
     // close and reopen it for every hit was the whole complaint.
+    // What the arrows are stepping through: search results in the find tabs,
+    // findings in the health tab. One list, so one set of arrows.
+    walking () {
+        return this.state.mode === 'health' ? this.state.findings : this.state.matches;
+    }
+
     goTo (index) {
-        const matches = this.state.matches;
-        if (!matches || !matches.length) return;
-        const wrapped = ((index % matches.length) + matches.length) % matches.length;
-        const match = matches[wrapped];
+        const list = this.walking();
+        if (!list || !list.length) return;
+        const wrapped = ((index % list.length) + list.length) % list.length;
+        const at = list[wrapped];
         this.setState({current: wrapped});
-        revealScript(this.props.vm, match.sprite, match.script);
+        // A finding about a whole sprite rather than one script still opens
+        // the sprite, which is as close as there is to point at.
+        revealScript(this.props.vm, at.sprite, at.script);
     }
 
     handleNext () {
@@ -201,11 +288,12 @@ class FlipwarpTools extends React.Component {
         e.preventDefault();
         if (this.state.matches && this.state.matches.length) this.handleNext();
         else if (this.state.mode === 'search') this.handleSearch();
-        else this.handlePreview();
+        else if (this.state.mode === 'replace') this.handlePreview();
     }
 
     renderSteps () {
-        const {matches, current} = this.state;
+        const {current} = this.state;
+        const matches = this.walking();
         if (!matches || !matches.length) return null;
         return (
             <div className={styles.steps}>
@@ -287,8 +375,9 @@ class FlipwarpTools extends React.Component {
                             onClick={() => this.goTo(index)}
                         >{`${m.sprite}:${m.line}`}</button>
                         <div className={styles.lines}>
-                            <code className={withPreview && (m.deletes || m.after !== m.text) ?
-                                styles.before : ''}
+                            <code
+                                className={withPreview && (m.deletes || m.after !== m.text) ?
+                                    styles.before : ''}
                             >{m.text}</code>
                             {withPreview && m.cannotDelete ? (
                                 <code className={styles.kept}>{`kept, ${m.cannotDelete}`}</code>
@@ -346,14 +435,117 @@ class FlipwarpTools extends React.Component {
         );
     }
 
+    renderHealth () {
+        const {findings, current, busy} = this.state;
+        const fixable = (findings || []).filter(f => f.fix);
+        const ticked = fixable.filter(f => this.state.chosen[f.id]).length;
+        return (
+            <React.Fragment>
+                <div className={styles.row}>
+                    <button
+                        className={styles.go}
+                        disabled={busy}
+                        onClick={this.handleCheck}
+                    >{findings ? 'Check again' : 'Check the project'}</button>
+                    {this.renderSteps()}
+                    {fixable.length ? (
+                        <div className={styles.steps}>
+                            <button
+                                className={`${styles.step} ${styles.wordStep}`}
+                                title="Tick everything that can be fixed"
+                                onClick={() => {
+                                    const chosen = {};
+                                    for (const f of fixable) chosen[f.id] = true;
+                                    this.setState({chosen});
+                                }}
+                            >{'All'}</button>
+                            <button
+                                className={`${styles.step} ${styles.wordStep}`}
+                                title="Untick everything"
+                                onClick={() => this.setState({chosen: {}})}
+                            >{'None'}</button>
+                        </div>
+                    ) : null}
+                </div>
+
+                {findings && findings.length ? (
+                    <div className={styles.counts}>
+                        {GRADE_ORDER.map(grade => {
+                            const many = findings.filter(f => f.grade === grade).length;
+                            if (!many) return null;
+                            return (
+                                <span
+                                    className={`${styles.count} ${styles[grade]}`}
+                                    key={grade}
+                                >{`${many} ${GRADE_LABEL[grade].toLowerCase()}`}</span>
+                            );
+                        })}
+                    </div>
+                ) : null}
+
+                {this.state.error ? (
+                    <div className={styles.error}>{this.state.error}</div>
+                ) : null}
+
+                <div className={styles.results}>
+                    {(findings || []).map((item, index) => (
+                        <React.Fragment key={item.id}>
+                            {index === 0 || findings[index - 1].grade !== item.grade ? (
+                                <div className={`${styles.heading} ${styles[item.grade]}`}>
+                                    {GRADE_LABEL[item.grade]}
+                                </div>
+                            ) : null}
+                            <div
+                                className={`${styles.finding} ${current === index ? styles.at : ''}`}
+                            >
+                                <label className={styles.tick}>
+                                    <input
+                                        checked={Boolean(this.state.chosen[item.id])}
+                                        disabled={!item.fix}
+                                        type="checkbox"
+                                        onChange={e => this.setState({
+                                            chosen: Object.assign({}, this.state.chosen, {
+                                                [item.id]: e.target.checked
+                                            })
+                                        })}
+                                    />
+                                </label>
+                                <button
+                                    className={styles.findingBody}
+                                    onClick={() => this.goTo(index)}
+                                >
+                                    <span className={`${styles.dot} ${styles[item.grade]}`} />
+                                    <span className={styles.findingTitle}>{item.title}</span>
+                                    <span className={styles.findingDetail}>{item.detail}</span>
+                                    {item.fix ? null : (
+                                        <span className={styles.byHand}>
+                                            {'This one is for you to sort out.'}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+                        </React.Fragment>
+                    ))}
+                </div>
+
+                <div className={styles.foot}>
+                    <span className={styles.status}>{this.state.status}</span>
+                    {ticked ? (
+                        <button
+                            className={styles.apply}
+                            disabled={busy}
+                            onClick={this.handleFix}
+                        >{`Fix the ${ticked} ticked`}</button>
+                    ) : null}
+                </div>
+            </React.Fragment>
+        );
+    }
+
     render () {
         const {settings} = this.props;
         const {mode, busy} = this.state;
-        const tabs = [
-            settings.searchProject ? ['search', 'Search all sprites'] : null,
-            settings.findReplace ? ['replace', 'Find and replace'] : null,
-            settings.blockSheet ? ['sheet', 'Block sheet'] : null
-        ].filter(Boolean);
+        const tabs = tabsFor(settings);
         if (!tabs.length) return null;
         const current = tabs.some(t => t[0] === mode) ? mode : tabs[0][0];
 
@@ -365,7 +557,15 @@ class FlipwarpTools extends React.Component {
                             <button
                                 className={`${styles.tab} ${current === id ? styles.tabActive : ''}`}
                                 key={id}
-                                onClick={() => this.setState({mode: id, matches: null, status: '', error: null})}
+                                onClick={() => this.setState({
+                                    mode: id,
+                                    matches: null,
+                                    findings: null,
+                                    chosen: {},
+                                    current: -1,
+                                    status: '',
+                                    error: null
+                                })}
                             >{label}</button>
                         ))}
                         <button
@@ -376,55 +576,56 @@ class FlipwarpTools extends React.Component {
                     </div>
 
                     <div className={styles.body}>
-                        {current === 'sheet' ? this.renderSheet() : (
-                            <React.Fragment>
-                                <div className={styles.row}>
-                                    <input
-                                        autoFocus
-                                        className={styles.input}
-                                        placeholder={current === 'search' ? 'Find in every sprite' : 'Find'}
-                                        value={this.state.query}
-                                        onChange={e => this.setState({query: e.target.value, matches: null})}
-                                        onKeyDown={this.handleQueryKey}
-                                    />
-                                    {current === 'replace' && !this.state.wholeBlock ? (
+                        {current === 'sheet' ? this.renderSheet() :
+                            current === 'health' ? this.renderHealth() : (
+                                <React.Fragment>
+                                    <div className={styles.row}>
                                         <input
+                                            autoFocus
                                             className={styles.input}
-                                            placeholder="Replace with"
-                                            value={this.state.replacement}
-                                            onChange={e => this.setState({
-                                                replacement: e.target.value, matches: null
-                                            })}
+                                            placeholder={current === 'search' ? 'Find in every sprite' : 'Find'}
+                                            value={this.state.query}
+                                            onChange={e => this.setState({query: e.target.value, matches: null})}
+                                            onKeyDown={this.handleQueryKey}
                                         />
-                                    ) : null}
-                                    {this.renderSteps()}
-                                    <button
-                                        className={styles.go}
-                                        disabled={!this.state.query || busy}
-                                        onClick={current === 'search' ? this.handleSearch : this.handlePreview}
-                                    >{current === 'search' ? 'Find' : 'Preview'}</button>
-                                </div>
-
-                                {this.renderOptions()}
-
-                                {this.state.error ? (
-                                    <div className={styles.error}>{this.state.error}</div>
-                                ) : null}
-
-                                {this.renderMatches(current === 'replace')}
-
-                                <div className={styles.foot}>
-                                    <span className={styles.status}>{this.state.status}</span>
-                                    {current === 'replace' && this.state.matches && this.state.matches.length ? (
+                                        {current === 'replace' && !this.state.wholeBlock ? (
+                                            <input
+                                                className={styles.input}
+                                                placeholder="Replace with"
+                                                value={this.state.replacement}
+                                                onChange={e => this.setState({
+                                                    replacement: e.target.value, matches: null
+                                                })}
+                                            />
+                                        ) : null}
+                                        {this.renderSteps()}
                                         <button
-                                            className={styles.apply}
-                                            disabled={busy}
-                                            onClick={this.handleApply}
-                                        >{'Replace the ticked lines'}</button>
+                                            className={styles.go}
+                                            disabled={!this.state.query || busy}
+                                            onClick={current === 'search' ? this.handleSearch : this.handlePreview}
+                                        >{current === 'search' ? 'Find' : 'Preview'}</button>
+                                    </div>
+
+                                    {this.renderOptions()}
+
+                                    {this.state.error ? (
+                                        <div className={styles.error}>{this.state.error}</div>
                                     ) : null}
-                                </div>
-                            </React.Fragment>
-                        )}
+
+                                    {this.renderMatches(current === 'replace')}
+
+                                    <div className={styles.foot}>
+                                        <span className={styles.status}>{this.state.status}</span>
+                                        {current === 'replace' && this.state.matches && this.state.matches.length ? (
+                                            <button
+                                                className={styles.apply}
+                                                disabled={busy}
+                                                onClick={this.handleApply}
+                                            >{'Replace the ticked lines'}</button>
+                                        ) : null}
+                                    </div>
+                                </React.Fragment>
+                            )}
                     </div>
                 </div>
             </div>
@@ -437,6 +638,7 @@ FlipwarpTools.propTypes = {
     settings: PropTypes.shape({
         searchProject: PropTypes.bool,
         findReplace: PropTypes.bool,
+        projectHealth: PropTypes.bool,
         blockSheet: PropTypes.bool
     }).isRequired,
     vm: PropTypes.instanceOf(VM).isRequired
