@@ -1,0 +1,101 @@
+# Walking enemies (piece "enemy", with "collision"). One clone for every
+# "{{CHAR}}" in the level map. Each walks along its platform and turns round at
+# walls and at edges. Touching the player sends "player hit"; landing on one
+# from above squashes it and sends "bounce". Draw it facing right, about one
+# tile big, centred.
+
+global list levelRows;
+global variable viewX;
+global variable viewY;
+global variable playerX;
+global variable playerY;
+global variable playerVY;
+global broadcast gameStart as "game start";
+global broadcast render;
+global broadcast playerHit as "player hit";
+global broadcast bounce;
+variable wx;
+variable wy;
+variable dir;
+variable isClone;
+variable scanRow;
+variable scanCol;
+variable speed;
+variable halfW;
+variable halfH;
+
+whenIReceive(gameStart) {
+  if (isClone == 1) {
+    deleteThisClone();
+  }
+  hide();
+  setRotationStyle("left-right");
+  speed = {{SPEED}};
+  halfW = {{HALF_WIDTH}};
+  halfH = {{HALF_HEIGHT}};
+  spawnAll();
+}
+
+# Makes a clone standing on the floor at every matching map character.
+define fast spawnAll() {
+  isClone = 1;
+  dir = 1;
+  scanRow = 1;
+  repeat (levelRowCount) {
+    scanCol = 1;
+    repeat (levelCols) {
+      if (letterOf(scanCol, itemOfList(levelRows, scanRow)) == "{{CHAR}}") {
+        wx = (scanCol - 0.5) * tileSize;
+        wy = ((levelRowCount - scanRow) * tileSize) + halfH;
+        createCloneOf("_myself_");
+      }
+      scanCol += 1;
+    }
+    scanRow += 1;
+  }
+  isClone = 0;
+}
+
+whenIStartAsAClone {
+  goToXY(wx - viewX, wy - viewY);
+  show();
+}
+
+whenIReceive(render) {
+  if (isClone == 1) {
+    walk();
+    pointInDirection(dir * 90);
+    goToXY(wx - viewX, wy - viewY);
+    meetPlayer();
+  }
+}
+
+# A step forward, then back again and turn round if that walked into a wall
+# or off the edge of the floor.
+define fast walk() {
+  wx += dir * speed;
+  blocked = 0;
+  solidAt(wx + (dir * halfW), wy);
+  if (blocked == 0) {
+    solidAt(wx + (dir * halfW), (wy - halfH) - 2);
+    if (blocked == 0) {
+      wx = wx - (dir * speed);
+      dir = 0 - dir;
+    }
+  } else {
+    wx = wx - (dir * speed);
+    dir = 0 - dir;
+  }
+}
+
+# Landing on top squashes it; anything else hurts the player.
+define fast meetPlayer() {
+  if (mathOp("abs", playerX - wx) < halfW + 8 && mathOp("abs", playerY - wy) < halfH + 12) {
+    if (playerVY < 0 && playerY > wy + 8) {
+      broadcast(bounce);
+      deleteThisClone();
+    } else {
+      broadcast(playerHit);
+    }
+  }
+}

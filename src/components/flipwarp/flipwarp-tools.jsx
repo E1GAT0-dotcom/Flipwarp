@@ -17,7 +17,7 @@ import VM from 'scratch-vm';
 
 import {findInProject, planReplace, applyReplacements, revealScript} from '../../lib/flipwarp/project-text.js';
 import {checkProject, applyFixes, GRADE_LABEL} from '../../lib/flipwarp/health.js';
-import {BLOCKS} from '../../lib/flipwarp/phrasebook.js';
+import {BLOCKS, addedOpcodes} from '../../lib/flipwarp/phrasebook.js';
 import {currentStyle} from '../../lib/flipwarp/settings.js';
 import styles from './flipwarp-tools.css';
 
@@ -27,7 +27,10 @@ import styles from './flipwarp-tools.css';
 // sheet at all.
 const sheetCache = new Map();
 const sheetFor = style => {
-    if (sheetCache.has(style.id)) return sheetCache.get(style.id);
+    // Blocks from other extensions come and go while the editor runs, so
+    // which of them are in is part of what the sheet was built from.
+    const key = `${style.id}|${addedOpcodes().join(',')}`;
+    if (sheetCache.has(key)) return sheetCache.get(key);
     const spell = op => (op === '&&' ? style.andWord : op === '||' ? style.orWord : op);
     const body = style.indentBased ? ':' : ' { ... }';
     const sheet = Object.entries(BLOCKS)
@@ -48,7 +51,7 @@ const sheetFor = style => {
         .sort((a, b) => (a.category === b.category ?
             a.name.localeCompare(b.name) :
             a.category.localeCompare(b.category)));
-    sheetCache.set(style.id, sheet);
+    sheetCache.set(key, sheet);
     return sheet;
 };
 

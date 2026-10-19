@@ -1,0 +1,144 @@
+# Top-down movement (piece "topdown", with "collision"). Walk in eight
+# directions through a tile map, sliding along walls, with a camera that
+# follows. For adventure games, mazes and RPGs: make the level map mostly
+# floor (".") with walls ("#").
+#
+# Optional costumes, used when they exist: "down1", "down2", "up1", "up2",
+# "side1", "side2" (side frames facing right; they are flipped for left).
+#
+# Tuned for 30 frames a second. Each frame it sends "render".
+#
+# Nothing here can hurt the player. When something can (spikes, an enemy),
+# have it send "player hit" and give this sprite
+# whenIReceive(playerHit) { respawn(); }, the same as the platformer.
+
+global variable spawnX;
+global variable spawnY;
+global variable camX;
+global variable camY;
+global variable viewX;
+global variable viewY;
+global variable playerX;
+global variable playerY;
+global variable playerVY;
+global broadcast gameStart as "game start";
+global broadcast render;
+variable px;
+variable py;
+variable vx;
+variable vy;
+variable halfW;
+variable halfH;
+variable accel;
+variable friction;
+variable facing;
+variable walkTimer;
+
+whenIReceive(gameStart) {
+  accel = {{ACCEL}};
+  friction = {{FRICTION}};
+  halfW = {{HALF_WIDTH}};
+  halfH = {{HALF_HEIGHT}};
+  facing = "down";
+  setRotationStyle("left-right");
+  pointInDirection(90);
+  goToLayer("front");
+  show();
+  respawn();
+  forever {
+    movePlayer();
+    animate();
+    updateCamera();
+    goToXY(px - viewX, py - viewY);
+    broadcast(render);
+  }
+}
+
+define fast respawn() {
+  px = spawnX;
+  py = spawnY + halfH;
+  vx = 0;
+  vy = 0;
+}
+
+# One frame of movement: sideways, then up and down, each pushed back out of
+# any wall, so the player slides along walls instead of sticking to them.
+define fast movePlayer() {
+  vx += (keyPressed("{{RIGHT}}") - keyPressed("{{LEFT}}")) * accel;
+  vx = vx * friction;
+  if (mathOp("abs", vx) < 0.05) {
+    vx = 0;
+  }
+  px += vx;
+  boxHits(px - halfW, py - halfH, (px + halfW) - 0.01, (py + halfH) - 0.01);
+  if (blocked == 1) {
+    if (vx > 0) {
+      px = (mathOp("floor", ((px + halfW) - 0.01) / tileSize) * tileSize) - halfW;
+    } else {
+      px = ((mathOp("floor", (px - halfW) / tileSize) + 1) * tileSize) + halfW;
+    }
+    vx = 0;
+  }
+  vy += (keyPressed("{{UP}}") - keyPressed("{{DOWN}}")) * accel;
+  vy = vy * friction;
+  if (mathOp("abs", vy) < 0.05) {
+    vy = 0;
+  }
+  py += vy;
+  boxHits(px - halfW, py - halfH, (px + halfW) - 0.01, (py + halfH) - 0.01);
+  if (blocked == 1) {
+    if (vy > 0) {
+      py = (mathOp("floor", ((py + halfH) - 0.01) / tileSize) * tileSize) - halfH;
+    } else {
+      py = ((mathOp("floor", (py - halfH) / tileSize) + 1) * tileSize) + halfH;
+    }
+    vy = 0;
+  }
+  playerX = px;
+  playerY = py;
+  playerVY = vy;
+}
+
+define fast animate() {
+  if (mathOp("abs", vx) > mathOp("abs", vy)) {
+    facing = "side";
+    if (vx > 0) {
+      pointInDirection(90);
+    } else {
+      pointInDirection(-90);
+    }
+  } else {
+    if (vy > 0.3) {
+      facing = "up";
+    }
+    if (vy < -0.3) {
+      facing = "down";
+    }
+  }
+  if (mathOp("abs", vx) + mathOp("abs", vy) > 0.5) {
+    walkTimer += 1;
+  } else {
+    walkTimer = 0;
+  }
+  switchCostume(join(facing, (mathOp("floor", walkTimer / 5) % 2) + 1));
+}
+
+# The camera eases towards the player and stops at the edges of the map.
+define fast updateCamera() {
+  camX += (px - camX) * 0.2;
+  camY += (py - camY) * 0.2;
+  if (camX > (levelCols * tileSize) - 240) {
+    camX = (levelCols * tileSize) - 240;
+  }
+  if (camX < 240) {
+    camX = 240;
+  }
+  if (camY > (levelRowCount * tileSize) - 180) {
+    camY = (levelRowCount * tileSize) - 180;
+  }
+  if (camY < 180) {
+    camY = 180;
+  }
+  viewX = round(camX);
+  viewY = round(camY);
+}

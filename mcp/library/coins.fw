@@ -1,0 +1,64 @@
+# Collectibles (piece "coins"). One clone for every "{{CHAR}}" in the level
+# map, drawn where the camera puts it, collected when the player reaches it:
+# score goes up by one. Draw the costume about half a tile across, centred.
+# Add it again on another sprite with a different character for gems, keys,
+# hearts and so on.
+
+global list levelRows;
+global variable tileSize;
+global variable levelCols;
+global variable levelRowCount;
+global variable viewX;
+global variable viewY;
+global variable playerX;
+global variable playerY;
+global variable score;
+global broadcast gameStart as "game start";
+global broadcast render;
+variable wx;
+variable wy;
+variable isClone;
+variable scanRow;
+variable scanCol;
+
+whenIReceive(gameStart) {
+  if (isClone == 1) {
+    deleteThisClone();
+  }
+  hide();
+  spawnAll();
+}
+
+# Makes a clone at every matching map character. The original stays hidden.
+define fast spawnAll() {
+  isClone = 1;
+  scanRow = 1;
+  repeat (levelRowCount) {
+    scanCol = 1;
+    repeat (levelCols) {
+      if (letterOf(scanCol, itemOfList(levelRows, scanRow)) == "{{CHAR}}") {
+        wx = (scanCol - 0.5) * tileSize;
+        wy = ((levelRowCount - scanRow) + 0.5) * tileSize;
+        createCloneOf("_myself_");
+      }
+      scanCol += 1;
+    }
+    scanRow += 1;
+  }
+  isClone = 0;
+}
+
+whenIStartAsAClone {
+  goToXY(wx - viewX, wy - viewY);
+  show();
+}
+
+whenIReceive(render) {
+  if (isClone == 1) {
+    goToXY(wx - viewX, wy - viewY);
+    if (mathOp("abs", playerX - wx) < {{REACH}} && mathOp("abs", playerY - wy) < {{REACH}} + 4) {
+      score += 1;
+      deleteThisClone();
+    }
+  }
+}

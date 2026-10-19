@@ -312,7 +312,18 @@ export class Builder {
       return [1, [11, rec.name, rec.id]];
     }
     if (arg.k !== 'str' && arg.k !== 'num') {
-      this.err(arg, 'This slot is a dropdown, so it needs one of its choices in quotes.', 'Switch to blocks to see the choices, then copy one exactly.', 'dropdown-needs-choice');
+      // A reporter dropped into a dropdown, switchCostume(join("walk", n)),
+      // which Scratch allows and to-text already writes out. The dropdown
+      // stays underneath it, hidden, as the editor keeps it; its value is
+      // not part of the comparison (canon reads only what sits on top), so
+      // the round trip holds.
+      const r = this.buildExpr(arg, parentId, false);
+      if (r.kind !== 'block') {
+        this.err(arg, 'This slot is a dropdown, so it needs one of its choices in quotes, or a block.', 'Switch to blocks to see the choices, then copy one exactly.', 'dropdown-needs-choice');
+      }
+      this.blocks[r.id].parent = parentId;
+      const hidden = this.put(menuOpcode, { fields: { [field]: ['', null] }, shadow: true, parent: parentId });
+      return [3, r.id, hidden];
     }
     const mid = this.put(menuOpcode, { fields: { [field]: [String(arg.v), null] }, shadow: true, parent: parentId });
     return [1, mid];

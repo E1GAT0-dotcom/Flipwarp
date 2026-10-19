@@ -610,6 +610,32 @@ const FlipwarpSettings = () => {
                 </p>
             </BooleanSetting>
             <BooleanSetting
+                value={settings.otherExtensionText}
+                onChange={e => change({otherExtensionText: e.target.checked})}
+                label={<FormattedMessage
+                    defaultMessage="Text for other extensions' blocks"
+                    description="Flipwarp setting"
+                    id="flipwarp.settings.otherExtensionText"
+                />}
+            >
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Scratch's extensions and Flipwarp's own always have a text form. This gives one to everything else too, the TurboWarp gallery, PenguinMod, anything loaded from a URL, made from the extension's own blocks as it loads. Their names start with the extension's id, like lmsutils.whenKeyPressed."
+                        description="Help text for the other extensions text setting"
+                        id="flipwarp.settings.otherExtensionTextHelp"
+                    />
+                </p>
+                <p>
+                    <FormattedMessage
+                        // eslint-disable-next-line max-len
+                        defaultMessage="Off by default because Scratch's text never changes and another extension's can: if it renames a block in its next version, the text for that block changes with it. The blocks in the project are the same either way."
+                        description="More help text for the other extensions text setting"
+                        id="flipwarp.settings.otherExtensionTextHelp2"
+                    />
+                </p>
+            </BooleanSetting>
+            <BooleanSetting
                 value={settings.musicPlayer}
                 onChange={e => change({musicPlayer: e.target.checked})}
                 label={<FormattedMessage

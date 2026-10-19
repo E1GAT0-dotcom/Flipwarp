@@ -1,0 +1,52 @@
+# Tile collision (piece "collision"). Worked out from the level map on the
+# Stage, not from what is drawn, so it never depends on what is on screen.
+# World coordinates: x from 0 at the left of the map, y from 0 at the bottom.
+
+global list levelRows;
+global variable tileSize;
+global variable solidTiles;
+global variable levelCols;
+global variable levelRowCount;
+variable hitTile;
+variable tileCol;
+variable tileRow;
+variable blocked;
+
+# Sets hitTile to the map character at world point (x, y). Off the sides is
+# wall; below the bottom and above the top is open air.
+define fast tileAt(x, y) {
+  tileCol = mathOp("floor", x / tileSize) + 1;
+  tileRow = levelRowCount - mathOp("floor", y / tileSize);
+  if (tileCol < 1 || tileCol > levelCols) {
+    hitTile = letterOf(1, solidTiles);
+  } else {
+    if (tileRow < 1 || tileRow > levelRowCount) {
+      hitTile = ".";
+    } else {
+      hitTile = letterOf(tileCol, itemOfList(levelRows, tileRow));
+    }
+  }
+}
+
+# Sets blocked to 1 if world point (x, y) is inside a solid tile. Leaves it
+# alone otherwise, so several checks can be made in a row.
+define fast solidAt(x, y) {
+  tileAt(x, y);
+  if (lengthOf(hitTile) == 1 && contains(solidTiles, hitTile)) {
+    blocked = 1;
+  }
+}
+
+# Sets blocked to 1 if the box touches any solid tile, else 0. Checks the
+# corners and the middle of each side, so boxes up to twice the tile size work.
+define fast boxHits(left, bottom, right, top) {
+  blocked = 0;
+  solidAt(left, bottom);
+  solidAt(right, bottom);
+  solidAt(left, top);
+  solidAt(right, top);
+  solidAt((left + right) / 2, bottom);
+  solidAt((left + right) / 2, top);
+  solidAt(left, (bottom + top) / 2);
+  solidAt(right, (bottom + top) / 2);
+}

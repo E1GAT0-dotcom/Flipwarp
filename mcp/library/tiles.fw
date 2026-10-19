@@ -1,0 +1,70 @@
+# Draws the level (piece "tiles"). Give this sprite one costume per tile
+# character, named exactly that character ("#" and so on, never a digit),
+# tileSize steps square and centred. Every frame it stamps the tiles that are
+# on screen with the pen, then stays hidden itself. Needs fencing off, which
+# adding this piece does.
+
+global list levelRows;
+global variable tileSize;
+global variable tileChars;
+global variable levelCols;
+global variable levelRowCount;
+global variable viewX;
+global variable viewY;
+global broadcast gameStart as "game start";
+global broadcast render;
+variable drawCol;
+variable drawRow;
+variable firstCol;
+variable lastCol;
+variable firstRow;
+variable lastRow;
+variable tileChar;
+
+whenIReceive(gameStart) {
+  hide();
+  setRotationStyle("don't rotate");
+  pointInDirection(90);
+  setSize(100);
+  pen.eraseAll();
+}
+
+whenIReceive(render) {
+  drawMap();
+}
+
+# Stamps every tile on screen. viewX, viewY is the world point at the middle
+# of the screen.
+define fast drawMap() {
+  pen.eraseAll();
+  firstCol = mathOp("floor", (viewX - 240) / tileSize) + 1;
+  lastCol = mathOp("floor", (viewX + 240) / tileSize) + 1;
+  firstRow = levelRowCount - mathOp("floor", (viewY + 180) / tileSize);
+  lastRow = levelRowCount - mathOp("floor", (viewY - 180) / tileSize);
+  if (firstCol < 1) {
+    firstCol = 1;
+  }
+  if (lastCol > levelCols) {
+    lastCol = levelCols;
+  }
+  if (firstRow < 1) {
+    firstRow = 1;
+  }
+  if (lastRow > levelRowCount) {
+    lastRow = levelRowCount;
+  }
+  drawRow = firstRow;
+  repeat ((lastRow - firstRow) + 1) {
+    drawCol = firstCol;
+    repeat ((lastCol - firstCol) + 1) {
+      tileChar = letterOf(drawCol, itemOfList(levelRows, drawRow));
+      if (lengthOf(tileChar) == 1 && contains(tileChars, tileChar)) {
+        switchCostume(tileChar);
+        goToXY(((drawCol - 0.5) * tileSize) - viewX, (((levelRowCount - drawRow) + 0.5) * tileSize) - viewY);
+        pen.stamp();
+      }
+      drawCol += 1;
+    }
+    drawRow += 1;
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "flipwarp-mcp",
+  "version": "0.1.0",
+  "description": "Lets Claude Code read and write the project open in Flipwarp.",
+  "type": "module",
+  "main": "server.mjs",
+  "bin": {"flipwarp-mcp": "server.mjs"},
+  "scripts": {"start": "node server.mjs"},
+  "license": "GPL-3.0-only",
+  "private": true,
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.0",
+    "ws": "^8.18.0",
+    "zod": "^3.25.0"
+  }
+}

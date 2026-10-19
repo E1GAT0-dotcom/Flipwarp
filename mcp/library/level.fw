@@ -1,0 +1,62 @@
+# The level (piece "level", on the Stage). The map is text: one string per
+# row, top row first, one character per tile. "#" is solid ground, "." is air,
+# "P" is where the player starts, "o" is a coin, "e" is an enemy. Starting the
+# game is the "game start" message, sent once the map is ready, so nothing
+# reads the map before it exists.
+
+global list levelRows;
+global variable tileSize;
+global variable solidTiles;
+global variable tileChars;
+global variable levelCols;
+global variable levelRowCount;
+global variable spawnX;
+global variable spawnY;
+global variable camX;
+global variable camY;
+global variable viewX;
+global variable viewY;
+global variable playerX;
+global variable playerY;
+global variable playerVY;
+global variable score;
+global variable scanRow;
+global variable scanCol;
+global broadcast gameStart as "game start";
+global broadcast render;
+global broadcast playerHit as "player hit";
+global broadcast bounce;
+
+whenGreenFlagClicked {
+  tileSize = {{TILE_SIZE}};
+  solidTiles = "{{SOLID}}";
+  tileChars = "{{DRAWN}}";
+  deleteAllOfList(levelRows);
+{{ROWS}}
+  readLevel();
+  score = 0;
+  showVariable(score);
+  broadcast(gameStart);
+}
+
+# Measures the map and finds the player's start, the "P".
+define fast readLevel() {
+  levelRowCount = lengthOfList(levelRows);
+  levelCols = lengthOf(itemOfList(levelRows, 1));
+  spawnX = tileSize * 1.5;
+  spawnY = tileSize * 2;
+  scanRow = 1;
+  repeat (levelRowCount) {
+    scanCol = 1;
+    repeat (levelCols) {
+      if (letterOf(scanCol, itemOfList(levelRows, scanRow)) == "P") {
+        spawnX = (scanCol - 0.5) * tileSize;
+        spawnY = (levelRowCount - scanRow) * tileSize;
+      }
+      scanCol += 1;
+    }
+    scanRow += 1;
+  }
+  camX = spawnX;
+  camY = spawnY;
+}

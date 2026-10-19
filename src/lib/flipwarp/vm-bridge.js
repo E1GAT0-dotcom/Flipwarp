@@ -11,101 +11,7 @@ import { buildTarget } from './build.js';
 import { canonTarget } from './canon.js';
 import { ParseError } from './hints.js';
 import { replaceTargetBlocks } from './sb3-to-runtime.js';
-
-// Script positions are real information, they are where you dragged each
-// script, but @at lines are noise to read past. They are stripped out of the
-// text you see and put back on the way in, so the positions survive without
-// ever being on screen.
-const AT_LINE = /^@at\((-?\d+),\s*(-?\d+)\)$/;
-
-const splitPositions = text => {
-    const positions = [];
-    const lines = [];
-    for (const line of text.split('\n')) {
-        const m = AT_LINE.exec(line.trim());
-        if (m) {
-            positions.push({x: Number(m[1]), y: Number(m[2])});
-            continue;
-        }
-        lines.push(line);
-    }
-    return {positions, text: lines.join('\n').replace(/^\n+/, '')};
-};
-
-// A script the text added has no saved position, so it goes below everything
-// else rather than landing on top of a script that is already there.
-const restorePositions = (text, positions) => {
-    // With the markers on show, the text already carries its own positions
-    // and must be left exactly as written.
-    if (text.split('\n').some(line => AT_LINE.test(line.trim()))) return text;
-
-    const out = [];
-    let scriptIndex = 0;
-    let lowest = positions.reduce((n, p) => Math.max(n, p.y), 0);
-    let atScriptStart = true;
-
-    const lines = text.split('\n');
-    // A run of # lines with a blank line after it is a comment on the canvas,
-    // not the start of a script, so it must not be given a script's position.
-    const looseComment = index => {
-        if (!/^\s*#/.test(lines[index])) return false;
-        let k = index;
-        while (k < lines.length && /^\s*#/.test(lines[k])) k++;
-        return k >= lines.length || lines[k].trim() === '';
-    };
-
-    // How deep into a block body a line is. A blank line inside a body is
-    // somebody spacing their code out, not the end of a script, and treating
-    // it as the end of one used to split the script in two: in a brace style
-    // the tail detached onto the canvas as its own script, and in an
-    // indentation style the marker went in at column 0 and the next line was
-    // reported as wrongly indented, pointing at a line nobody had touched.
-    //
-    // Braces answer this exactly. An indentation style has no braces, so the
-    // indent of the line does instead: a line indented at all is inside
-    // something.
-    let depth = 0;
-    const insideABody = index => {
-        if (depth > 0) return true;
-        // Look ahead: in an indentation style the blank line sits between two
-        // indented lines, and both of those are inside the same body.
-        for (let k = index + 1; k < lines.length; k++) {
-            if (lines[k].trim() === '') continue;
-            return /^\s+\S/.test(lines[k]);
-        }
-        return false;
-    };
-
-    for (let index = 0; index < lines.length; index++) {
-        const line = lines[index];
-        const blank = line.trim() === '';
-        // No terminator in this test on purpose: a declaration ends with a
-        // semicolon in one style and with the end of the line in the other,
-        // and what matters here is only that the line is a declaration.
-        const declaration = /^\s*(global\s+)?(variable|list|broadcast)\s/.test(line);
-
-        if (!blank && !declaration && atScriptStart && !looseComment(index)) {
-            const p = positions[scriptIndex];
-            if (p) {
-                out.push(`@at(${p.x}, ${p.y})`);
-            } else {
-                lowest += 260;
-                out.push(`@at(0, ${lowest})`);
-            }
-            scriptIndex++;
-            atScriptStart = false;
-        }
-        if (blank && !insideABody(index)) atScriptStart = true;
-        out.push(line);
-        // Counted after the line is kept, so a line that closes a body is
-        // itself still inside it.
-        for (const ch of line.replace(/"(\\.|[^"\\])*"/g, '')) {
-            if (ch === '{') depth++;
-            else if (ch === '}') depth = Math.max(0, depth - 1);
-        }
-    }
-    return out.join('\n');
-};
+import { AT_LINE, splitPositions, restorePositions } from './positions.js';
 
 const projectOf = vm => JSON.parse(vm.toJSON());
 
@@ -115,6 +21,27 @@ const contextOf = project => {
         globals: {variables: stage.variables || {}, lists: stage.lists || {}},
         broadcasts: stage.broadcasts || {}
     };
+};
+
+// The text as written, rebuilt into blocks. The @at markers put back in front
+// of each script are lines the person never saw, so a mistake found after them
+// is reported at the line it is on in the text they wrote, not one line
+// further down for every script above it.
+const buildWritten = (text, positions, target, project, style) => {
+    const restored = restorePositions(text, positions);
+    try {
+        return buildTarget(parse(restored, style), target, contextOf(project), style);
+    } catch (e) {
+        if (e instanceof ParseError && typeof e.line === 'number' && restored !== text) {
+            const lines = restored.split('\n');
+            let inserted = 0;
+            for (let i = 0; i < e.line - 1 && i < lines.length; i++) {
+                if (AT_LINE.test(lines[i].trim())) inserted++;
+            }
+            e.line -= inserted;
+        }
+        throw e;
+    }
 };
 
 const editingName = vm => (vm.editingTarget ? vm.editingTarget.getName() : null);
@@ -150,7 +77,7 @@ export const checkText = (vm, text, positions = [], style) => {
     const project = projectOf(vm);
     const name = editingName(vm);
     const target = project.targets.find(t => t.name === name);
-    const rebuilt = buildTarget(parse(restorePositions(text, positions), style), target, contextOf(project), style);
+    const rebuilt = buildWritten(text, positions, target, project, style);
     return {
         blocks: Object.values(rebuilt.blocks).filter(b => !b.shadow).length,
         unchanged: JSON.stringify(canonTarget(target.blocks, target.comments)) ===
@@ -198,7 +125,7 @@ export const applyText = async (vm, text, positions = [], style) => {
 
     // Build first. If the text has a mistake anywhere in it, this throws and
     // the project is still untouched.
-    const rebuilt = buildTarget(parse(restorePositions(text, positions), style), target, contextOf(project), style);
+    const rebuilt = buildWritten(text, positions, target, project, style);
     const changed = JSON.stringify(canonTarget(target.blocks, target.comments)) !==
         JSON.stringify(canonTarget(rebuilt.blocks, rebuilt.comments));
     const count = Object.values(rebuilt.blocks).filter(b => !b.shadow).length;

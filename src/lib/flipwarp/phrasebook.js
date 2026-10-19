@@ -252,3 +252,68 @@ export const RESERVED = new Set([
   ...Object.values(BLOCKS).map(def => camelToSnake(def.name)),
   ...STYLE_KEYWORDS,
 ]);
+
+// Blocks added while the editor runs, from extensions that are not Scratch's
+// or Flipwarp's own (see runtime-extensions.js). Everything above is fixed when
+// the page loads; these come and go with the extensions and with the setting
+// that allows them, so each one is remembered here in order to be taken out
+// again exactly.
+const ADDED = new Map(); // opcode -> def
+
+const forgetStyleIndexes = () => {
+  for (const id of [...NAME_INDEXES.keys()]) if (id !== 'js') NAME_INDEXES.delete(id);
+};
+
+/**
+ * Add blocks to the phrasebook. A name or opcode already taken is skipped
+ * rather than overwritten, a collision would break the round trip silently.
+ * @param {object} defs opcode -> def, in the same shape as the table above
+ * @returns {string[]} the opcodes that were added
+ */
+export function addBlocks(defs) {
+  const added = [];
+  for (const [opcode, def] of Object.entries(defs)) {
+    // Checked against the reserved words too, not just block names, so that
+    // taking a block out later can never take out a word something else needs.
+    if (BLOCKS[opcode] || RESERVED.has(def.name) || RESERVED.has(camelToSnake(def.name))) continue;
+    BLOCKS[opcode] = def;
+    BY_NAME.set(def.name, opcode);
+    RESERVED.add(def.name);
+    RESERVED.add(camelToSnake(def.name));
+    for (const menu of Object.values(def.menu || {})) MENU_BLOCKS.add(menu);
+    ADDED.set(opcode, def);
+    added.push(opcode);
+  }
+  if (added.length) forgetStyleIndexes();
+  return added;
+}
+
+/**
+ * Take out blocks that addBlocks put in. Blocks from the table above are
+ * never removed.
+ * @param {string[]} [opcodes] which ones, every added block if left out
+ */
+export function removeBlocks(opcodes) {
+  const which = opcodes || [...ADDED.keys()];
+  let removed = 0;
+  for (const opcode of which) {
+    const def = ADDED.get(opcode);
+    if (!def) continue;
+    delete BLOCKS[opcode];
+    BY_NAME.delete(def.name);
+    RESERVED.delete(def.name);
+    RESERVED.delete(camelToSnake(def.name));
+    ADDED.delete(opcode);
+    removed++;
+  }
+  // A menu is only dropped once nothing still added uses it.
+  const stillUsed = new Set([...ADDED.values()].flatMap(d => Object.values(d.menu || {})));
+  for (const def of Object.values(EXTENSION_BLOCKS)) for (const m of Object.values(def.menu || {})) stillUsed.add(m);
+  for (const menu of [...MENU_BLOCKS]) {
+    if (menu.includes('_menu_') && !stillUsed.has(menu)) MENU_BLOCKS.delete(menu);
+  }
+  if (removed) forgetStyleIndexes();
+}
+
+/** @returns {string[]} the opcodes added while the editor runs */
+export const addedOpcodes = () => [...ADDED.keys()];

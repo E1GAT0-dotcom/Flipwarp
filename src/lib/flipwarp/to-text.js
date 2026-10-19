@@ -2,6 +2,7 @@
 import { BLOCKS, MENU_BLOCKS, LITERAL_SHADOWS, GETTERS, RESERVED } from './phrasebook.js';
 import { NameTable, quote, declLine } from './names.js';
 import { getStyle } from './styles.js';
+import { blockedBySetting } from './runtime-extensions.js';
 
 // The default indent. The real one comes from the style options, because in an
 // indentation-based style the indent is not decoration, it is what says where
@@ -17,6 +18,11 @@ export class ConversionError extends Error {
 // than printing an opcode nobody recognises.
 function unknownBlockMessage(opcode) {
   const extension = opcode.includes('_') ? opcode.slice(0, opcode.indexOf('_')) : opcode;
+  if (blockedBySetting(extension)) {
+    return `This sprite uses a block from the "${extension}" extension, which is not one of Scratch's. ` +
+      `Its blocks still work. To write them as text, turn on "Text for other extensions' blocks" under ` +
+      'Advanced → Flipwarp, or edit this sprite in blocks.';
+  }
   return `This sprite uses a block from the "${extension}" extension, which Flipwarp cannot show as text yet. ` +
     'Its blocks still work, only the text view is missing. Remove that block from this sprite, or edit this ' +
     'sprite in blocks.';

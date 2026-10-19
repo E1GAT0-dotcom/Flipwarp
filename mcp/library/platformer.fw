@@ -1,0 +1,194 @@
+# Platformer movement (piece "platformer", with "collision"). Run, jump, fall
+# and land on tiles, with a camera that follows. It feels good because of
+# three small things: coyote time (a jump still works just after running off
+# an edge), jump buffering (a jump pressed just before landing still happens)
+# and a short hop when the jump key is let go early.
+#
+# Optional costumes, used when they exist: "idle", "walk1", "walk2", "jump".
+# Draw the player facing right, about halfW * 2 by halfH * 2 steps.
+#
+# Tuned for 30 frames a second. Each frame it sends "render", which is when
+# everything else draws itself, so the whole screen moves together.
+
+global variable spawnX;
+global variable spawnY;
+global variable camX;
+global variable camY;
+global variable viewX;
+global variable viewY;
+global variable playerX;
+global variable playerY;
+global variable playerVY;
+global broadcast gameStart as "game start";
+global broadcast render;
+global broadcast playerHit as "player hit";
+global broadcast bounce;
+variable px;
+variable py;
+variable vx;
+variable vy;
+variable onGround;
+variable coyote;
+variable jumpBuffer;
+variable jumpHeld;
+variable rising;
+variable walkTimer;
+variable halfW;
+variable halfH;
+variable accel;
+variable friction;
+variable gravity;
+variable jumpPower;
+variable maxFall;
+
+whenIReceive(gameStart) {
+  accel = {{ACCEL}};
+  friction = {{FRICTION}};
+  gravity = {{GRAVITY}};
+  jumpPower = {{JUMP}};
+  maxFall = 15;
+  halfW = {{HALF_WIDTH}};
+  halfH = {{HALF_HEIGHT}};
+  setRotationStyle("left-right");
+  pointInDirection(90);
+  goToLayer("front");
+  show();
+  respawn();
+  forever {
+    movePlayer();
+    animate();
+    updateCamera();
+    goToXY(px - viewX, py - viewY);
+    broadcast(render);
+  }
+}
+
+whenIReceive(playerHit) {
+  respawn();
+}
+
+# Squashing an enemy springs the player back up.
+whenIReceive(bounce) {
+  vy = jumpPower * 0.7;
+  rising = 0;
+}
+
+define fast respawn() {
+  px = spawnX;
+  py = spawnY + halfH;
+  vx = 0;
+  vy = 0;
+  coyote = 0;
+  jumpBuffer = 0;
+  rising = 0;
+}
+
+# One frame of movement: sideways first, then up and down, each pushed back
+# out of any wall it ran into.
+define fast movePlayer() {
+  vx += (keyPressed("{{RIGHT}}") - keyPressed("{{LEFT}}")) * accel;
+  vx = vx * friction;
+  if (mathOp("abs", vx) < 0.05) {
+    vx = 0;
+  }
+  px += vx;
+  boxHits(px - halfW, py - halfH, (px + halfW) - 0.01, (py + halfH) - 0.01);
+  if (blocked == 1) {
+    if (vx > 0) {
+      px = (mathOp("floor", ((px + halfW) - 0.01) / tileSize) * tileSize) - halfW;
+    } else {
+      px = ((mathOp("floor", (px - halfW) / tileSize) + 1) * tileSize) + halfW;
+    }
+    vx = 0;
+  }
+  vy = vy - gravity;
+  if (vy < 0 - maxFall) {
+    vy = 0 - maxFall;
+  }
+  py += vy;
+  onGround = 0;
+  boxHits(px - halfW, py - halfH, (px + halfW) - 0.01, (py + halfH) - 0.01);
+  if (blocked == 1) {
+    if (vy < 0) {
+      py = ((mathOp("floor", (py - halfH) / tileSize) + 1) * tileSize) + halfH;
+      onGround = 1;
+      coyote = 6;
+    } else {
+      py = (mathOp("floor", ((py + halfH) - 0.01) / tileSize) * tileSize) - halfH;
+    }
+    vy = 0;
+  }
+  if (keyPressed("{{JUMP_KEY}}")) {
+    if (jumpHeld == 0) {
+      jumpBuffer = 6;
+    }
+    jumpHeld = 1;
+  } else {
+    jumpHeld = 0;
+    if (rising == 1 && vy > 0) {
+      vy = vy * 0.5;
+      rising = 0;
+    }
+  }
+  if (jumpBuffer > 0 && coyote > 0) {
+    vy = jumpPower;
+    rising = 1;
+    jumpBuffer = 0;
+    coyote = 0;
+  }
+  if (jumpBuffer > 0) {
+    jumpBuffer += -1;
+  }
+  if (coyote > 0) {
+    coyote += -1;
+  }
+  # Falling out of the map is being hit, like an enemy: one message for every
+  # way of losing, so a lives counter or a sound only has to listen once.
+  if (py < -100) {
+    broadcast(playerHit);
+  }
+  playerX = px;
+  playerY = py;
+  playerVY = vy;
+}
+
+define fast animate() {
+  if (vx > 0.3) {
+    pointInDirection(90);
+  }
+  if (vx < -0.3) {
+    pointInDirection(-90);
+  }
+  if (onGround == 0) {
+    switchCostume("jump");
+  } else {
+    if (mathOp("abs", vx) > 0.5) {
+      walkTimer += 1;
+      switchCostume(join("walk", (mathOp("floor", walkTimer / 5) % 2) + 1));
+    } else {
+      walkTimer = 0;
+      switchCostume("idle");
+    }
+  }
+}
+
+# The camera eases towards the player and stops at the edges of the map.
+# viewX, viewY are whole numbers, so tiles never shimmer between pixels.
+define fast updateCamera() {
+  camX += (px - camX) * 0.2;
+  camY += ((py + 30) - camY) * 0.2;
+  if (camX > (levelCols * tileSize) - 240) {
+    camX = (levelCols * tileSize) - 240;
+  }
+  if (camX < 240) {
+    camX = 240;
+  }
+  if (camY > (levelRowCount * tileSize) - 180) {
+    camY = (levelRowCount * tileSize) - 180;
+  }
+  if (camY < 180) {
+    camY = 180;
+  }
+  viewX = round(camX);
+  viewY = round(camY);
+}

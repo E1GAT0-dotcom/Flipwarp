@@ -57,8 +57,18 @@ have. Rather than forking their extensions, those hooks are added once in
 `src/lib/flipwarp/penguinmod-compat.js`, so their extensions keep updating on
 their own. `flipwarp-check.html` is what finds the gaps.
 
-Extension blocks do not have a text form. Their blocks work; the Text button
-refuses on a sprite that uses one, and says so.
+Scratch's own extensions (pen, music and the rest) and Flipwarp's own have a
+text form: `pen.penDown();`. Blocks from any other extension, the TurboWarp
+gallery, PenguinMod, a URL, get one only with **Advanced → Flipwarp → Text for
+other extensions' blocks** switched on, made from the extension's own block
+definitions as it loads. It is off by default, because Scratch's text never
+changes and another extension's can, the day it renames a block. With it off,
+the Text button refuses on a sprite that uses one, and says how to turn it on.
+
+## Claude Code
+
+`mcp/` is an MCP server that lets Claude Code read and write the project open
+in Flipwarp, through the same text. See [mcp/README.md](mcp/README.md).
 
 ## Building
 

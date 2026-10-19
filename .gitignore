@@ -3,6 +3,7 @@
 
 # NPM
 /node_modules
+/mcp/node_modules
 npm-*
 
 # Testing

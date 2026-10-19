@@ -35,6 +35,11 @@ const DEFAULTS = {
     // back into blocks.
     pasteAsBlocks: true,
     blockSheet: true,
+    // Give the blocks of extensions that are not Scratch's or Flipwarp's a
+    // text form, made from the extension's own definitions as it loads. Off by
+    // default: Scratch's text never changes, but another extension's can, the
+    // day it renames a block.
+    otherExtensionText: false,
 
     // --- how a project runs ------------------------------------------------
     // These change the project itself rather than the editor around it, and
@@ -99,6 +104,7 @@ const read = () => {
             pasteAsBlocks: bool(parsed.pasteAsBlocks, DEFAULTS.pasteAsBlocks),
             projectHealth: bool(parsed.projectHealth, DEFAULTS.projectHealth),
             blockSheet: bool(parsed.blockSheet, DEFAULTS.blockSheet),
+            otherExtensionText: bool(parsed.otherExtensionText, DEFAULTS.otherExtensionText),
             pauseOffScreen: bool(parsed.pauseOffScreen, DEFAULTS.pauseOffScreen),
             hidePointer: bool(parsed.hidePointer, DEFAULTS.hidePointer),
             slowMotion: [1, 2, 4, 8].includes(parsed.slowMotion) ?
