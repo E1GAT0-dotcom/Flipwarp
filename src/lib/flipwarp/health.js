@@ -376,7 +376,9 @@ export const checkProject = vm => {
                     `It is made ${where} and no block ever reads it or changes it.`,
                     {sprite: name},
                     {type: 'delete-variable', target: name, variable: variable.id}));
-            } else if (target.isStage && users.size === 1 && !users.has(name)) {
+            } else if (target.isStage && users.size === 1 && !users.has(name) && !variable.isCloud) {
+                // A cloud variable has to stay on the Stage: made for one
+                // sprite it would stop being shared, so it is never suggested.
                 const only = [...users][0];
                 found.push(finding('tidy', 'global-used-once',
                     `The ${what} "${variable.name}" could belong to ${only}`,

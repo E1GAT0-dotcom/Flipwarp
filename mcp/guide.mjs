@@ -77,6 +77,9 @@ whenBackdropSwitchesTo("level 2"), whenGreaterThan("timer", 10).
   stop("other scripts in sprite"), setEffect("ghost", 50), goToLayer("front"),
   mathOp("abs", n), propertyOf("x position", "Player").
 - Messages are names, not strings: broadcast(gameOver), whenIReceive(gameOver).
+- isTurboWarp() is true in TurboWarp and Flipwarp and false on Scratch;
+  isCompiled() is true when the compiler runs it. Use them as conditions:
+  if (!isTurboWarp()) { ... }.
 
 ## Custom blocks
 

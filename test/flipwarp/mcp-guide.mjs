@@ -69,7 +69,9 @@ const INLINE = [
     'pen.penDown();',
     'pen.setPenColorTo("#ff0000");',
     'music.playDrumForBeats("1", 0.25);',
-    'checkAmount(mouseDown(), 3);'
+    'checkAmount(mouseDown(), 3);',
+    'if (!isTurboWarp()) { show(); }',
+    'if (isCompiled()) { show(); }'
 ];
 
 const HATS = [

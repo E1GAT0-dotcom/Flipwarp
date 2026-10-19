@@ -64,6 +64,8 @@ behaves exactly as normal.
 | `list_pieces` / `get_piece` / `add_piece` | The library of ready-made game pieces |
 | `set_game_options` | Framerate, fencing, interpolation, high-quality pen, infinite clones, stored in the project |
 | `set_variable` | Sets a variable while the game runs, to set up a test |
+| `tidy_scripts` | Lays a sprite's scripts out again: events on the left, custom blocks on the right |
+| `narrate` | Shows the person watching a short note about what Claude is doing |
 
 ### Ready-made pieces
 
@@ -115,6 +117,24 @@ Every drawing tool takes one of:
 Every add and redraw answers with a picture, so Claude sees what it drew
 before it moves on.
 
+### Watching Claude work
+
+With `?mcp`, the editor shows what Claude is doing as it happens:
+
+- **Follow mode.** Every write opens that sprite, scrolls to the scripts that
+  changed and makes them glow for a moment. The reply names them too.
+- **Layout.** New scripts go to the bottom of their column (events on the
+  left, custom block definitions on the right), measured as drawn, and
+  anything a write made overlap is pushed down. Comments sit beside the
+  block they belong to. `tidy_scripts` lays out a whole sprite again.
+- **Activity strip** over the top right of the code area: a line for each
+  thing Claude did, the latest write with an undo button, and Claude's
+  latest `narrate` note above them. Click a line to jump to that sprite.
+- **Keys and clicks.** While Claude plays, the keys it holds light up over
+  the stage, and clicks show as ripples.
+
+None of it appears without `?mcp`.
+
 ### Keep the tab visible while Claude plays
 
 A browser slows a hidden tab to about one frame a second, so the game runs in
@@ -144,6 +164,8 @@ node test/flipwarp/other-extension-text.mjs   # the extension setting round-trip
 node test/flipwarp/mcp-pixels.mjs             # pixel art is read, drawn, and refused with its place
 node test/flipwarp/mcp-pieces.mjs             # every piece builds, alone and merged
 node test/flipwarp/reporter-in-dropdown.mjs   # switchCostume(join(...)) round-trips
+node test/flipwarp/turbowarp-detector.mjs     # isTurboWarp() and isCompiled() round-trip
+node test/flipwarp/saved-short-form.mjs       # variables saved in short form compare as blocks
 node test/flipwarp/mcp-end-to-end.mjs         # then open the editor address above
 node test/flipwarp/mcp-game.mjs               # builds and plays a whole platformer (same)
 node test/flipwarp/mcp-topdown.mjs            # builds and plays a whole top-down game (same)

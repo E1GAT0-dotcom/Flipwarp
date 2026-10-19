@@ -1,5 +1,5 @@
 // Blocks -> text. One text document per target (sprite or stage).
-import { BLOCKS, MENU_BLOCKS, LITERAL_SHADOWS, GETTERS, RESERVED } from './phrasebook.js';
+import { BLOCKS, MENU_BLOCKS, LITERAL_SHADOWS, GETTERS, RESERVED, detectorFor } from './phrasebook.js';
 import { NameTable, quote, declLine } from './names.js';
 import { getStyle } from './styles.js';
 import { blockedBySetting } from './runtime-extensions.js';
@@ -322,6 +322,8 @@ function blockExprToText(id, blocks, names, prec, ctx, st) {
   }
 
   if (op === 'argument_reporter_string_number' || op === 'argument_reporter_boolean') {
+    const detector = op === 'argument_reporter_boolean' ? detectorFor(block.fields.VALUE[0]) : null;
+    if (detector) return `${getStyle(st).blockName(detector)}()`;
     return slugParam(block.fields.VALUE[0], st);
   }
 

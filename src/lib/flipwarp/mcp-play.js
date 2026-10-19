@@ -8,6 +8,7 @@
 
 import {asEvent} from './project-keys.js';
 import {isFrozen, setFrozen, stepOneFrame} from './gameplay.js';
+import {keysChanged, ripple} from './mcp-live.js';
 
 const LOG_LIMIT = 200;
 const LIST_LIMIT = 50;
@@ -110,6 +111,8 @@ const postKey = (vm, scratchKey, isDown) => {
     vm.postIOData('keyboard', {key: event.key, keyCode: event.keyCode, isDown});
     if (isDown) held.add(scratchKey);
     else held.delete(scratchKey);
+    // Whoever is watching sees the keys go down and up.
+    keysChanged(held);
 };
 
 const releaseAll = vm => {
@@ -317,6 +320,11 @@ export const PLAY_METHODS = {
             data.button = 0;
         }
         vm.postIOData('mouse', data);
+        if (down === true) {
+            const canvas = vm.renderer && vm.renderer.canvas;
+            const rect = canvas ? canvas.getBoundingClientRect() : null;
+            if (rect && rect.width) ripple(rect.left + point.x, rect.top + point.y);
+        }
         const m = vm.runtime.ioDevices.mouse;
         return {x: m.getScratchX(), y: m.getScratchY(), down: m.getIsDown()};
     },

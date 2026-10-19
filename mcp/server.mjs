@@ -379,7 +379,9 @@ server.registerTool('write_sprite', {
     if (!r.changed) return text('Accepted, but it is the same as before, so nothing changed.');
     const loaded = r.extensionsLoaded && r.extensionsLoaded.length ?
         ` Loaded extension(s): ${r.extensionsLoaded.join(', ')}.` : '';
-    return text(`Written: ${args.sprite} now has ${r.blocks} blocks.${loaded} (${r.undoSteps} undo step(s) available)`);
+    const what = r.summary ? ` Changed: ${r.summary}.` : '';
+    return text(`Written: ${args.sprite} now has ${r.blocks} blocks.${what}${loaded} ` +
+        `(${r.undoSteps} undo step(s) available)`);
 }));
 
 server.registerTool('undo', {
@@ -486,6 +488,30 @@ server.registerTool('rename_sprite', {
     description: 'Renames a sprite. Blocks that refer to it by name in other sprites are updated by Scratch.',
     inputSchema: {sprite, name: z.string()}
 }, tool(async args => json(await ask('renameSprite', args))));
+
+server.registerTool('tidy_scripts', {
+    title: 'Tidy a sprite\'s scripts',
+    description: 'Lays out all of a sprite\'s scripts again so none overlap: events down the left, custom ' +
+        'block definitions down the right. write_sprite already places new scripts this way; this is for ' +
+        'sprites whose scripts piled up before.',
+    inputSchema: {sprite}
+}, tool(async args => {
+    const {scripts} = await ask('tidyScripts', args);
+    const events = scripts.filter(s => !s.definition).length;
+    return text(`Tidied ${args.sprite}: ${events} script(s) on the left, ${scripts.length - events} custom ` +
+        'block(s) on the right, none overlapping.');
+}));
+
+server.registerTool('narrate', {
+    title: 'Say what you are doing',
+    description: 'Shows a short note to the person watching the editor, at the top of the activity strip, ' +
+        'until the next one. Use it at each step of a bigger job: "Building the door logic: a door opens ' +
+        'while someone stands on its plate." One or two sentences, plain words.',
+    inputSchema: {text: z.string().max(300)}
+}, tool(async args => {
+    await ask('narrate', args);
+    return text('Shown.');
+}));
 
 server.registerTool('select_sprite', {
     title: 'Show a sprite in the editor',

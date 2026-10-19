@@ -1,5 +1,5 @@
 // A parsed tree -> Scratch blocks, ready to drop into a target.
-import { BLOCKS, nameIndexFor, GETTERS } from './phrasebook.js';
+import { BLOCKS, nameIndexFor, GETTERS, TW_DETECTORS } from './phrasebook.js';
 import { getStyle } from './styles.js';
 import { primitiveFor } from './input-shadows.js';
 import { ParseError } from './hints.js';
@@ -432,6 +432,13 @@ export class Builder {
         return blk(id);
       }
       case 'call': {
+        // isTurboWarp() / isCompiled(): the boolean parameter TurboWarp
+        // recognises by its name, used outside any custom block.
+        const detector = Object.keys(TW_DETECTORS).find(k => this.style.blockName(k) === node.name);
+        if (detector && !(node.args && node.args.length) && !this.procs.has(node.name)) {
+          return blk(this.put('argument_reporter_boolean',
+            { fields: { VALUE: [TW_DETECTORS[detector], null] }, parent: parentId }));
+        }
         if (this.procs.has(node.name)) {
           this.err(node, `"${node.name}" is a custom block, and custom blocks do not report a value.`,
             'Set a variable inside the custom block, then read that variable here.', 'proc-as-value');

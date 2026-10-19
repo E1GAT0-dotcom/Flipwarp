@@ -390,6 +390,48 @@ const lonely = await call('create_sprite', {name: 'Lonely'});
 await step('the last costume cannot be deleted', 'delete_costume', {sprite: 'Lonely', costume: 1},
     r => !lonely.error && r.error && r.text.includes('at least one'));
 
+// --- watching: what changed, laid out, narrated -----------------------------------
+
+await step('narrate shows a note', 'narrate', {text: 'Testing the live view.'}, r => r.text === 'Shown.');
+const layoutText = `variable n;
+
+# Counts up.
+whenGreenFlagClicked {
+  n = 0;
+  repeat (5) {
+    n += 1;
+  }
+}
+
+whenKeyPressed("space") {
+  bump();
+}
+
+define bump() {
+  n += 1;
+  if (n > 10) {
+    n = 0;
+  }
+}
+
+define reset() {
+  n = 0;
+}`;
+await step('a new sprite to lay out', 'create_sprite', {name: 'Layout'}, r => !r.error);
+await step('writing names what changed', 'write_sprite', {sprite: 'Layout', text: layoutText},
+    r => !r.error && r.text.includes('Changed:') && r.text.includes('bump') && r.text.includes('reset'));
+const laidOut = (await call('read_sprite', {sprite: 'Layout'})).text;
+await step('the same text again changes nothing', 'write_sprite', {sprite: 'Layout', text: laidOut},
+    r => !r.error && r.text.includes('nothing changed'));
+await step('one edit names only that script', 'write_sprite',
+    {sprite: 'Layout', text: laidOut.replace('if (n > 10)', 'if (n > 20)')},
+    r => !r.error && r.text.includes('Changed: bump.'));
+await step('tidy lays it out in two columns', 'tidy_scripts', {sprite: 'Layout'},
+    r => !r.error && r.text.includes('2 script(s) on the left, 2 custom block(s) on the right'));
+await step('tidying changes no script', 'write_sprite',
+    {sprite: 'Layout', text: (await call('read_sprite', {sprite: 'Layout'})).text},
+    r => !r.error && r.text.includes('nothing changed'));
+
 await step('logs can be read', 'get_logs', {clear: true}, r => !r.error);
 await step('stop', 'stop', {}, r => !r.error);
 s = await stateOf();

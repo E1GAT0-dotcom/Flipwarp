@@ -89,6 +89,13 @@ function canonInput(input, blocks, key, byBlock) {
       canonStack(val, blocks, byBlock) : canonBlock(val, blocks, byBlock);
   }
   if (Array.isArray(val)) {
+    // A variable or list in a slot is saved in short form, [12, name, id] or
+    // [13, name, id], while text builds it as the block it stands for. They
+    // are the same thing, so they compare as the same thing; otherwise every
+    // sprite using a variable in a slot looked edited after a round trip that
+    // changed nothing.
+    if (val[0] === 12) return { op: 'data_variable', fields: { VARIABLE: val[1] } };
+    if (val[0] === 13) return { op: 'data_listcontents', fields: { LIST: val[1] } };
     // [type, value] or [type, name, id]; the id is dropped.
     return { prim: val[0], v: val[1] };
   }

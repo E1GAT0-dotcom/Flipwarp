@@ -112,7 +112,11 @@ const makeMissingVariables = (vm, liveTarget, created = []) => {
         if (item.kind === 'broadcast') continue;
         const owner = item.global ? stage : liveTarget;
         if (!owner || owner.lookupVariableById(item.id)) continue;
-        owner.createVariable(item.id, item.name, item.kind === 'list' ? 'list' : '');
+        // A global variable named "☁ something" is a cloud variable, the way
+        // Scratch's own New Variable dialog names them. Made any other way it
+        // would only look like one and never be shared.
+        const cloud = item.global && item.kind === 'variable' && /^☁ /.test(item.name);
+        owner.createVariable(item.id, item.name, item.kind === 'list' ? 'list' : '', cloud);
     }
     vm.emitTargetsUpdate();
 };

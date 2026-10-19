@@ -24,6 +24,10 @@ import {spriteUpload} from '../file-uploader.js';
 import FLIPWARP_EXTENSIONS, {flipwarpBase} from './flipwarp-extensions.js';
 import {PLAY_METHODS, installPlay} from './mcp-play.js';
 import {costumeMethods, imageFrom} from './mcp-costumes.js';
+import {
+    fingerprintScripts, changedScripts, measureScripts, settleScripts, tidyScripts, showScripts
+} from './script-layout.js';
+import {installLive, record, describe as describeAction, busy, narrate} from './mcp-live.js';
 
 const STYLE = getStyle('js');
 const TEXT_OPTIONS = {style: STYLE, indent: '  '};
@@ -163,6 +167,22 @@ const createSprite = (vm, {name, x, y, ...source}) => new Promise((resolve, reje
     }, reject);
 });
 
+// A script as a person would name it: its custom block, or its hat and the
+// message or key it waits for.
+const scriptName = (target, id) => {
+    const blocks = target.blocks._blocks;
+    const top = blocks[id];
+    if (!top) return 'a script';
+    if (top.opcode === 'procedures_definition') {
+        const prototype = top.inputs.custom_block && blocks[top.inputs.custom_block.block];
+        const code = prototype && prototype.mutation ? prototype.mutation.proccode : '';
+        return code.replace(/\s*%[sbn]/g, '').trim() || 'a custom block';
+    }
+    const field = Object.values(top.fields || {})[0];
+    const what = top.opcode.replace(/^(event_|control_)/, '').replace(/^when/, 'when ');
+    return field ? `${what} ${field.value}` : what;
+};
+
 // --- extensions ------------------------------------------------------------
 
 // Text that uses pen.penDown() needs the pen extension loaded, or the block
@@ -240,7 +260,7 @@ const METHODS = {
     },
 
     writeSprite: async (vm, {sprite, text}) => {
-        open(vm, sprite);
+        const target = open(vm, sprite);
         let positions = [];
         try {
             positions = readCurrentTarget(vm, false, TEXT_OPTIONS).positions;
@@ -248,6 +268,11 @@ const METHODS = {
             // As above.
         }
         const before = snapshotCurrentTarget(vm);
+        // What the scripts were and where they sat, to tell afterwards which
+        // scripts changed and which are new (new ones are given a position
+        // nothing had).
+        const fingerprints = fingerprintScripts(target);
+        const oldPositions = new Set(measureScripts(target).map(s => `${s.x},${s.y}`));
         try {
             // Checked before anything is loaded, so a mistake in the text
             // cannot leave an extension added to the project for nothing.
@@ -255,16 +280,30 @@ const METHODS = {
             const extensionsLoaded = await loadExtensionsFor(vm, text);
             const result = await applyText(vm, text, positions, STYLE);
             result.extensionsLoaded = extensionsLoaded;
+            let changedIds = [];
+            let summary = '';
+            let moved = 0;
             if (result.changed) {
                 undoStack.push(before);
                 if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+                const written = vm.editingTarget;
+                const fresh = new Set(measureScripts(written).map(s => `${s.x},${s.y}`)
+                    .filter(p => !oldPositions.has(p)));
+                moved = settleScripts(vm, written, fresh).moved;
+                changedIds = changedScripts(written, fingerprints);
+                const names = changedIds.map(id => scriptName(written, id));
+                summary = names.length ? names.join(', ') : 'rearranged';
+                showScripts(changedIds);
             }
             return {
                 ok: true,
                 blocks: result.blocks,
                 changed: result.changed,
                 extensionsLoaded: result.extensionsLoaded,
-                undoSteps: undoStack.length
+                undoSteps: undoStack.length,
+                changedIds,
+                summary,
+                moved
             };
         } catch (e) {
             return {ok: false, error: describeError(e)};
@@ -329,6 +368,21 @@ const METHODS = {
         return {name, value: variable.value, owner};
     },
 
+    // Every script laid out again: events down the left, custom blocks down
+    // the right. For a sprite whose scripts have piled up.
+    tidyScripts: (vm, {sprite}) => {
+        const target = open(vm, sprite);
+        const scripts = tidyScripts(vm, target);
+        showScripts(scripts.slice(0, 1).map(s => s.id), 1200);
+        return {scripts};
+    },
+
+    // What Claude says it is doing, shown at the top of the activity strip.
+    narrate: (vm, {text}) => {
+        narrate(text);
+        return {shown: true};
+    },
+
     selectSprite: (vm, {sprite}) => {
         const target = open(vm, sprite);
         return {editing: target.isStage ? 'Stage' : target.getName()};
@@ -384,6 +438,21 @@ export const installMcpBridge = vm => {
     const address = serverAddress();
     if (!address || typeof WebSocket === 'undefined') return;
     installPlay(vm);
+    installLive({
+        onUndo: () => {
+            const result = METHODS.undo(vm);
+            const line = describeAction('undo', {}, result, !result.ok);
+            if (line) record(line);
+        },
+        onJump: (sprite, ids) => {
+            try {
+                open(vm, sprite);
+                showScripts(ids.length ? ids : []);
+            } catch (e) {
+                // The sprite has gone since: nothing to show.
+            }
+        }
+    });
 
     let delay = 1000;
     const connect = () => {
@@ -409,6 +478,7 @@ export const installMcpBridge = vm => {
             const {id, method, params} = request;
             const fn = METHODS[method];
             let reply;
+            busy();
             try {
                 if (!fn) throw new Error(`Unknown request "${method}".`);
                 reply = {id, result: await fn(vm, params || {})};
@@ -416,6 +486,14 @@ export const installMcpBridge = vm => {
                 reply = {id, error: describeError(e)};
             }
             socket.send(JSON.stringify(reply));
+            // The strip says what just happened. A failure to say it must
+            // never become a failure of the request, which is already sent.
+            try {
+                const line = describeAction(method, params || {}, reply.result || {}, !!reply.error);
+                if (line) record(line);
+            } catch (e) {
+                // Nothing to show, then.
+            }
         };
         socket.onclose = () => {
             status(`not connected, trying again in ${delay / 1000}s`);
@@ -423,8 +501,26 @@ export const installMcpBridge = vm => {
             delay = Math.min(delay * 2, 10000);
         };
     };
-    // After the page has loaded, so a server that is not running yet cannot
-    // slow down the editor starting.
-    if (document.readyState === 'complete') connect();
-    else window.addEventListener('load', connect);
+    // Only once the page has loaded and the editor has loaded its first
+    // project. Connecting sooner let Claude open a project of its own while
+    // the editor was still loading the default one, which then finished
+    // last and replaced it: Claude went on working on sprites that were gone.
+    let started = false;
+    let firstProject = false;
+    const startWhenReady = () => {
+        if (started || !firstProject || document.readyState !== 'complete') return;
+        started = true;
+        connect();
+    };
+    vm.runtime.once('PROJECT_LOADED', () => {
+        firstProject = true;
+        startWhenReady();
+    });
+    // A project that never finishes loading must not keep Claude out for good.
+    setTimeout(() => {
+        firstProject = true;
+        startWhenReady();
+    }, 20000);
+    if (document.readyState === 'complete') startWhenReady();
+    else window.addEventListener('load', startWhenReady);
 };

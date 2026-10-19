@@ -30,6 +30,11 @@ Decide (ask the user only if the request truly leaves it open):
 
 Tell the user the plan in a few lines, then build.
 
+Someone is usually watching the editor while you work. Before each step,
+`narrate` one plain sentence of what you are about to do ("Drawing the
+player: a red robot facing right, 16 by 24"). Each write shows them the
+scripts that changed, glowing, and lists it in the activity strip.
+
 ## 3. Build in this order
 
 1. **Stage**: `add_piece` level (pass your own ROWS). Add a backdrop

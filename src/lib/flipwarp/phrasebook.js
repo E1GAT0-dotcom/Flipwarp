@@ -244,12 +244,30 @@ export function nameIndexFor(style) {
   return m;
 }
 
+// TurboWarp's detectors. In blocks they are a boolean custom-block parameter
+// with exactly this name, dragged out and used outside its custom block:
+// TurboWarp answers true, Scratch answers false. In text they are written
+// isTurboWarp() and isCompiled(), because a parameter's name read back
+// outside its custom block would name nothing.
+export const TW_DETECTORS = { isTurboWarp: 'is TurboWarp?', isCompiled: 'is compiled?' };
+
+/**
+ * @param {string} value an argument reporter's name
+ * @returns {?string} the text name of the detector it is, if it is one
+ */
+export function detectorFor(value) {
+  const lower = String(value).toLowerCase();
+  return Object.keys(TW_DETECTORS).find(k => TW_DETECTORS[k].toLowerCase() === lower) || null;
+}
+
 // Every spelling of every block, in every style, plus the words that are part
 // of the language. Reserved as one set rather than per style, so a variable
 // never has to be renamed just because you switched how the text is written.
 export const RESERVED = new Set([
   ...BY_NAME.keys(),
   ...Object.values(BLOCKS).map(def => camelToSnake(def.name)),
+  ...Object.keys(TW_DETECTORS),
+  ...Object.keys(TW_DETECTORS).map(camelToSnake),
   ...STYLE_KEYWORDS,
 ]);
 
