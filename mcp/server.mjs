@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
+import {randomBytes} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {WebSocketServer} from 'ws';
 import {z} from 'zod';
@@ -24,13 +25,26 @@ import {GUIDE} from './guide.mjs';
 import {PIECES, CONTRACT, pieceText, mergeText, piecesToAdd} from './library/index.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const PORT = Number(process.env.FLIPWARP_PORT) || 8601;
+// One port ("8601"), or a range ("8611-8640") to take the first free one of,
+// so several Claude Code chats can each have their own editor.
+const PORTS = (() => {
+    const [from, to] = (process.env.FLIPWARP_PORT || '8601').split('-').map(s => Number(s.trim()));
+    const first = from || 8601;
+    const last = to >= first ? Math.min(to, first + 200) : first;
+    return Array.from({length: last - first + 1}, (_, i) => first + i);
+})();
+let port = PORTS[0];
 const BUILD = path.resolve(process.env.FLIPWARP_BUILD || path.join(here, '..', 'build'));
 // Web pages other than the editor must not be able to connect and pretend to
 // be it. Local addresses are allowed; a hosted copy of the editor can be added
 // here, comma separated.
 const EXTRA_ORIGINS = (process.env.FLIPWARP_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
-const EDITOR_URL = `http://127.0.0.1:${PORT}/editor.html?mcp`;
+// This chat's own mark on the tabs it opens. A tab opened by an earlier chat
+// that had the same port is refused instead of taking over this one.
+const CHAT = randomBytes(4).toString('hex');
+const editorUrl = () => `http://127.0.0.1:${port}/editor.html?mcp&chat=${CHAT}`;
+// FLIPWARP_OPEN=1: open the editor as soon as Claude Code has connected.
+const OPEN_AT_START = process.env.FLIPWARP_OPEN === '1';
 
 const log = (...args) => console.error('[flipwarp-mcp]', ...args);
 
@@ -70,7 +84,7 @@ const allowedOrigin = origin => {
 
 const ask = (method, params = {}, timeout = 30000) => new Promise((resolve, reject) => {
     if (!editor || editor.readyState !== editor.OPEN) {
-        reject(new Error(`Flipwarp is not connected. Open ${EDITOR_URL} in a browser ` +
+        reject(new Error(`Flipwarp is not connected. Open ${editorUrl()} in a browser ` +
             '(or call open_editor), then try again.'));
         return;
     }
@@ -156,6 +170,14 @@ sockets.on('connection', ws => {
             return;
         }
         if (message.hello === 'flipwarp') {
+            // A tab opened by hand has no mark and is welcome.
+            if (message.chat && message.chat !== CHAT) {
+                ws.send(JSON.stringify({refused: 'This Flipwarp tab belonged to a Claude chat that has ended. ' +
+                    'You can close it.'}));
+                ws.close();
+                log('refused a tab from an earlier chat');
+                return;
+            }
             if (editor && editor.readyState === editor.OPEN) {
                 waiting.push(ws);
                 log('another editor tab connected; it waits until the first one closes');
@@ -198,15 +220,35 @@ sockets.on('connection', ws => {
 });
 
 let serving = false;
-httpServer.on('error', err => {
-    // Another copy of this server (a second Claude Code window) already has
-    // the port. This one still answers tools, it just cannot reach an editor.
-    log(`cannot listen on port ${PORT}: ${err.message}`);
+const tryPort = p => new Promise(resolve => {
+    const onError = () => {
+        httpServer.off('listening', onListening);
+        resolve(false);
+    };
+    const onListening = () => {
+        httpServer.off('error', onError);
+        resolve(true);
+    };
+    httpServer.once('error', onError);
+    httpServer.once('listening', onListening);
+    httpServer.listen(p, '127.0.0.1');
 });
-httpServer.listen(PORT, '127.0.0.1', () => {
-    serving = true;
-    log(`serving ${BUILD} at http://127.0.0.1:${PORT}/`);
-});
+// Another copy of this server (another Claude Code chat) may have a port
+// already: take the next. With none free, this one still answers tools, it
+// just cannot reach an editor.
+const listening = (async () => {
+    for (const p of PORTS) {
+        if (await tryPort(p)) {
+            port = p;
+            serving = true;
+            log(`serving ${BUILD} at http://127.0.0.1:${port}/`);
+            return true;
+        }
+    }
+    log(`cannot listen on port ${PORTS.length > 1 ? `${PORTS[0]}-${PORTS[PORTS.length - 1]}` : PORTS[0]}: ` +
+        'in use by other copies of flipwarp-mcp');
+    return false;
+})();
 
 // --- turning answers into text --------------------------------------------
 
@@ -236,7 +278,7 @@ const tool = fn => async args => {
 
 const connectedMessage = () => {
     const others = waiting.filter(ws => ws.readyState === ws.OPEN).length;
-    return `Connected. The editor is at ${EDITOR_URL}` + (others ?
+    return `Connected. The editor is at ${editorUrl()}` + (others ?
         `\n${others} other Flipwarp tab(s) are open too and are not being used. ` +
         'Close them if that is confusing.' : '');
 };
@@ -245,6 +287,12 @@ const openInBrowser = url => {
     const [cmd, args] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]] :
         process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
     spawn(cmd, args, {detached: true, stdio: 'ignore'}).unref();
+};
+
+let openedAt = 0;
+const launchEditor = () => {
+    openedAt = Date.now();
+    openInBrowser(editorUrl());
 };
 
 const waitForEditor = async ms => {
@@ -290,17 +338,21 @@ server.registerTool('open_editor', {
     inputSchema: {launch: z.boolean().optional().describe('Open a browser tab if none is connected (default true)')}
 }, tool(async ({launch = true}) => {
     if (editor && editor.readyState === editor.OPEN) return text(connectedMessage());
+    await listening;
     if (!serving) {
-        return failure(`This server could not use port ${PORT} (another copy of flipwarp-mcp may be running). ` +
-            'Set FLIPWARP_PORT to a free port.');
+        return failure(`This server could not use port ${PORTS.join(', ')} (other copies of flipwarp-mcp ` +
+            'have them). Set FLIPWARP_PORT to a free port, or a range like 8611-8640.');
     }
     if (!fs.existsSync(path.join(BUILD, 'editor.html'))) {
         return failure(`There is no Flipwarp build at ${BUILD}. Run "npm run build" in the Flipwarp folder first.`);
     }
-    if (launch) openInBrowser(EDITOR_URL);
-    const ok = await waitForEditor(launch ? 30000 : 1000);
+    // A tab opened in the last half minute is still loading: wait for it
+    // rather than opening another.
+    const loading = Date.now() - openedAt < 30000;
+    if (launch && !loading) launchEditor();
+    const ok = await waitForEditor(launch || loading ? 30000 - (Date.now() - openedAt) : 1000);
     return ok ? text(connectedMessage()) :
-        failure(`No editor connected yet. Open ${EDITOR_URL} in a browser.`);
+        failure(`No editor connected yet. Open ${editorUrl()} in a browser.`);
 }));
 
 server.registerTool('text_reference', {
@@ -1009,6 +1061,13 @@ server.registerTool('set_variable', {
         value: z.union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))])
     }
 }, tool(async args => json(await ask('setVariable', args))));
+
+if (OPEN_AT_START) {
+    server.server.oninitialized = async () => {
+        if (!await listening || !fs.existsSync(path.join(BUILD, 'editor.html'))) return;
+        if (!editor) launchEditor();
+    };
+}
 
 await server.connect(new StdioServerTransport());
 log('ready');

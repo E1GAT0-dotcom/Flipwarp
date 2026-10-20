@@ -145,11 +145,16 @@ either way, which is also the most reliable way for Claude to test movement.
 If several Flipwarp tabs have `?mcp`, the first one to connect is the one used
 until it closes. Claude is not switched to another project halfway through.
 
+Each server marks the tabs it opens with its own `chat=` key. A tab left open
+from a chat that has ended is refused by the next server to get its port,
+says so in its activity strip, and stops trying to connect.
+
 ## Settings
 
 | Variable | Default | |
 |---|---|---|
-| `FLIPWARP_PORT` | `8601` | Where the editor is served and connects |
+| `FLIPWARP_PORT` | `8601` | Where the editor is served and connects. A range (`8611-8640`) takes the first free port in it, so several Claude Code chats can each have their own editor |
+| `FLIPWARP_OPEN` | | `1` opens the editor in the browser as soon as Claude Code starts the server |
 | `FLIPWARP_BUILD` | `../build` | The built editor to serve |
 | `FLIPWARP_ORIGINS` | | Extra page origins allowed to connect, comma separated, for a copy of the editor hosted elsewhere (open it with `?mcp=8601`) |
 
@@ -169,6 +174,7 @@ node test/flipwarp/saved-short-form.mjs       # variables saved in short form co
 node test/flipwarp/mcp-end-to-end.mjs         # then open the editor address above
 node test/flipwarp/mcp-game.mjs               # builds and plays a whole platformer (same)
 node test/flipwarp/mcp-topdown.mjs            # builds and plays a whole top-down game (same)
+node test/flipwarp/mcp-many-chats.mjs         # two chats, two editors; open the two addresses it prints
 ```
 
 The play tests start their own server. While Claude Code is open in this

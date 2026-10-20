@@ -49,6 +49,17 @@ const serverAddress = () => {
     return `${scheme}//${location.host}/mcp`;
 };
 
+// The chat that opened this tab (?chat=...), if one did. The server refuses a
+// tab from an earlier chat, so a tab left open does not take over the next
+// chat that happens to get the same port.
+const chatKey = () => {
+    try {
+        return new URLSearchParams(location.search).get('chat');
+    } catch (e) {
+        return null;
+    }
+};
+
 // --- finding things --------------------------------------------------------
 
 const originals = vm => vm.runtime.targets.filter(t => !t.isSprite || t.isOriginal);
@@ -455,6 +466,7 @@ export const installMcpBridge = vm => {
     });
 
     let delay = 1000;
+    let refused = false;
     const connect = () => {
         let socket;
         try {
@@ -466,13 +478,19 @@ export const installMcpBridge = vm => {
         socket.onopen = () => {
             delay = 1000;
             status(`connected to ${address}`);
-            socket.send(JSON.stringify({hello: 'flipwarp', version: 1}));
+            socket.send(JSON.stringify({hello: 'flipwarp', version: 1, chat: chatKey()}));
         };
         socket.onmessage = async event => {
             let request;
             try {
                 request = JSON.parse(event.data);
             } catch (e) {
+                return;
+            }
+            if (request.refused) {
+                refused = true;
+                status(request.refused);
+                narrate(request.refused);
                 return;
             }
             const {id, method, params} = request;
@@ -496,6 +514,7 @@ export const installMcpBridge = vm => {
             }
         };
         socket.onclose = () => {
+            if (refused) return;
             status(`not connected, trying again in ${delay / 1000}s`);
             setTimeout(connect, delay);
             delay = Math.min(delay * 2, 10000);
