@@ -96,13 +96,19 @@ before changing code; do not guess.
 - Title screen or instructions on the stage, a win and a lose.
 - Feel: animation frames, a bounce when squashing enemies, the camera
   easing. The pieces already do the hard parts of feel; keep them.
+- Sound: `add_sound` a preset for each thing that happens (jump, coin, hit,
+  explosion, win, lose...) on the sprite it happens to, and `startSound("jump")`
+  at that moment. Use `variation` and `pitch` so two sounds of a kind differ.
+  You cannot hear them; `play_sound` lets the person hear one.
+- Speed: if it might be heavy (pen drawing, many clones, 3D), get to the
+  busiest part and run `speed_report`; fix what it points at.
 - `save_project` if the user wants a file. Tell the user the controls, what
   to try, and anything you could not make work.
 
 ## Limits to know
 
-- No sound tools yet: use the music extension blocks (`music.playNoteForBeats`)
-  for simple effects, or leave sound to the user.
+- Sounds are made effects, not recordings or music: for a tune, use the
+  music extension blocks (`music.playNoteForBeats`).
 - Text cannot use blocks from extensions that are not Scratch's or Flipwarp's
   unless `set_extension_text` is on and the extension is loaded.
 - Pieces are tuned for 30 frames a second. At 60, halve speeds and gravity.

@@ -12,6 +12,7 @@ npm-*
 
 # Build
 /build
+/build-next
 /dist
 /.opt-in
 

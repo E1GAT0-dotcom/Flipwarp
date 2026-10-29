@@ -23,6 +23,7 @@ import {McpServer} from '@modelcontextprotocol/sdk/server/mcp.js';
 import {StdioServerTransport} from '@modelcontextprotocol/sdk/server/stdio.js';
 import {GUIDE} from './guide.mjs';
 import {PIECES, CONTRACT, pieceText, mergeText, piecesToAdd} from './library/index.mjs';
+import {PRESETS, VOICE_FIELDS, makeSound} from './sounds.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // One port ("8601"), or a range ("8611-8640") to take the first free one of,
@@ -949,6 +950,153 @@ server.registerTool('switch_costume', {
     description: 'Sets which costume a sprite is wearing now (and so in the saved project).',
     inputSchema: {sprite, costume: costumeRef}
 }, tool(async args => json(await ask('setCostume', args))));
+
+// --- sounds ------------------------------------------------------------------
+
+const soundRef = z.union([z.string(), z.number()]).describe('Sound name, or its number counting from 1');
+const presetList = Object.entries(PRESETS).map(([name, p]) => `${name} (${p.about})`).join(', ');
+
+server.registerTool('add_sound', {
+    title: 'Add a sound',
+    description: 'Makes a game sound effect and adds it to a sprite (or "Stage"), or adds a .wav/.mp3 file. ' +
+        `Presets: ${presetList}. Play it in the game with startSound("name") (or playSoundUntilDone). ` +
+        'For different sounds of the same kind (two coins, a high and a low jump) use variation and pitch. ' +
+        'You cannot hear it: the reply describes it, and play_sound plays it for the person watching.',
+    inputSchema: {
+        sprite,
+        name: z.string().describe('What the blocks will call it, e.g. "jump"'),
+        preset: z.enum(Object.keys(PRESETS)).optional(),
+        variation: z.number().int().min(0).max(9999).optional()
+            .describe('A different take on the preset; the same number always gives the same sound'),
+        pitch: z.number().min(-24).max(24).optional().describe('Semitones up (+) or down (-)'),
+        length: z.number().min(0.25).max(4).optional().describe('Longer (2) or shorter (0.5)'),
+        volume: z.number().min(0).max(1).optional(),
+        custom: z.record(z.string(), z.any()).optional()
+            .describe('A whole recipe instead of a preset, or changes to one: ' +
+                Object.entries(VOICE_FIELDS).map(([k, v]) => `${k}: ${v}`).join('; ')),
+        file: z.string().optional().describe('A .wav or .mp3 file on this computer instead')
+    }
+}, tool(async ({sprite: which, name, file, ...request}) => {
+    let data;
+    let format = 'wav';
+    let about;
+    if (file) {
+        const ext = path.extname(file).toLowerCase().slice(1);
+        if (ext !== 'wav' && ext !== 'mp3') throw new Error('A sound file must be .wav or .mp3.');
+        data = fs.readFileSync(path.resolve(file)).toString('base64');
+        format = ext;
+        about = `from ${path.basename(file)}`;
+    } else {
+        const made = makeSound(request);
+        data = made.wav.toString('base64');
+        about = made.about;
+    }
+    const r = await ask('addSound', {sprite: which, name, data, format}, 60000);
+    const renamed = r.sound.name !== name ? ` (named "${r.sound.name}": "${name}" was taken)` : '';
+    return text(`Added sound "${r.sound.name}" to ${which}${renamed}: ${about}.\n` +
+        `${which} has: ${r.sounds.map(s => `"${s}"`).join(', ')}`);
+}));
+
+server.registerTool('list_sounds', {
+    title: 'List sounds',
+    description: 'A sprite\'s (or the Stage\'s) sounds, with their lengths.',
+    inputSchema: {sprite}
+}, tool(async args => json(await ask('sounds', args))));
+
+server.registerTool('play_sound', {
+    title: 'Play a sound',
+    description: 'Plays a sound out loud in the editor, for the person watching to hear.',
+    inputSchema: {sprite, sound: soundRef}
+}, tool(async args => json(await ask('playSound', args))));
+
+server.registerTool('rename_sound', {
+    title: 'Rename a sound',
+    description: 'Renames a sound. Blocks that play it by its old name need changing too.',
+    inputSchema: {sprite, sound: soundRef, name: z.string()}
+}, tool(async args => json(await ask('renameSound', args))));
+
+server.registerTool('delete_sound', {
+    title: 'Delete a sound',
+    description: 'Removes a sound from a sprite.',
+    inputSchema: {sprite, sound: soundRef}
+}, tool(async args => json(await ask('deleteSound', args))));
+
+// --- speed -------------------------------------------------------------------
+
+const speedReport = r => {
+    const lines = [];
+    const over = r.framesOverBudget;
+    if (r.threadsRunning === 0 && r.scripts.length === 0) {
+        lines.push(`Nothing is running, so there is nothing to measure. Press the green flag (green_flag) and ` +
+            'get to the laggy part first.');
+        return lines.join('\n');
+    }
+    lines.push(over ?
+        `TOO SLOW: ${over} of ${r.frames} frames took longer than the ${r.budgetMs}ms a frame has at ` +
+            `${r.framerate} frames a second, so the game runs slower than it should.` :
+        `Fast enough: every one of ${r.frames} frames fitted in the ${r.budgetMs}ms it has at ${r.framerate} ` +
+            'frames a second.');
+    lines.push(`Frames took ${r.averageMs}ms on average, ${r.slowestMs}ms at worst.`);
+    const other = Math.max(0, r.averageMs - r.scriptsMsPerFrame - r.drawMsPerFrame - r.editorMsPerFrame);
+    let drawing;
+    if (r.drawn) drawing = `drawing the stage ${r.drawMsPerFrame}ms`;
+    else if (r.hidden) drawing = 'drawing not measured (the tab is hidden, so the stage is not drawn)';
+    else if (r.interpolation) drawing = 'drawing not measured (interpolation draws between frames)';
+    else drawing = 'no drawing';
+    lines.push(`Each frame: scripts ${r.scriptsMsPerFrame}ms, ${drawing}, the editor showing changes ` +
+        `(sprite panel, variable displays) ${r.editorMsPerFrame}ms, everything else ${Math.round(other * 100) / 100}ms.`);
+    lines.push(`${r.clones} clone(s)${r.cloneLimit && r.cloneLimit !== Infinity ? ` of ${r.cloneLimit} allowed` : ''}, ` +
+        `${r.threadsRunning} script(s) running.`);
+    if (r.scripts.length) {
+        lines.push('', 'Where the time went (per frame):');
+        for (const s of r.scripts) {
+            lines.push(`- ${s.sprite}: ${s.script}: ${s.msPerFrame}ms (${s.share}%)` +
+                (s.copies > 1 ? `, ${s.copies} copies (clones) running it` : '') +
+                (s.mostPassesInAFrame > 3 ? `, ran ${s.mostPassesInAFrame} times in one frame` : ''));
+        }
+    }
+    const hints = [];
+    const spinning = r.scripts.filter(s => s.mostPassesInAFrame > 3);
+    if (spinning.length) {
+        hints.push('A script that runs many times in one frame is a loop where nothing on screen changes: ' +
+            'Scratch keeps running it again until most of the frame is used up. The frame is still on time, ' +
+            'but it keeps the computer busy. Usually harmless; if it only needs to happen once a frame, do the ' +
+            'work in the one frame loop (whenIReceive(render)) instead of a forever loop of its own.');
+    }
+    if (over) {
+        const top = r.scripts[0];
+        if (top && top.share > 40) {
+            hints.push(`Start with ${top.sprite}'s "${top.script}": most of the time is spent there. ` +
+                'Look for loops that do the same work every frame, touching checks against many clones, and ' +
+                'repeats over long lists. Inside a define fast block, keep the repeat counts down.');
+        }
+        if (r.editorMsPerFrame > r.averageMs * 0.3) {
+            hints.push('A lot of each frame is the editor showing changes: the sprite panel follows the sprite ' +
+                'it has open, and variable displays on the stage redraw when they change. Hide variable displays ' +
+                'that change every frame (hideVariable). In fullscreen, the player view or a packaged game this ' +
+                'cost is mostly gone, so the game itself may be fine.');
+        }
+        if (r.drawn && r.drawMsPerFrame > r.budgetMs * 0.4) {
+            hints.push('Drawing takes a lot of the frame: fewer pen stamps or lines each frame, fewer and smaller ' +
+                'clones on screen, fewer graphic effects (ghost, colour) on many sprites.');
+        }
+        if (r.clones > 150) hints.push('Lots of clones: delete them when they leave the screen.');
+        hints.push('The person can also turn on Flipwarp\'s Fast collisions and Skip frames settings, or set ' +
+            'Render scale to half; those change how it runs on their computer, not the project.');
+    }
+    if (hints.length) lines.push('', ...hints);
+    if (r.paused) lines.push('', 'The project was paused before, and is still paused.');
+    return lines.join('\n');
+};
+
+server.registerTool('speed_report', {
+    title: 'Why is it laggy?',
+    description: 'Runs the project for some frames, right now and at full speed (even in a hidden tab), timing ' +
+        'every frame, every script and the drawing. Says whether frames fit in their time, which scripts take ' +
+        'the most, how many clones there are, and what to try. Start the game and get it to the laggy part ' +
+        'first. The game moves on by those frames.',
+    inputSchema: {frames: z.number().int().min(10).max(300).optional().describe('How many frames (default 60)')}
+}, tool(async ({frames}) => text(speedReport(await ask('performance', {frames}, 120000)))));
 
 // --- ready-made pieces -----------------------------------------------------
 

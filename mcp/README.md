@@ -64,6 +64,9 @@ behaves exactly as normal.
 | `list_pieces` / `get_piece` / `add_piece` | The library of ready-made game pieces |
 | `set_game_options` | Framerate, fencing, interpolation, high-quality pen, infinite clones, stored in the project |
 | `set_variable` | Sets a variable while the game runs, to set up a test |
+| `add_sound` | Makes a sound effect from a preset (coin, jump, laser, explosion, hit, powerup, blip, select, bounce, whoosh, step, door, alarm, win, lose) or a recipe, or adds a .wav/.mp3, and describes it |
+| `list_sounds` / `play_sound` / `rename_sound` / `delete_sound` | The rest; `play_sound` plays it out loud for the person watching |
+| `speed_report` | Runs frames at full speed timing each frame, each script and the drawing: whether frames fit their time, where the time goes, clones, and what to try |
 | `tidy_scripts` | Lays a sprite's scripts out again: events on the left, custom blocks on the right |
 | `narrate` | Shows the person watching a short note about what Claude is doing |
 
@@ -146,8 +149,18 @@ If several Flipwarp tabs have `?mcp`, the first one to connect is the one used
 until it closes. Claude is not switched to another project halfway through.
 
 Each server marks the tabs it opens with its own `chat=` key. A tab left open
-from a chat that has ended is refused by the next server to get its port,
-says so in its activity strip, and stops trying to connect.
+from a chat that has ended is refused by the next server to get its port.
+Once its chat has ended (refused, or no server for a minute) the tab closes
+itself if its project has been saved since its last change; otherwise it
+says to save first. A tab opened by hand is never closed.
+
+### Idle pause
+
+A game left running with nobody using it is paused after 90 seconds: no
+request from Claude and no key, click or scroll on the page. The activity
+strip says so. The next request from Claude, or any key or click, carries on,
+with no jump in the game's timers. A pause Claude asked for itself is left
+alone. `?idle=<seconds>` in the address changes the time, for testing.
 
 ## Settings
 
@@ -167,6 +180,7 @@ a website you visit cannot pretend to be the editor.
 node test/flipwarp/mcp-guide.mjs              # every example Claude is taught parses
 node test/flipwarp/other-extension-text.mjs   # the extension setting round-trips
 node test/flipwarp/mcp-pixels.mjs             # pixel art is read, drawn, and refused with its place
+node test/flipwarp/mcp-sounds.mjs             # every sound preset makes a clean WAV (SAVE_SOUNDS=dir to listen)
 node test/flipwarp/mcp-pieces.mjs             # every piece builds, alone and merged
 node test/flipwarp/reporter-in-dropdown.mjs   # switchCostume(join(...)) round-trips
 node test/flipwarp/turbowarp-detector.mjs     # isTurboWarp() and isCompiled() round-trip

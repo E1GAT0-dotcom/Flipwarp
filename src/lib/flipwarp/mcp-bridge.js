@@ -24,10 +24,13 @@ import {spriteUpload} from '../file-uploader.js';
 import FLIPWARP_EXTENSIONS, {flipwarpBase} from './flipwarp-extensions.js';
 import {PLAY_METHODS, installPlay} from './mcp-play.js';
 import {costumeMethods, imageFrom} from './mcp-costumes.js';
+import {soundMethods} from './mcp-sounds.js';
+import {perfMethods} from './mcp-perf.js';
 import {
     fingerprintScripts, changedScripts, measureScripts, settleScripts, tidyScripts, showScripts
 } from './script-layout.js';
 import {installLive, record, describe as describeAction, busy, narrate} from './mcp-live.js';
+import {installIdlePause, requestStarted, requestFinished} from './mcp-idle.js';
 
 const STYLE = getStyle('js');
 const TEXT_OPTIONS = {style: STYLE, indent: '  '};
@@ -241,6 +244,8 @@ const loadExtensionsFor = async (vm, text) => {
 const METHODS = {
     ...PLAY_METHODS,
     ...costumeMethods(targetNamed),
+    ...soundMethods(targetNamed),
+    ...perfMethods((target, id) => scriptName(target, id)),
 
     overview: vm => overview(vm),
 
@@ -465,8 +470,44 @@ export const installMcpBridge = vm => {
         }
     });
 
+    installIdlePause(vm);
+
+    // Whether the project has changed since it was loaded or Claude last
+    // saved it, so a tab whose chat has ended is only closed when nothing
+    // would be lost.
+    let unsaved = false;
+    vm.on('PROJECT_CHANGED', () => {
+        unsaved = true;
+    });
+    vm.runtime.on('PROJECT_LOADED', () => {
+        unsaved = false;
+    });
+
+    // A tab a chat opened (it has a chat key) closes itself once that chat
+    // has ended: when the next chat's server refuses it, or when no server
+    // has answered for ENDED_AFTER_MS. A tab opened by hand is never closed.
+    const key = chatKey();
+    const ENDED_AFTER_MS = 60000;
+    let ended = false;
+    let lostAt = 0;
+    const chatEnded = () => {
+        if (ended) return;
+        ended = true;
+        status('the chat that opened this tab has ended');
+        if (unsaved) {
+            narrate('The Claude chat that opened this tab has ended. This project has changes that were not ' +
+                'saved: save it (File > Save to your computer), then close this tab.');
+            return;
+        }
+        narrate('The Claude chat that opened this tab has ended, and its project is saved, so this tab is closing.');
+        setTimeout(() => {
+            window.close();
+            // Still here: the browser would not let a page close its own tab.
+            setTimeout(() => narrate('The Claude chat that opened this tab has ended. You can close it.'), 1000);
+        }, 5000);
+    };
+
     let delay = 1000;
-    let refused = false;
     const connect = () => {
         let socket;
         try {
@@ -477,8 +518,9 @@ export const installMcpBridge = vm => {
         }
         socket.onopen = () => {
             delay = 1000;
+            lostAt = 0;
             status(`connected to ${address}`);
-            socket.send(JSON.stringify({hello: 'flipwarp', version: 1, chat: chatKey()}));
+            socket.send(JSON.stringify({hello: 'flipwarp', version: 1, chat: key}));
         };
         socket.onmessage = async event => {
             let request;
@@ -488,20 +530,22 @@ export const installMcpBridge = vm => {
                 return;
             }
             if (request.refused) {
-                refused = true;
-                status(request.refused);
-                narrate(request.refused);
+                chatEnded();
                 return;
             }
             const {id, method, params} = request;
             const fn = METHODS[method];
             let reply;
             busy();
+            requestStarted();
             try {
                 if (!fn) throw new Error(`Unknown request "${method}".`);
                 reply = {id, result: await fn(vm, params || {})};
+                if (method === 'saveProject' || method === 'loadProject') unsaved = false;
             } catch (e) {
                 reply = {id, error: describeError(e)};
+            } finally {
+                requestFinished();
             }
             socket.send(JSON.stringify(reply));
             // The strip says what just happened. A failure to say it must
@@ -514,7 +558,14 @@ export const installMcpBridge = vm => {
             }
         };
         socket.onclose = () => {
-            if (refused) return;
+            if (ended) return;
+            if (key) {
+                if (!lostAt) lostAt = Date.now();
+                if (Date.now() - lostAt > ENDED_AFTER_MS) {
+                    chatEnded();
+                    return;
+                }
+            }
             status(`not connected, trying again in ${delay / 1000}s`);
             setTimeout(connect, delay);
             delay = Math.min(delay * 2, 10000);
