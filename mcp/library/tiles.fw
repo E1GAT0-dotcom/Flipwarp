@@ -1,8 +1,10 @@
 # Draws the level (piece "tiles"). Give this sprite one costume per tile
 # character, named exactly that character ("#" and so on, never a digit),
-# tileSize steps square and centred. Every frame it stamps the tiles that are
-# on screen with the pen, then stays hidden itself. Needs fencing off, which
-# adding this piece does.
+# tileSize steps square and centred. It stamps the tiles that are on screen
+# with the pen, and stamps them again only when the camera has moved: a still
+# screen is not redrawn. It stays hidden itself. It owns the pen layer: other
+# sprites should not erase the pen. Needs fencing off, which adding this piece
+# does.
 
 global list levelRows;
 global variable tileSize;
@@ -20,6 +22,8 @@ variable lastCol;
 variable firstRow;
 variable lastRow;
 variable tileChar;
+variable drawnX;
+variable drawnY;
 
 whenIReceive(gameStart) {
   hide();
@@ -27,10 +31,16 @@ whenIReceive(gameStart) {
   pointInDirection(90);
   setSize(100);
   pen.eraseAll();
+  drawnX = "none";
 }
 
+# viewX and viewY are whole numbers, so "has the camera moved" is exact.
 whenIReceive(render) {
-  drawMap();
+  if (!(viewX == drawnX && viewY == drawnY)) {
+    drawMap();
+    drawnX = viewX;
+    drawnY = viewY;
+  }
 }
 
 # Stamps every tile on screen. viewX, viewY is the world point at the middle

@@ -22,8 +22,10 @@ have played it and it works.
 Decide (ask the user only if the request truly leaves it open):
 
 - Genre, controls, the goal, how you win and how you lose.
-- Sprites and what each one does. Typical platformer: Stage (level),
-  Tiles, Player, Coin, Enemy, plus anything special.
+- Sprites and what each one does: one sprite for each kind of thing on
+  screen, named for what it is. Typical platformer: Stage (level), Tiles,
+  Player, Coin, Enemy, plus a sprite for each button and title (Title,
+  PlayButton, ScoreBoard...).
 - The art: one palette for the whole game, pixel art or SVG, sizes
   (the stage is 480x360; a tile is 24; a player about 16x24).
 - The level map(s) as text rows.
@@ -49,14 +51,61 @@ scripts that changed, glowing, and lists it in the activity strip.
    Follow the rules below.
 5. `health_check` and fix what it finds.
 
-## 4. Rules that make Scratch games work
+## 4. Build it the way a Scratcher would
+
+The person will open this in Scratch, look inside and remix it. Build it the
+way a good Scratcher builds, which is also what runs fastest: sprites you can
+see and click, not an engine that draws everything. These come from
+comparing games made here with the person's own games; the made-here ones
+lagged and could not be edited.
+
+- **Screens are backdrops and sprites, not drawings.** Title, menu, pause,
+  game over and win: a backdrop (`switchBackdropTo`) and sprites that `show`
+  and `hide`. Never redraw a still screen every frame.
+- **A button is a sprite.** Its costumes are its looks (normal, hover,
+  pressed); `whenThisSpriteClicked` does what it does; `touching("_mouse_")`
+  for hover. Never a rectangle you test the mouse against.
+- **Text that does not change is drawn into a costume** (an SVG with
+  `<text>`, or pixel letters) on a sprite placed where it shows. `say` for
+  speech. A score: a variable display (`showVariable`), or a sprite with one
+  costume per digit and a clone per digit. A letter engine (one costume per
+  character, stamped or cloned) only for text that really changes, like a
+  player's name or chat, and then only redrawn when the text changes.
+- **Things in the game are sprites and clones**: player, enemies, bullets,
+  coins, particles, doors. They move themselves (`changeX`, `goToXY`,
+  `glide`) and the renderer draws them. Nothing that a player would want to
+  inspect is a pen stamp.
+- **The pen is for**: real 3D (raycasting), lines and trails, drawing tools,
+  and a scrolling tile map (the tiles piece, which redraws only when the
+  camera moves). Not for menus, buttons, text, the HUD, intros or sprites.
+  If the pen redraws every frame, the whole frame is drawn twice.
+- **An intro or logo animation is a sprite with costumes** (`nextCostume`,
+  `glide`, `changeEffect`), not points drawn with the pen.
+- **Small pieces.** One sprite per thing, each with the scripts for that
+  thing; no sprite holding most of the game. A custom block that is longer
+  than a screen (about 40 lines) is split into smaller ones with clear names.
+- **Names a person can read.** `playerSpeed`, `jumpPower`, `coinsLeft`,
+  `Is jumping?`: never `ps`, `v2`, `a0`. Custom block inputs too: `jump(height)`,
+  not `jump(a)`.
+- **Collision with `touching` when there is no tile map**: enemies, pickups,
+  hazards, the goal. Map maths only for walls and floors of a tile map.
+- **A few costumes, a few list items.** Tens of costumes per sprite, not
+  thousands; levels as backdrops or as map rows, not millions of list items.
+  Big files load slowly and Scratch refuses projects over its size limit.
+- **`define fast` only where it is needed**: loops that must finish within
+  one frame (drawing a map, sorting, maths over a list). Not on every custom
+  block, and never on one that waits, asks, glides or says for seconds: those
+  do not wait inside a fast block.
+- **Comments** on every sprite saying what it does, and on anything clever.
+
+## 5. Rules that make Scratch games work
 
 - **One frame loop.** The player's loop sends "render" every frame; every
   other sprite moves and draws itself in `whenIReceive(render)`. Never give
   each sprite its own forever loop with its own timing.
-- **`define fast` for per-frame work.** Without "fast" every loop pass waits
-  a frame. Never put `wait` inside game logic; count frames instead
-  (`timer += 1; if (timer > 30) { ... }`).
+- **Per-frame work does not wait.** Never put `wait` inside game logic;
+  count frames instead (`timer += 1; if (timer > 30) { ... }`). A custom
+  block that loops over many things each frame is `define fast`.
 - **World coordinates and the camera.** Positions live in variables
   (worldX, worldY); draw with `goToXY(worldX - viewX, worldY - viewY)`.
   Fencing must be off (`set_game_options`).
@@ -72,7 +121,7 @@ scripts that changed, glowing, and lists it in the activity strip.
   another reads are declared in both. Keep the names from the pieces.
 - Short scripts with clear names and a `#` comment on anything not obvious.
 
-## 5. Play it
+## 6. Play it
 
 After every feature, play it. This is not optional.
 
@@ -91,7 +140,7 @@ After every feature, play it. This is not optional.
 Fix, then play again. When something is wrong, find out why from the state
 before changing code; do not guess.
 
-## 6. Finish
+## 7. Finish
 
 - Title screen or instructions on the stage, a win and a lose.
 - Feel: animation frames, a bounce when squashing enemies, the camera

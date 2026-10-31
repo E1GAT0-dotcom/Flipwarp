@@ -313,7 +313,8 @@ const server = new McpServer({name: 'flipwarp', version: '0.1.0'}, {
         'read_sprite before changing a sprite, check_text to try text safely, write_sprite to apply it, ' +
         'then health_check. If the editor is not connected, call open_editor. When asked to make a game or a ' +
         'big feature, call game_workflow first and follow it: plan, draw, build from list_pieces, then play ' +
-        'the game with the play tools and fix it until it works.'
+        'the game with the play tools and fix it until it works. To rebuild a finished game the Scratch way ' +
+        '(restyle it), call restyle_workflow first.'
 });
 
 // The game-making workflow is a Claude Code skill in the Flipwarp folder;
@@ -330,7 +331,38 @@ server.registerTool('game_workflow', {
     return text(skill.replace(/^---\n[\s\S]*?\n---\n/, '').trim());
 }));
 
+// The same for restyling a finished game.
+const RESTYLE_FILE = path.join(here, '..', '.claude', 'skills', 'flipwarp-restyle', 'SKILL.md');
+
+server.registerTool('restyle_workflow', {
+    title: 'How to restyle a finished game',
+    description: 'The workflow for rebuilding a finished game the way a Scratcher would, without changing how ' +
+        'it plays: pen-drawn menus and text into sprites, cryptic names into readable ones, one giant sprite ' +
+        'and giant custom blocks into small ones, lighter files. Read it before restyling a game.',
+    inputSchema: {}
+}, tool(async () => {
+    const skill = fs.readFileSync(RESTYLE_FILE, 'utf8').replace(/\r\n/g, '\n');
+    return text(skill.replace(/^---\n[\s\S]*?\n---\n/, '').trim());
+}));
+
 const sprite = z.string().describe('Sprite name, or "Stage" for the stage');
+
+server.registerTool('rename', {
+    title: 'Rename everywhere',
+    description: 'Renames a variable, list, message (broadcast), custom block or custom block input everywhere ' +
+        'it is used, so the project works exactly as before. For giving cryptic names (bvx, a0) readable ones. ' +
+        'A sprite\'s own variable or list needs sprite; a custom block or input needs the sprite it is in. ' +
+        'Cloud variables are refused: their name is where they are stored online.',
+    inputSchema: {
+        kind: z.enum(['variable', 'list', 'message', 'block', 'input']),
+        from: z.string().describe('The name now. For a custom block, its name without inputs is enough'),
+        to: z.string().describe('The new name. For a custom block, a name (inputs stay as they are), or the ' +
+            'whole label with %s and %b in the same order'),
+        sprite: z.string().optional().describe('Where it is: needed for a sprite\'s own variable or list, a ' +
+            'custom block, or an input'),
+        block: z.string().optional().describe('For an input: the custom block it belongs to')
+    }
+}, tool(async args => json(await ask('rename', args))));
 
 server.registerTool('open_editor', {
     title: 'Open the Flipwarp editor',
@@ -460,7 +492,9 @@ server.registerTool('find', {
 server.registerTool('health_check', {
     title: 'Project health check',
     description: 'What is probably wrong with the project: scripts with no hat, messages nobody receives, ' +
-        'variables nothing reads, unused costumes. Graded problem / warning / tidy.',
+        'variables nothing reads, unused costumes; and where it is not built the way a Scratcher would ' +
+        '(menus or text redrawn with the pen, one sprite holding the game, giant custom blocks, unreadable ' +
+        'names, fast blocks that wait, thousands of costumes). Graded problem / warning / tidy.',
     inputSchema: {}
 }, tool(async () => {
     const {findings} = await ask('health');

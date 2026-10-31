@@ -176,6 +176,280 @@ const finding = (grade, kind, title, detail, where, fix) => ({
     fix: fix || null
 });
 
+// --- built the Scratch way ------------------------------------------------
+
+// The habits that make a project lag and that a person opening it in the
+// editor cannot work with: menus and text redrawn with the pen every frame,
+// one sprite holding the whole game, custom blocks pages long, names nobody
+// can read, thousands of costumes. Found by comparing games Claude made with
+// games people made, and set so that the people's games pass: each threshold
+// is above anything in those.
+
+// A loop that goes round once a frame, more or less: what a game loop is.
+const LOOPS = new Set(['control_forever', 'control_repeat_until', 'control_while']);
+
+// Blocks that wait for time to pass, which a fast custom block does not.
+const WAITS = new Set(['control_wait', 'control_wait_until', 'sensing_askandwait', 'motion_glidesecstoxy',
+    'motion_glideto', 'looks_sayforsecs', 'looks_thinkforsecs', 'sound_playuntildone', 'event_broadcastandwait',
+    'text2speech_speakAndWait']);
+
+// Short names that are words in their own right, or what everybody calls
+// them: never worth pointing at.
+const FINE_SHORT = new Set(['x', 'y', 'z', 'i', 'j', 'k', 'n', 'dx', 'dy', 'dz', 'vx', 'vy', 'vz', 'id', 'hp',
+    'xp', 'fps', 'map', 'key', 'dir', 'top', 'row', 'col', 'end', 'max', 'min', 'sum', 'cam', 'gun', 'run', 'hit',
+    'won', 'win', 'ui', 'job', 'day', 'age', 'ok', 'on', 'off', 'yes', 'no', 'mx', 'my', 'lvl', 'pos', 'gap',
+    'ammo', 'tmp', 'idx', 'len', 'out', 'set', 'add', 'all', 'one', 'two', 'old', 'new', 'now', 'bg', 'sfx',
+    'tile', 'tiles', 'score', 'speed', 'level', 'lives', 'time', 'size', 'jump', 'name']);
+
+// Sprites and custom blocks whose names say they are the interface, not the
+// world.
+const LOOKS_LIKE_UI = /menu|title|button|btn|\bui\b|hud|text|label|font|glyph|intro|logo|screen|popup/i;
+
+const procCodeOf = (target, definition) => {
+    const all = blocksOf(target);
+    const prototype = bodyOf(target, definition, 'custom_block');
+    const mutation = prototype && all[prototype] && all[prototype].mutation;
+    return mutation ? {
+        code: mutation.proccode,
+        warp: String(mutation.warp) === 'true',
+        args: (() => {
+            try {
+                return JSON.parse(mutation.argumentnames || '[]');
+            } catch (e) {
+                return [];
+            }
+        })()
+    } : null;
+};
+
+const shortCode = code => String(code || '').replace(/\s*%[sbn]/g, '')
+    .trim();
+
+const scratchWay = (targets, stage) => {
+    const found = [];
+
+    // -- the pen redrawn every frame. Followed from every game loop into the
+    //    custom blocks it calls and the messages it sends, to the clear.
+    const clearsPerFrame = new Map(); // target -> {count, ui, via}
+    const definitions = new Map(); // `${target.id} ${proccode}` -> {target, top}
+    const handlers = new Map(); // message -> [{target, top}]
+    for (const target of targets) {
+        for (const top of topBlocksOf(target)) {
+            if (top.opcode === 'procedures_definition') {
+                const proc = procCodeOf(target, top);
+                if (proc) definitions.set(`${target.id} ${proc.code}`, {target, top, proc});
+            }
+            if (top.opcode === 'event_whenbroadcastreceived') {
+                const message = fieldIn(top, 'BROADCAST_OPTION');
+                if (message) {
+                    if (!handlers.has(message)) handlers.set(message, []);
+                    handlers.get(message).push({target, top});
+                }
+            }
+        }
+    }
+    // Whether a block only runs sometimes (inside an if): a redraw behind
+    // "if the camera moved" is not a redraw every frame. Interface drawing is
+    // pointed out either way, since a menu is only ever drawn in the menu.
+    const pending = [];
+    // key -> whether it has only been reached behind an if so far
+    const reached = new Map();
+    const reach = (key, onlySometimes, visit) => {
+        if (reached.has(key) && (onlySometimes || !reached.get(key))) return;
+        reached.set(key, onlySometimes);
+        pending.push(visit);
+    };
+    const note = (target, via, clear, onlySometimes) => {
+        const ui = LOOKS_LIKE_UI.test(target.getName()) || Boolean(via && LOOKS_LIKE_UI.test(via));
+        if (!clear && !ui) return;
+        const entry = clearsPerFrame.get(target) || {count: 0, ui: false, via: new Set()};
+        if (clear && !onlySometimes) entry.count++;
+        if (ui) entry.ui = true;
+        if (via) entry.via.add(via);
+        clearsPerFrame.set(target, entry);
+    };
+    const visitFrame = (target, startId, via, onlySometimes) => {
+        const all = blocksOf(target);
+        const stack = [[startId, onlySometimes]];
+        const seen = new Set();
+        while (stack.length) {
+            const [id, sometimes] = stack.pop();
+            if (!id || seen.has(id)) continue;
+            seen.add(id);
+            const block = all[id];
+            if (!block) continue;
+            if (block.opcode === 'pen_clear') note(target, via, true, sometimes);
+            if (block.opcode === 'pen_stamp') note(target, via, false, sometimes);
+            if (block.opcode === 'procedures_call' && block.mutation) {
+                const key = `${target.id} ${block.mutation.proccode}`;
+                const definition = definitions.get(key);
+                if (definition) {
+                    const name = shortCode(block.mutation.proccode);
+                    reach(`p ${key}`, sometimes, () => visitFrame(target, definition.top.next, name, sometimes));
+                }
+            }
+            if (block.opcode === 'event_broadcast' || block.opcode === 'event_broadcastandwait') {
+                const menu = menuIn(target, block, 'BROADCAST_INPUT');
+                const message = menu && menu.chosen;
+                if (message) {
+                    reach(`m ${message}`, sometimes, () => {
+                        for (const h of handlers.get(message) || []) {
+                            visitFrame(h.target, h.top.next, message, sometimes);
+                        }
+                    });
+                }
+            }
+            if (block.next) stack.push([block.next, sometimes]);
+            const branches = block.opcode === 'control_if' || block.opcode === 'control_if_else';
+            for (const [slot, input] of Object.entries(block.inputs || {})) {
+                if (!input || !input.block) continue;
+                stack.push([input.block, sometimes || (branches && /^SUBSTACK/.test(slot))]);
+            }
+        }
+    };
+    for (const target of targets) {
+        for (const block of realBlocks(target)) {
+            if (LOOPS.has(block.opcode)) {
+                const body = bodyOf(target, block, 'SUBSTACK');
+                if (body) visitFrame(target, body, null, false);
+            }
+        }
+    }
+    while (pending.length) pending.shift()();
+    for (const [target, entry] of clearsPerFrame) {
+        // Interface drawing is only worth pointing at when the pen is erased
+        // and drawn again: one stamp of a logo is fine.
+        const erased = entry.count || [...clearsPerFrame.values()].some(e => e.count);
+        if (!entry.count && !(entry.ui && erased)) continue;
+        const name = target.getName();
+        const via = [...entry.via].slice(0, 3).map(v => `"${v}"`)
+            .join(', ');
+        if (entry.ui) {
+            found.push(finding('warning', 'pen-ui',
+                `${name} redraws menus or text with the pen every frame`,
+                `The pen is erased and drawn again every frame${via ? ` (in ${via})` : ''}, and what it draws ` +
+                'looks like the interface. Menus, buttons, titles and text are sprites with costumes that are ' +
+                'shown and hidden, with "when this sprite clicked" for buttons: nothing is redrawn while the ' +
+                'screen stands still, and the person can see and change them in the editor.',
+                {sprite: name}, null));
+        } else {
+            found.push(finding('tidy', 'pen-every-frame',
+                `${name} erases and redraws the pen every frame`,
+                `${via ? `In ${via}. ` : ''}That is right for a 3D view, trails or a scrolling tile map, ` +
+                'and then best only when something moved. If it draws things in the game, a sprite or clone ' +
+                'for each is drawn by Scratch itself and costs much less.',
+                {sprite: name}, null));
+        }
+    }
+
+    // -- one sprite holding the game
+    const counts = targets.map(t => ({target: t, n: realBlocks(t).length}));
+    const total = counts.reduce((sum, c) => sum + c.n, 0);
+    for (const {target, n} of counts) {
+        if ((total >= 2000 && n / total >= 0.6) || n >= 8000) {
+            found.push(finding('warning', 'one-big-sprite',
+                `${target.isStage ? 'The Stage' : target.getName()} holds ${Math.round((n / total) * 100)}% ` +
+                    `of the project (${n} blocks)`,
+                'One sprite doing everything is hard to find your way round in the editor and hard to remix. ' +
+                'Give each thing in the game its own sprite with the scripts for that thing.',
+                {sprite: target.getName()}, null));
+        }
+    }
+
+    for (const target of targets) {
+        const name = target.getName();
+        const tops = topBlocksOf(target);
+
+        // -- custom blocks pages long, and fast ones that wait
+        const long = [];
+        const waiting = [];
+        tops.forEach((top, index) => {
+            if (top.opcode !== 'procedures_definition') return;
+            const proc = procCodeOf(target, top);
+            let size = 0;
+            let waits = null;
+            walkFrom(target, top.next, block => {
+                if (!block.shadow) size++;
+                if (!waits && WAITS.has(block.opcode)) waits = (spec(block.opcode) || {}).name || block.opcode;
+            });
+            if (size > 300) long.push({code: shortCode(proc && proc.code), size, index});
+            if (proc && proc.warp && waits) waiting.push({code: shortCode(proc.code), waits, index, id: top.id});
+        });
+        if (long.length) {
+            long.sort((a, b) => b.size - a.size);
+            found.push(finding('warning', 'giant-block',
+                long.length === 1 ? `"${long[0].code}" in ${name} is ${long[0].size} blocks long` :
+                    `${long.length} custom blocks in ${name} are over 300 blocks long`,
+                `${long.slice(0, 4).map(l => `"${l.code}" (${l.size})`)
+                    .join(', ')}. A custom block longer than ` +
+                'a screen is hard to read and to change; split it into smaller ones with names that say what ' +
+                'each part does.',
+                {sprite: name, script: long[0].index}, null));
+        }
+        for (const w of waiting.slice(0, 3)) {
+            found.push(finding('warning', 'fast-waits',
+                `"${w.code}" in ${name} runs without screen refresh and waits`,
+                `It has "${w.waits}" in it. A block that runs without screen refresh does not stop for the ` +
+                'screen, so waiting inside it freezes the game until it is done. Untick "Run without screen ' +
+                'refresh", or do the waiting outside it.',
+                {sprite: name, script: w.index}, {type: 'not-fast', target: name, block: w.id}));
+        }
+
+        // -- thousands of costumes
+        const costumes = (target.getCostumes && target.getCostumes()) || [];
+        if (costumes.length > 500) {
+            found.push(finding('warning', 'many-costumes',
+                `${name} has ${costumes.length} costumes`,
+                'Every costume loads with the project and the costume tab becomes impossible to use. Draw ' +
+                'what changes (rotations, frames) with fewer costumes and effects, or keep levels as backdrops.',
+                {sprite: name}, null));
+        }
+
+        // -- lists stored with huge amounts in them
+        for (const variable of Object.values(target.variables || {})) {
+            if (variable.type !== 'list' || !Array.isArray(variable.value)) continue;
+            if (variable.value.length > 200000) {
+                found.push(finding('warning', 'huge-list',
+                    `The list "${variable.name}" is saved with ${variable.value.length} items`,
+                    'It is stored in the project file, which makes it slow to load and can take it over ' +
+                    'Scratch\'s size limit. Work it out when the game starts, or keep much less.',
+                    {sprite: name}, null));
+            }
+        }
+    }
+
+    // -- names nobody can read: variables, lists and custom block inputs.
+    //    Pointed at when there are many and they are a good share of all the
+    //    names: a big project always has a few.
+    const cryptic = new Set();
+    const named = new Set();
+    for (const target of targets) {
+        for (const variable of Object.values(target.variables || {})) {
+            if (variable.type === 'broadcast_msg') continue;
+            const n = String(variable.name).replace(/^☁\s*/, '');
+            named.add(n);
+            if (n.length <= 3 && !FINE_SHORT.has(n.toLowerCase())) cryptic.add(n);
+        }
+        for (const {proc} of [...definitions.values()].filter(d => d.target === target)) {
+            for (const arg of proc.args) {
+                named.add(String(arg));
+                if (String(arg).length <= 2 && !FINE_SHORT.has(String(arg).toLowerCase())) cryptic.add(arg);
+            }
+        }
+    }
+    if (cryptic.size >= 10 && cryptic.size / Math.max(1, named.size) >= 0.2) {
+        found.push(finding('tidy', 'short-names',
+            `${cryptic.size} names are too short to read`,
+            `${[...cryptic].slice(0, 12).map(n => `"${n}"`)
+                .join(', ')}${cryptic.size > 12 ? '...' : ''}. ` +
+            'A person opening the project cannot tell what these are. Name them for what they hold ' +
+            '(playerSpeed, jumpPower), custom block inputs too.',
+            {sprite: stage ? stage.getName() : ''}, null));
+    }
+
+    return found;
+};
+
 /**
  * Everything worth saying about the state of this project.
  * @param {VirtualMachine} vm the running VM
@@ -495,6 +769,9 @@ export const checkProject = vm => {
             at, null));
     }
 
+    // -- built the Scratch way
+    found.push(...scratchWay(targets, stage));
+
     const order = {problem: 0, warning: 1, tidy: 2};
     return found.sort((a, b) => (order[a.grade] - order[b.grade]) ||
         a.kind.localeCompare(b.kind) ||
@@ -576,6 +853,24 @@ export const applyFixes = (vm, findings) => {
                 }
             } else if (fix.type === 'delete-block' && fix.block) {
                 target.blocks.deleteBlock(fix.block);
+            } else if (fix.type === 'not-fast' && fix.block) {
+                // Untick "run without screen refresh": on the definition and
+                // on every call of it, which carry a copy of the setting.
+                const all = blocksOf(target);
+                const definition = all[fix.block];
+                const prototype = definition && all[bodyOf(target, definition, 'custom_block')];
+                if (!prototype || !prototype.mutation) {
+                    skipped++;
+                    continue;
+                }
+                prototype.mutation.warp = 'false';
+                for (const block of Object.values(all)) {
+                    if (block && block.opcode === 'procedures_call' && block.mutation &&
+                        block.mutation.proccode === prototype.mutation.proccode) block.mutation.warp = 'false';
+                }
+                target.blocks.resetCache();
+                done++;
+                continue;
             } else {
                 skipped++;
                 continue;

@@ -67,6 +67,8 @@ behaves exactly as normal.
 | `add_sound` | Makes a sound effect from a preset (coin, jump, laser, explosion, hit, powerup, blip, select, bounce, whoosh, step, door, alarm, win, lose) or a recipe, or adds a .wav/.mp3, and describes it |
 | `list_sounds` / `play_sound` / `rename_sound` / `delete_sound` | The rest; `play_sound` plays it out loud for the person watching |
 | `speed_report` | Runs frames at full speed timing each frame, each script and the drawing: whether frames fit their time, where the time goes, clones, and what to try |
+| `rename` | Renames a variable, list, message, custom block or custom block input everywhere it is used (not cloud variables) |
+| `restyle_workflow` | How to rebuild a finished game the Scratch way without changing how it plays |
 | `tidy_scripts` | Lays a sprite's scripts out again: events on the left, custom blocks on the right |
 | `narrate` | Shows the person watching a short note about what Claude is doing |
 
@@ -102,6 +104,24 @@ frames for each direction, and the camera scrolling both ways.
 game, draw it, build it from the pieces, and play it until it works. Claude
 Code picks it up in this folder. Opened anywhere else, Claude reads the same
 file through the `game_workflow` tool.
+
+### Built the Scratch way
+
+Games are taught to be built the way a Scratcher builds them (section 4 of
+the skill): menus, buttons and text as sprites with costumes, game things as
+sprites and clones, the pen only for 3D, trails and tile maps, one sprite
+per thing, short custom blocks, readable names. This came from comparing
+games made here with games people made: the made-here ones redrew their
+menus with the pen every frame, kept the game in one engine sprite, and used
+names like `bvx`. The health check now points those out (`pen-ui`,
+`pen-every-frame`, `one-big-sprite`, `giant-block`, `fast-waits`,
+`short-names`, `many-costumes`, `huge-list`), with thresholds the people's
+games pass. `fix_health` unticks "run without screen refresh" on a custom
+block that waits.
+
+`.claude/skills/flipwarp-restyle/SKILL.md` (and the `restyle_workflow` tool)
+is how to rebuild a finished game that way without changing how it plays,
+using `rename` for the names.
 
 ### Drawing
 

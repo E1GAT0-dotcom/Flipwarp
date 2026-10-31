@@ -187,4 +187,20 @@ score go up when the coin is touched, does game over show? Fix and play again.
   scripts with no hat, variables nothing uses.
 - If a write went wrong, undo puts the sprite back.
 - Use text_reference with a search word to find the exact name of a block.
+
+## Build it the way a Scratcher would
+
+People open these projects in Scratch and remix them, so build them the way
+a good Scratcher does. That is also what runs fastest.
+- Menus, buttons, titles, the HUD and intros are sprites with costumes,
+  shown and hidden, on backdrops. A button uses whenThisSpriteClicked.
+- Players, enemies, bullets and coins are sprites and clones that move
+  themselves.
+- The pen is for 3D, lines and trails, and tile maps, and only redraws when
+  something changed.
+- Use one sprite per thing, short custom blocks, readable names (playerSpeed,
+  not ps) and touching for hits.
+- Mark a custom block fast only when it loops over a lot of work in one frame.
+- Keep to tens of costumes per sprite and comment each sprite.
+health_check points out where a project does otherwise.
 `;

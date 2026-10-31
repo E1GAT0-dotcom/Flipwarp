@@ -26,6 +26,7 @@ import {PLAY_METHODS, installPlay} from './mcp-play.js';
 import {costumeMethods, imageFrom} from './mcp-costumes.js';
 import {soundMethods} from './mcp-sounds.js';
 import {perfMethods} from './mcp-perf.js';
+import {renameMethods} from './mcp-rename.js';
 import {
     fingerprintScripts, changedScripts, measureScripts, settleScripts, tidyScripts, showScripts
 } from './script-layout.js';
@@ -246,6 +247,7 @@ const METHODS = {
     ...costumeMethods(targetNamed),
     ...soundMethods(targetNamed),
     ...perfMethods((target, id) => scriptName(target, id)),
+    ...renameMethods(targetNamed),
 
     overview: vm => overview(vm),
 
