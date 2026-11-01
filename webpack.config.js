@@ -11,6 +11,13 @@ const autoprefixer = require('autoprefixer');
 const postcssVars = require('postcss-simple-vars');
 const postcssImport = require('postcss-import');
 
+// A build is the release version unless someone asks for another, here and on
+// the website alike: the development version runs games far slower. Only the
+// dev server stays in development, for working on the editor itself.
+if (!process.env.NODE_ENV && !process.argv.some(arg => arg.includes('webpack-dev-server'))) {
+    process.env.NODE_ENV = 'production';
+}
+
 const STATIC_PATH = process.env.STATIC_PATH || '/static';
 const {APP_NAME} = require('./src/lib/brand');
 
@@ -266,7 +273,7 @@ module.exports = [
         ])
     })
 ].concat(
-    process.env.NODE_ENV === 'production' || process.env.BUILD_MODE === 'dist' ? (
+    process.env.BUILD_MODE === 'dist' ? (
         // export as library
         defaultsDeep({}, base, {
             target: 'web',

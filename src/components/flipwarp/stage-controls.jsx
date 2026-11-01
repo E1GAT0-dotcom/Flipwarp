@@ -24,21 +24,33 @@ import styles from './stage-controls.css';
 class StageControls extends React.Component {
     constructor (props) {
         super(props);
-        bindAll(this, ['handleDown', 'handleUp', 'refresh']);
+        bindAll(this, ['handleDown', 'handleUp', 'refresh', 'refreshSoon']);
         this.held = new Map();
         this.state = {keys: []};
     }
     componentDidMount () {
         this.refresh();
         // The keys a project uses change as it is written, and it is written
-        // in the same window it is played in.
-        this.props.vm.on('workspaceUpdate', this.refresh);
-        this.props.vm.on('targetsUpdate', this.refresh);
+        // in the same window it is played in. Not on targetsUpdate: that fires
+        // every frame a sprite moves, and looking through every block that
+        // often took a third of the page's time in a big game.
+        this.props.vm.on('workspaceUpdate', this.refreshSoon);
+        this.props.vm.on('PROJECT_CHANGED', this.refreshSoon);
     }
     componentWillUnmount () {
-        this.props.vm.off('workspaceUpdate', this.refresh);
-        this.props.vm.off('targetsUpdate', this.refresh);
+        this.props.vm.off('workspaceUpdate', this.refreshSoon);
+        this.props.vm.off('PROJECT_CHANGED', this.refreshSoon);
+        clearTimeout(this.refreshTimer);
         this.releaseAll();
+    }
+    // Showing a sprite with many blocks reports thousands of changes at once.
+    // One look afterwards answers for all of them.
+    refreshSoon () {
+        if (this.refreshTimer) return;
+        this.refreshTimer = setTimeout(() => {
+            this.refreshTimer = null;
+            this.refresh();
+        }, 100);
     }
     refresh () {
         const keys = keysUsed(this.props.vm).filter(key => asEvent(key));
