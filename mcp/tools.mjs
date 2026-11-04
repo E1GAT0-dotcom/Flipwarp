@@ -28,11 +28,27 @@ export const registerTools = async (server, ctx, version = 0) => {
     const {GUIDE} = await import(`./guide.mjs${v}`);
     const {PIECES, CONTRACT, pieceText, mergeText, piecesToAdd} = await import(`./library/index.mjs${v}`);
     const {PRESETS, VOICE_FIELDS, makeSound} = await import(`./sounds.mjs${v}`);
+    const {KINDS, addFlag, openFlags, resolveFlag} = await import(`./flags.mjs${v}`);
     const {ask, text, json, failure, tool, describeParse, progress, notifyEditor, setProjectName, projectNameFrom,
         watch} = ctx;
     const handles = [];
-    const register = (...args) => {
-        handles.push(server.registerTool(...args));
+    // The first time something goes wrong that is not a mistake in the text,
+    // Claude is reminded it can tell every other chat. Once a chat: a reminder
+    // on every failure would stop being read.
+    const remindToFlag = result => {
+        if (!result || !result.isError || watch.remindedToFlag) return result;
+        const said = (result.content || []).map(c => c.text || '').join('\n');
+        if (/^Line \d|is not connected/.test(said)) return result;
+        watch.remindedToFlag = true;
+        return {...result, content: [...result.content, {type: 'text', text: '\nIf that looks like Flipwarp\'s ' +
+            'fault rather than your game\'s, or other chats would trip over it too, flag_issue tells them and ' +
+            'the person.'}]};
+    };
+    const register = (name, config, handler) => {
+        handles.push(server.registerTool(name, config, async (...args) => {
+            const result = await handler(...args);
+            return name.includes('flag') ? result : remindToFlag(result);
+        }));
     };
 
     // The game-making workflow is a Claude Code skill in the Flipwarp folder;
@@ -336,10 +352,76 @@ export const registerTools = async (server, ctx, version = 0) => {
         inputSchema: {path: z.string().describe('The .sb3 file to open')}
     }, tool(async ({path: file}) => {
         const data = fs.readFileSync(path.resolve(file));
-        const r = await ask('loadProject', {base64: data.toString('base64')}, 120000);
+        // A browser gives a hidden tab little of a busy computer, and a big
+        // project can then take minutes. It is still loading, not stuck.
+        const hidden = watch.hidden;
+        const r = await ask('loadProject', {base64: data.toString('base64')}, 600000);
         setProjectName(projectNameFrom(file));
-        return json(r);
+        const reply = json(r);
+        if (!hidden) return reply;
+        return {...reply, content: [...reply.content, {type: 'text', text: '\nThe editor tab was hidden while this ' +
+            'loaded, and a browser gives hidden tabs little of a busy computer, so it may have been slow.'}]};
     }));
+
+    // --- telling the other chats ---------------------------------------------------
+    //
+    // Every chat has its own server and starts knowing nothing, so what one
+    // finds the next finds again. A flag goes in a file they all share, and in
+    // the control room for the person.
+
+    const flagLine = f => `${f.id} [${f.kind}] ${f.title}` +
+        (f.sightings.length ? ` (${f.sightings.length + 1} chats hit this)` : '') +
+        (f.about ? `, in ${f.about}` : '');
+
+    register('flag_issue', {
+        title: 'Flag something for every chat',
+        description: 'Tells the person and every other chat about something that matters beyond this chat: a bug ' +
+            'in Flipwarp or these tools, something slow, a tool that is missing, a piece or guide that misled ' +
+            'you, or an idea that would make the work easier for everyone. Do this as soon as you notice, even ' +
+            'if you found a way round it and even if you are not sure: a flag takes one call and saves the next ' +
+            'chat from finding it again. Not for bugs in the game you are making. Carry on with your work after.',
+        inputSchema: {
+            kind: z.enum(KINDS).describe('bug: something is wrong. slow: it takes too long. missing: a tool or ' +
+                'option you needed is not there. idea: it would help everyone. docs: a guide or message misled you.'),
+            title: z.string().min(5)
+                .max(120)
+                .describe('The problem in one line, specific enough to recognise'),
+            details: z.string().max(2000)
+                .describe('What you did, what happened, what you expected, and any way round it you found'),
+            about: z.string().max(60)
+                .optional()
+                .describe('The tool, piece or part of the editor, if it is about one')
+        }
+    }, tool(async ({kind, title, details, about}) => {
+        const {flag, alreadyFlagged} = addFlag({kind, title, details, about, chat: watch.name || 'A chat'});
+        return text(alreadyFlagged ?
+            `Another chat had already flagged this, so yours is added to it: ${flagLine(flag)}\n` +
+                `What it said: ${flag.details}` :
+            `Flagged as ${flag.id}. The person and other chats can see it. Carry on with your work.`);
+    }));
+
+    register('list_flags', {
+        title: 'What chats have flagged',
+        description: 'The problems and ideas other chats have flagged and nobody has resolved. Look when ' +
+            'something seems wrong with Flipwarp itself: another chat may have found the cause or a way round it.',
+        inputSchema: {}
+    }, tool(async () => {
+        const open = openFlags();
+        if (!open.length) return text('Nothing is flagged.');
+        return text(open.map(f => `${flagLine(f)}\n  ${f.details}`).join('\n'));
+    }));
+
+    register('resolve_flag', {
+        title: 'Resolve a flag',
+        description: 'Takes a flag off the list once it has really been fixed, saying what was done. Only when ' +
+            'you were asked to work on it or fixed it yourself: a problem you found a way round is not resolved.',
+        inputSchema: {
+            id: z.string().describe('The flag, from list_flags'),
+            note: z.string().max(500)
+                .describe('What fixed it')
+        }
+    }, tool(async ({id, note}) => (resolveFlag(id, note) ? text(`Resolved ${id}.`) :
+        failure(`No open flag is called ${id}. list_flags shows them.`))));
 
     // --- playing and testing ---------------------------------------------------
     //

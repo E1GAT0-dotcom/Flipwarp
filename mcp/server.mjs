@@ -16,6 +16,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
+import {openFlags, resolveFlag} from './flags.mjs';
 import {randomBytes} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {WebSocketServer} from 'ws';
@@ -314,6 +315,21 @@ const serveFile = (req, res) => {
             .end(JSON.stringify(readSessions()));
         return;
     }
+    if (pathname === '/flags') {
+        res.writeHead(200, {'Content-Type': 'application/json', 'Cache-Control': 'no-cache', ...cors})
+            .end(JSON.stringify(openFlags()));
+        return;
+    }
+    if (pathname === '/flags/resolve') {
+        // Only pages on this computer, like /act.
+        if (req.method !== 'POST' || (origin && !allowedOrigin(origin))) {
+            res.writeHead(403, cors).end();
+            return;
+        }
+        resolveFlag(new URL(req.url, 'http://x').searchParams.get('id'), 'Resolved by the person');
+        res.writeHead(204, cors).end();
+        return;
+    }
     if (pathname === '/control') {
         fs.readFile(path.join(here, 'control.html'), (err, data) => {
             if (err) res.writeHead(404).end();
@@ -503,7 +519,10 @@ const tool = fn => async args => {
 
 const connectedMessage = () => {
     const others = waiting.filter(ws => ws.readyState === ws.OPEN).length;
-    return `Connected. The editor is at ${editorUrl()}\nEvery chat's progress: http://127.0.0.1:${port}/control` + (others ?
+    const flagged = openFlags().length;
+    return `Connected. The editor is at ${editorUrl()}\nEvery chat's progress: http://127.0.0.1:${port}/control` +
+        (flagged ? `\nOther chats have flagged ${flagged} thing(s) about Flipwarp: list_flags shows them.` : '') +
+        (others ?
         `\n${others} other Flipwarp tab(s) are open too and are not being used. ` +
         'Close them if that is confusing.' : '');
 };
@@ -514,10 +533,42 @@ const openInBrowser = url => {
     spawn(cmd, args, {detached: true, stdio: 'ignore'}).unref();
 };
 
+// A browser gives a hidden tab little of a busy computer: with chats building
+// at the same time a big project can take minutes to open behind another tab.
+// Chrome can be told not to, but only when it starts, and a Chrome already
+// running ignores it, so Flipwarp's tabs get a Chrome of their own: one window
+// all chats share, with its own profile. FLIPWARP_OWN_BROWSER=0 uses the
+// default browser instead, as does a computer without Chrome or Edge.
+const browserToKeepAwake = () => {
+    if (process.env.FLIPWARP_OWN_BROWSER === '0') return null;
+    const roots = process.platform === 'win32' ?
+        [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA].filter(Boolean)
+            .flatMap(root => [
+                path.join(root, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+                path.join(root, 'Microsoft', 'Edge', 'Application', 'msedge.exe')
+            ]) :
+        process.platform === 'darwin' ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'] :
+            ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'];
+    return roots.find(file => fs.existsSync(file)) || null;
+};
+
 let openedAt = 0;
 const launchEditor = () => {
     openedAt = Date.now();
-    openInBrowser(editorUrl());
+    const browser = browserToKeepAwake();
+    if (!browser) {
+        openInBrowser(editorUrl());
+        return;
+    }
+    spawn(browser, [
+        `--user-data-dir=${path.join(os.homedir(), '.flipwarp', 'browser')}`,
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-renderer-backgrounding',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        editorUrl()
+    ], {detached: true, stdio: 'ignore'}).unref();
 };
 
 const waitForEditor = async ms => {
@@ -540,7 +591,10 @@ const server = new McpServer({name: 'flipwarp', version: '0.1.0'}, {
         'the game with the play tools and fix it until it works. To rebuild a finished game the Scratch way ' +
         '(restyle it), call restyle_workflow first. A person watches the editor: call plan with your steps ' +
         'when you start a job and as you reach each one, give tools a short why, and act on notes from them ' +
-        'that come back in tool replies.'
+        'that come back in tool replies. When you hit something that would matter beyond this chat (a bug in ' +
+        'Flipwarp or these tools, something slow, a missing tool, a guide that misled you, an idea that would ' +
+        'help everyone) call flag_issue straight away and carry on, even if you found a way round: every other ' +
+        'chat and the person see it. list_flags shows what others have found.'
 });
 
 // Every tool takes a "why", shown to the person watching beside what it does,
@@ -589,7 +643,8 @@ server.registerTool('plan', {
     notifyEditor('plan', {plan});
     writeStatus();
     if (!plan.steps.length) return text('There is no plan yet: give steps.');
-    return text(plan.status === 'done' ? `Plan done: all ${plan.steps.length} steps.` :
+    return text(plan.status === 'done' ? `Plan done: all ${plan.steps.length} steps. If anything in Flipwarp got ` +
+        'in your way and is not flagged yet, flag_issue saves the next chat from it.' :
         `Showing step ${plan.current} of ${plan.steps.length}: ${plan.steps[plan.current - 1]}` +
         (plan.status === 'needs-you' ? ' (waiting for the person)' : ''));
 }));

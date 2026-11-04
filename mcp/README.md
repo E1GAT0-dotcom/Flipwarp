@@ -70,6 +70,7 @@ behaves exactly as normal.
 | `rename` | Renames a variable, list, message, custom block or custom block input everywhere it is used (not cloud variables) |
 | `restyle_workflow` | How to rebuild a finished game the Scratch way without changing how it plays |
 | `tidy_scripts` | Lays a sprite's scripts out again: events on the left, custom blocks on the right |
+| `flag_issue` / `list_flags` / `resolve_flag` | Tells the person and every other chat about a bug, something slow, a missing tool or an idea; what others have flagged; taking one off once it is fixed |
 | `narrate` | Shows the person watching a short note about what Claude is doing |
 | `plan` | The checklist of Claude's steps and which one it is on: the progress bar in the editor, on the tab and in the control room |
 
@@ -187,6 +188,12 @@ how hard it works the computer, notes waiting, and Pause / Resume / Pause
 all but this. Alerts (a sound, and a notification if allowed) when a chat
 finishes or needs you. A chat leaves it when it ends.
 
+Below the cards is what chats have **flagged**: bugs, slow things, missing tools
+and ideas that matter beyond the chat that found them, most-hit first. Claude is
+told to flag as soon as it notices, and to look there when Flipwarp seems wrong.
+A second chat hitting the same thing adds to the same flag. **Resolved** takes one
+off. They are kept in `mcp/flags.jsonl`, which is not in git.
+
 ### Updating while chats work
 
 `tools.mjs` holds every tool but `open_editor` and `plan`; `server.mjs` holds
@@ -208,6 +215,15 @@ A browser slows a hidden tab to about one frame a second, so the game runs in
 slow motion while Claude waits in real time. Claude is told when the tab is
 hidden. `step_frames` is not affected: it runs exact frames at full speed
 either way, which is also the most reliable way for Claude to test movement.
+
+A hidden tab also gets little of a busy computer, so a big project can take minutes
+to open behind another tab. So `open_editor` opens Flipwarp in a Chrome (or Edge)
+window of its own, told not to slow its hidden tabs, with its own profile in
+`~/.flipwarp/browser`. `FLIPWARP_OWN_BROWSER=0` uses the default browser instead.
+However it was opened, a hidden tab only draws its blocks once someone looks.
+
+Tabs Claude uses are **muted** until you press **Muted** in the menu bar, which
+is remembered. The ordinary editor, without `?mcp`, plays sound as normal.
 
 If several Flipwarp tabs have `?mcp`, the first one to connect is the one used
 until it closes. Claude is not switched to another project halfway through.

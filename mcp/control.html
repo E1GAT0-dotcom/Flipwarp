@@ -35,6 +35,15 @@
   .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
   .empty { padding: 40px 20px; color: var(--dim); }
   .needs { outline: 3px solid #ffbe0b; }
+  #flags { padding: 0 20px 20px; }
+  #flags h2 { font-size: 15px; margin: 8px 0 10px; }
+  .flag { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start; }
+  .flag > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .flag .kind { color: var(--dim); font-size: 12px; text-transform: uppercase; margin-right: 6px; }
+  .flag .title { font-weight: bold; }
+  .flag .details { font-size: 13px; margin-top: 4px; white-space: pre-wrap; }
+  .flag .from { color: var(--dim); font-size: 12px; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -44,6 +53,10 @@
   <button id="alerts" type="button">Turn on alerts</button>
 </header>
 <main id="cards"></main>
+<section id="flags" hidden>
+  <h2 id="flags-title"></h2>
+  <div id="flags-list"></div>
+</section>
 <script>
 // Every chat working in Flipwarp, from the status files the servers keep.
 // Read from whichever server showed this page; pausing goes to each chat's
@@ -95,6 +108,40 @@ const act = async (s, what) => {
   } catch (e) { /* that chat has gone */ }
   refresh();
 };
+
+// What chats have flagged. From this page's server, or another chat's if this
+// one started before flags existed.
+let flagsBase = '';
+const refreshFlags = async () => {
+  let flags = null;
+  for (const base of ['', ...sessions.map(s => `http://127.0.0.1:${s.port}`)]) {
+    try {
+      const r = await fetch(`${base}/flags`, {cache: 'no-store'});
+      if (r.ok) {
+        flagsBase = base;
+        flags = await r.json();
+        break;
+      }
+    } catch (e) { /* that chat has gone */ }
+  }
+  const section = document.getElementById('flags');
+  section.hidden = !flags || !flags.length;
+  if (section.hidden) return;
+  document.getElementById('flags-title').textContent = `Flagged by chats (${flags.length})`;
+  document.getElementById('flags-list').innerHTML = flags.map(f => `<div class="flag"><div>
+    <span class="kind">${esc(f.kind)}</span><span class="title">${esc(f.title)}</span>
+    <div class="details">${esc(f.details)}</div>
+    <div class="from">${esc(f.chat)}, ${esc(ago(f.at))}${f.about ? `, about ${esc(f.about)}` : ''}${f.sightings.length ? `, ${f.sightings.length + 1} chats hit this` : ''}</div>
+    </div><button data-flag="${esc(f.id)}">Resolved</button></div>`).join('');
+};
+document.getElementById('flags-list').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-flag]');
+  if (!b) return;
+  try {
+    await fetch(`${flagsBase}/flags/resolve?id=${encodeURIComponent(b.dataset.flag)}`, {method: 'POST'});
+  } catch (err) { /* it stays on the list */ }
+  refreshFlags();
+});
 
 let sessions = [];
 const render = () => {
@@ -171,6 +218,7 @@ const refresh = async () => {
     lastStatus.set(s.port, state);
   }
   render();
+  refreshFlags();
 };
 refresh();
 setInterval(refresh, 2000);

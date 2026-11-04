@@ -139,3 +139,13 @@ make it redraw only when something changed (`if` the camera moved).
   copies, make `<name>-restyled.sb3` from it the way they usually do.
 - Tell the person what changed, the before and after frame times, and
   anything left for another time.
+
+## Tell the other chats
+
+Every chat starts knowing nothing, so what you find the next one finds again.
+When something would matter beyond this chat, call `flag_issue` straight away
+and carry on: a bug in Flipwarp or its tools, something slow, a missing tool, a
+guide or piece that misled you, or an idea that would help everyone. Do it even
+if you found a way round, and even if you are not sure. Not for bugs in the game
+you are making. If Flipwarp itself seems wrong, `list_flags` first: another chat
+may have the answer.
