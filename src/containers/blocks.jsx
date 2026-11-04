@@ -121,6 +121,7 @@ class Blocks extends React.Component {
             'onTargetsUpdate',
             'onVisualReport',
             'onWorkspaceUpdate',
+            'handleVisibilityChange',
             'onWorkspaceMetricsChange',
             'setBlocks',
             'setLocale',
@@ -379,6 +380,7 @@ class Blocks extends React.Component {
         this.props.vm.addListener('BLOCK_GLOW_OFF', this.onBlockGlowOff);
         this.props.vm.addListener('VISUAL_REPORT', this.onVisualReport);
         this.props.vm.addListener('workspaceUpdate', this.onWorkspaceUpdate);
+        document.addEventListener('visibilitychange', this.handleVisibilityChange);
         this.props.vm.addListener('targetsUpdate', this.onTargetsUpdate);
         this.props.vm.addListener('MONITORS_UPDATE', this.handleMonitorsUpdate);
         this.props.vm.addListener('EXTENSION_ADDED', this.handleExtensionAdded);
@@ -393,6 +395,7 @@ class Blocks extends React.Component {
         this.props.vm.removeListener('BLOCK_GLOW_OFF', this.onBlockGlowOff);
         this.props.vm.removeListener('VISUAL_REPORT', this.onVisualReport);
         this.props.vm.removeListener('workspaceUpdate', this.onWorkspaceUpdate);
+        document.removeEventListener('visibilitychange', this.handleVisibilityChange);
         this.props.vm.removeListener('targetsUpdate', this.onTargetsUpdate);
         this.props.vm.removeListener('MONITORS_UPDATE', this.handleMonitorsUpdate);
         this.props.vm.removeListener('EXTENSION_ADDED', this.handleExtensionAdded);
@@ -438,18 +441,23 @@ class Blocks extends React.Component {
         }
     }
     onScriptGlowOn (data) {
+        if (this.workspaceToDraw) return;
         this.workspace.glowStack(data.id, true);
     }
     onScriptGlowOff (data) {
+        if (this.workspaceToDraw) return;
         this.workspace.glowStack(data.id, false);
     }
     onBlockGlowOn (data) {
+        if (this.workspaceToDraw) return;
         this.workspace.glowBlock(data.id, true);
     }
     onBlockGlowOff (data) {
+        if (this.workspaceToDraw) return;
         this.workspace.glowBlock(data.id, false);
     }
     onVisualReport (data) {
+        if (this.workspaceToDraw) return;
         this.workspace.reportValue(data.id, data.value);
     }
     getToolboxXML () {
@@ -485,11 +493,38 @@ class Blocks extends React.Component {
             this.props.updateToolboxState(toolboxXML);
         }
 
+        // Drawing every block of a big sprite is a large part of opening a
+        // project, and a browser gives a hidden tab little of a busy computer:
+        // minutes, for a picture nobody can see. The VM holds the real blocks,
+        // so the drawing waits until someone looks. Until then the blocks
+        // that exist are not the ones the VM knows, so nothing may glow.
+        if (document.hidden) {
+            this.workspaceToDraw = data;
+            return;
+        }
+        this.workspaceToDraw = null;
+        this.drawWorkspace(data);
+    }
+    handleVisibilityChange () {
+        if (document.hidden || !this.workspaceToDraw) return;
+        const data = this.workspaceToDraw;
+        this.workspaceToDraw = null;
+        this.drawWorkspace(data);
+    }
+    drawWorkspace (data) {
         if (this.props.vm.editingTarget && !this.props.workspaceMetrics.targets[this.props.vm.editingTarget.id]) {
             this.onWorkspaceMetricsChange();
         }
 
         // Remove and reattach the workspace listener (but allow flyout events)
+        // Blockly reports events a moment after they happen, by which time the
+        // listener would be back: the VM would be told about the drawing it
+        // asked for, thousands of events to the sprite that is open by then.
+        // A "deleted" from the sprite just left then deletes this one's block
+        // of the same name, and every sprite's text-made blocks share names, so
+        // scripts vanished or tied themselves in a knot. So anything already
+        // waiting is delivered first, and the drawing's own events to nobody.
+        this.ScratchBlocks.Events.fireNow_();
         this.workspace.removeChangeListener(this.props.vm.blockListener);
         const dom = this.ScratchBlocks.Xml.textToDom(data.xml);
         try {
@@ -509,6 +544,7 @@ class Blocks extends React.Component {
             }
             log.error(error);
         }
+        this.ScratchBlocks.Events.fireNow_();
         this.workspace.addChangeListener(this.props.vm.blockListener);
 
         if (this.props.vm.editingTarget && this.props.workspaceMetrics.targets[this.props.vm.editingTarget.id]) {

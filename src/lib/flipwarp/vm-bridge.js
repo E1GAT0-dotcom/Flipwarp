@@ -109,7 +109,13 @@ const makeMissingVariables = (vm, liveTarget, created = []) => {
     if (!created.length) return;
     const stage = vm.runtime.getTargetForStage();
     for (const item of created) {
-        if (item.kind === 'broadcast') continue;
+        // Messages always belong to the stage. Made here rather than left to
+        // the block editor, which only makes them as it draws the blocks and
+        // does not draw them in a hidden tab.
+        if (item.kind === 'broadcast') {
+            if (stage && !stage.variables[item.id]) stage.createVariable(item.id, item.name, 'broadcast_msg');
+            continue;
+        }
         const owner = item.global ? stage : liveTarget;
         if (!owner || owner.lookupVariableById(item.id)) continue;
         // A global variable named "☁ something" is a cloud variable, the way
