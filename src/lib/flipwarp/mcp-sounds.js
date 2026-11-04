@@ -3,6 +3,7 @@
 // then find them by name: startSound("coin").
 
 import {soundUpload} from '../file-uploader.js';
+import {isMuted} from './mcp-watch.js';
 
 const TYPES = {wav: 'audio/wav', mp3: 'audio/mpeg'};
 
@@ -85,6 +86,8 @@ export const soundMethods = targetNamed => ({
         const target = targetNamed(vm, sprite);
         const s = target.getSounds()[indexOf(target, sound)];
         target.sprite.soundBank.playSound(target, s.soundId);
-        return {playing: s.name};
+        return isMuted() ?
+            {playing: s.name, muted: 'This tab is muted, so nobody heard it. The person can press Muted in the editor.'} :
+            {playing: s.name};
     }
 });

@@ -383,6 +383,34 @@ const watchThePerson = () => {
     }, true);
 };
 
+// Claude tests games over and over, in tabs nobody may be looking at, so they
+// stay silent until the person asks to hear them. Done by unplugging the
+// project's sound from the speakers rather than turning it down, so the volume
+// addon and recording a video of the stage carry on as they were.
+const MUTED_KEY = 'flipwarp:mcp-muted';
+let muted = true;
+try {
+    muted = localStorage.getItem(MUTED_KEY) !== 'no';
+} catch (e) {
+    // No storage: muted, as for anyone who has not chosen.
+}
+let plugged = true;
+
+const applySound = () => {
+    parts.sound.textContent = muted ? 'Muted' : 'Sound on';
+    parts.sound.title = muted ? 'Sound is off in this tab. Press to hear the game' : 'Press to mute the game';
+    const engine = vm && vm.runtime && vm.runtime.audioEngine;
+    if (!engine || !engine.inputNode || plugged === !muted) return;
+    plugged = !muted;
+    if (plugged) engine.inputNode.connect(engine.audioContext.destination);
+    else engine.inputNode.disconnect(engine.audioContext.destination);
+};
+
+/**
+ * @returns {boolean} whether this tab's sound is muted
+ */
+export const isMuted = () => muted;
+
 const buildHeader = () => {
     header = el('div', 'fw-head');
     parts.who = el('span', 'fw-who');
@@ -404,6 +432,16 @@ const buildHeader = () => {
     parts.take = el('button', '', 'Take over');
     parts.take.title = 'Edit the project yourself; Claude waits until you hand it back';
     parts.take.addEventListener('click', () => setTakenOver(!takenOver));
+    parts.sound = el('button', '', '');
+    parts.sound.addEventListener('click', () => {
+        muted = !muted;
+        try {
+            localStorage.setItem(MUTED_KEY, muted ? 'yes' : 'no');
+        } catch (e) {
+            // Remembered for this tab only, then.
+        }
+        applySound();
+    });
     const save = el('button', 'fw-extra', 'Download');
     save.title = 'Save the project as it is now to your computer';
     save.addEventListener('click', download);
@@ -411,7 +449,7 @@ const buildHeader = () => {
     parts.control.target = '_blank';
     parts.control.title = 'The control room: every chat working in Flipwarp';
     parts.control.style.display = 'none';
-    for (const p of [parts.who, mid, parts.follow, parts.take, save, parts.control]) header.appendChild(p);
+    for (const p of [parts.who, mid, parts.follow, parts.take, parts.sound, save, parts.control]) header.appendChild(p);
     document.body.appendChild(header);
 };
 
@@ -585,9 +623,11 @@ export const installWatch = (virtualMachine, opts = {}) => {
     setInterval(() => {
         updateTab();
         dock();
+        applySound();
     }, 1000);
     updateTab();
     dock();
+    applySound();
     // Full screen comes and goes on a click or a key: move with it at once.
     const soon = () => setTimeout(dock, 50);
     document.addEventListener('click', soon, true);
