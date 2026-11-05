@@ -432,7 +432,15 @@ class Rooms {
     // Any project loaded some other way (a file, a project page, a new
     // project) is this tab's own again.
     handleProjectLoaded () {
-        if (!this.loadingFromRoom) this.friendProject = null;
+        if (this.loadingFromRoom) return;
+        this.friendProject = null;
+        // A room is for the project it was opened with. Another one opened
+        // while hosting would be sent to the next friend who joins, and
+        // their changes would land in it, so the room closes instead.
+        if (this.isHost) {
+            this.leave(true);
+            this.set({error: 'The room closed because a different project was opened.'});
+        }
     }
 
     isFriendProject () {
