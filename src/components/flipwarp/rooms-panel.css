@@ -1,0 +1,214 @@
+@import "../../css/colors.css";
+
+/* Laid out like the other Flipwarp dialogs (see publish-modal.css), so it
+   follows the theme the same way they do. */
+
+.modal-content {
+    width: 34rem;
+    max-width: 100%;
+}
+
+.body {
+    background: $ui-modal-background;
+    color: $ui-modal-foreground;
+    padding: 1rem 1.5rem 1.5rem;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    font-size: 0.875rem;
+}
+
+.lead {
+    margin: 0 0 1rem;
+    line-height: 1.5;
+}
+
+.field {
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: bold;
+}
+
+.text {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.4rem;
+    background: $ui-modal-background;
+    color: $ui-modal-foreground;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.code-input {
+    width: 7rem;
+    flex: none;
+    font-family: monospace;
+    font-size: 1rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+.code {
+    font-family: monospace;
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 0.15em;
+    margin-right: 0.5rem;
+}
+
+.columns {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.column {
+    flex: 1;
+    min-width: 0;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.hint {
+    margin: 0 0 0.6rem;
+    opacity: 0.8;
+    line-height: 1.4;
+}
+
+.field .hint {
+    margin-top: 0.4rem;
+}
+
+.hint-inline {
+    opacity: 0.8;
+}
+
+.choice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+}
+
+.players {
+    margin: 0;
+    padding-left: 1.3rem;
+    line-height: 1.6;
+}
+
+.player-name {
+    font-weight: bold;
+}
+
+.muted {
+    opacity: 0.7;
+    margin-left: 0.4rem;
+}
+
+.chat {
+    height: 7rem;
+    overflow-y: auto;
+    margin-bottom: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.4rem;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+.system {
+    opacity: 0.7;
+}
+
+.bar {
+    height: 0.5rem;
+    margin-bottom: 1rem;
+    border-radius: 0.25rem;
+    background: $ui-black-transparent;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    background: $motion-primary;
+}
+
+.error {
+    margin-bottom: 1rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.4rem;
+    background: $error-light;
+    color: $error-primary;
+    line-height: 1.4;
+}
+
+.buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.go {
+    padding: 0.4rem 1rem;
+    border: none;
+    border-radius: 0.4rem;
+    background: $motion-primary;
+    color: $ui-white;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: bold;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.go:disabled,
+.quiet:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.quiet {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid $ui-black-transparent;
+    border-radius: 0.4rem;
+    background: transparent;
+    color: $ui-modal-foreground;
+    font-family: inherit;
+    font-size: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.quiet:not(:disabled):hover {
+    background: $ui-black-transparent;
+}
+
+.leave {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid $error-primary;
+    border-radius: 0.4rem;
+    background: transparent;
+    color: $error-primary;
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+@media (max-width: 560px) {
+    .columns {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}

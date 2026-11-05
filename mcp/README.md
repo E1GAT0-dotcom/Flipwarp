@@ -64,6 +64,7 @@ behaves exactly as normal.
 | `list_pieces` / `get_piece` / `add_piece` | The library of ready-made game pieces |
 | `set_game_options` | Framerate, fencing, interpolation, high-quality pen, infinite clones, stored in the project |
 | `set_variable` | Sets a variable while the game runs, to set up a test |
+| `room` | Play with friends: hosts a room for the game (code and invite link), sends an update, closes it, says who is in it. Only the person can join someone else's room, and a friend's game open in the tab switches the other tools off |
 | `add_sound` | Makes a sound effect from a preset (coin, jump, laser, explosion, hit, powerup, blip, select, bounce, whoosh, step, door, alarm, win, lose) or a recipe, or adds a .wav/.mp3, and describes it |
 | `list_sounds` / `play_sound` / `rename_sound` / `delete_sound` | The rest; `play_sound` plays it out loud for the person watching |
 | `speed_report` | Runs frames at full speed timing each frame, each script and the drawing: whether frames fit their time, where the time goes, clones, and what to try |

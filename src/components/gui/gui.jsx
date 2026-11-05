@@ -13,6 +13,7 @@ import Blocks from '../../containers/blocks.jsx';
 import FlipwarpPanel from '../flipwarp/flipwarp-panel.jsx';
 import PaneSwitcher from '../flipwarp/pane-switcher.jsx';
 import FitToWindow from '../flipwarp/fit-to-window.jsx';
+import RoomsPanel from '../flipwarp/rooms-panel.jsx';
 import CostumeTab from '../../containers/costume-tab.jsx';
 import TargetPane from '../../containers/target-pane.jsx';
 import SoundTab from '../../containers/sound-tab.jsx';
@@ -193,6 +194,7 @@ const GUIComponent = props => {
             <React.Fragment>
                 <TWSecurityManager securityManager={securityManager} />
                 <TWRestorePointManager />
+                {isEmbedded ? null : <RoomsPanel vm={vm} />}
                 {usernameModalVisible && <TWUsernameModal />}
                 {settingsModalVisible && <TWSettingsModal />}
                 {packageModalVisible && <FlipwarpPackageModal />}

@@ -6,6 +6,7 @@ import bindAll from 'lodash.bindall';
 import SecurityManagerModal from '../components/tw-security-manager-modal/security-manager-modal.jsx';
 import SecurityModals from '../lib/tw-security-manager-constants';
 import {getPersistedUnsandboxed, setPersistedUnsandboxed} from '../lib/tw-persisted-unsandboxed.js';
+import {friendLocked} from '../lib/flipwarp/rooms-ai.js';
 
 /* eslint-disable require-atomic-updates */
 
@@ -193,7 +194,14 @@ class TWSecurityManagerComponent extends React.Component {
         const vmSecurityManager = this.props.vm.extensionManager.securityManager;
         const propsSecurityManager = this.props.securityManager;
         for (const method of SECURITY_MANAGER_METHODS) {
-            vmSecurityManager[method] = propsSecurityManager[method] || this[method];
+            const chosen = propsSecurityManager[method] || this[method];
+            // Flipwarp: a game from a friend's room, open in a tab Claude works
+            // in, is refused everything it could ask for, without asking.
+            // See lib/flipwarp/rooms-ai.js.
+            vmSecurityManager[method] = (...args) => {
+                if (friendLocked()) return method === 'getSandboxMode' ? 'iframe' : false;
+                return chosen(...args);
+            };
         }
     }
 

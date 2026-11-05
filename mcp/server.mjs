@@ -93,7 +93,7 @@ const ask = (method, params = {}, timeout = 30000) => new Promise((resolve, reje
         pending.delete(id);
         reject(new Error(`Flipwarp did not answer "${method}" within ${timeout / 1000}s.`));
     }, timeout);
-    pending.set(id, {resolve, reject, timer, method});
+    pending.set(id, {resolve, reject, timer, method, socket: editor});
     // Why Claude is doing it, for the person watching; an older editor tab
     // ignores it.
     editor.send(JSON.stringify({id, method, params, why: currentWhy}));
@@ -403,7 +403,19 @@ sockets.on('connection', ws => {
                 log('refused a tab from an earlier chat');
                 return;
             }
+            ws.marked = message.chat === CHAT;
             if (editor && editor.readyState === editor.OPEN) {
+                // Only a tab this chat opened may wait to take over. Anything
+                // else on this computer that can reach the port (another page,
+                // a project's extension) cannot queue up to be handed the job
+                // the moment the real tab reloads.
+                if (!ws.marked) {
+                    ws.send(JSON.stringify({refused: 'Another Flipwarp tab is already connected to this Claude ' +
+                        'chat. You can close this one.'}));
+                    ws.close();
+                    log('refused an unmarked tab while one is connected');
+                    return;
+                }
                 waiting.push(ws);
                 log('another editor tab connected; it waits until the first one closes');
             } else {
@@ -421,8 +433,10 @@ sockets.on('connection', ws => {
             if (ws === editor) handleEvent(message);
             return;
         }
+        // Answers count only from the tab that was asked: anything else
+        // connected could otherwise answer for it, guessing the next id.
         const request = pending.get(message.id);
-        if (!request) return;
+        if (!request || request.socket !== ws) return;
         pending.delete(message.id);
         clearTimeout(request.timer);
         if (message.error) {
