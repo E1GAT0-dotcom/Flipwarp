@@ -60,6 +60,28 @@ their own. `flipwarp-check.html` is what finds the gaps.
 Extension blocks do not have a text form. Their blocks work; the Text button
 refuses on a sprite that uses one, and says so.
 
+## Play with friends
+
+Press **Play with friends** in the menu bar and then **Host a game**. Your
+browser tab becomes the server: you get a five-letter room code and an invite
+link. A friend opens the link (or types the code) and the game is sent straight
+from you to them. After that, every ☁ cloud variable the game sets is shared
+by everyone in the room, so any game made for Scratch or TurboWarp cloud
+variables works as it is, and so does any project you never shared at all.
+
+There is nothing to install, rent or deploy. The site is static files (GitHub
+Pages is enough), and the "server" is the host's tab for as long as it stays
+open. A free matchmaking service ([PeerJS](https://peerjs.com/)) only introduces
+the browsers to each other; the game, the chat and the variables then go
+browser to browser over WebRTC. Up to eight players, and the room has a chat.
+The host's green flag can start everyone at once, and if the host changes the
+game, **Send my latest version** reloads it for everybody.
+
+To run your own copy: fork this repository, then push to the `flipwarp`
+branch (or press *Run workflow* under **Actions → Build and deploy**). The
+workflow switches GitHub Pages on and publishes the site to
+`https://<you>.github.io/<repo>/`. Rooms work from there with no other setup.
+
 ## Building
 
 ```

@@ -5,6 +5,7 @@ import bindAll from 'lodash.bindall';
 
 import VM from 'scratch-vm';
 import CloudProvider from '../lib/cloud-provider';
+import rooms from './flipwarp/rooms.js';
 
 import {
     getIsShowingWithId
@@ -33,8 +34,12 @@ const cloudManagerHOC = function (WrappedComponent) {
             this.cloudProvider = null;
             bindAll(this, [
                 'handleCloudDataUpdate',
-                'handleExtensionAdded'
+                'handleExtensionAdded',
+                'handleRoomChange'
             ]);
+            // Flipwarp: while a room is open, the room is the cloud server.
+            this.wasInRoom = rooms.isActive();
+            this.unsubscribeRooms = rooms.subscribe(this.handleRoomChange);
 
             this.props.vm.on('HAS_CLOUD_DATA_UPDATE', this.handleCloudDataUpdate);
             this.props.vm.on('EXTENSION_ADDED', this.handleExtensionAdded);
@@ -73,7 +78,20 @@ const cloudManagerHOC = function (WrappedComponent) {
         componentWillUnmount () {
             this.props.vm.off('HAS_CLOUD_DATA_UPDATE', this.handleCloudDataUpdate);
             this.props.vm.off('EXTENSION_ADDED', this.handleExtensionAdded);
+            this.unsubscribeRooms();
             this.disconnectFromCloud();
+        }
+        handleRoomChange () {
+            const inRoom = rooms.isActive();
+            if (inRoom === this.wasInRoom) return;
+            this.wasInRoom = inRoom;
+            if (inRoom) {
+                this.disconnectFromCloud();
+                rooms.useProvider();
+            } else if (this.shouldConnect(this.props)) {
+                this.connectToCloud();
+            }
+            this.forceUpdate();
         }
         canUseCloud (props) {
             return !!(
@@ -85,8 +103,12 @@ const cloudManagerHOC = function (WrappedComponent) {
                 !props.cloudVariablesDisabledByUser
             );
         }
+        // Flipwarp: never while a room is the cloud server, and never for a
+        // project received from someone else's room, which would otherwise
+        // write into the cloud data of whatever project this page was on.
         shouldConnect (props) {
-            return !this.isConnected() && this.canUseCloud(props) &&
+            return !rooms.isActive() && !rooms.isFriendProject() &&
+                !this.isConnected() && this.canUseCloud(props) &&
                 props.isShowingWithId && props.vm.runtime.hasCloudData() &&
                 props.canModifyCloudData;
         }

@@ -97,6 +97,9 @@ import editIcon from './icon--edit.svg';
 import addonsIcon from './addons.svg';
 import errorIcon from './tw-error.svg';
 import advancedIcon from './fw-advanced.svg';
+import friendsIcon from './fw-friends.svg';
+import rooms from '../../lib/flipwarp/rooms.js';
+import RoomsMenuLabel from '../flipwarp/rooms-menu-label.jsx';
 
 import ninetiesLogo from './nineties_logo.svg';
 import catLogo from './cat_logo.svg';
@@ -226,6 +229,7 @@ class MenuBar extends React.Component {
             'handleClickSaveAsCopy',
             'handleClickPackager',
             'handleClickPublish',
+            'handleClickFriends',
             'handleClickDesktopSettings',
             'handleClickRestorePoints',
             'handleClickSeeCommunity',
@@ -285,6 +289,10 @@ class MenuBar extends React.Component {
     handleClickPublish () {
         this.props.onOpenPublishModal();
         this.props.onRequestCloseFile();
+    }
+    handleClickFriends () {
+        if (rooms.state.panelOpen) rooms.closePanel();
+        else rooms.openPanel();
     }
     handleClickDesktopSettings () {
         this.props.onClickDesktopSettings();
@@ -920,6 +928,26 @@ class MenuBar extends React.Component {
                             </MenuLabel>
                         )}
 
+                        <div
+                            className={classNames(styles.menuBarItem, styles.hoverable)}
+                            onClick={this.handleClickFriends}
+                        >
+                            <img
+                                src={friendsIcon}
+                                draggable={false}
+                                width={20}
+                                height={20}
+                            />
+                            <span className={styles.collapsibleLabel}>
+                                <RoomsMenuLabel>
+                                    <FormattedMessage
+                                        defaultMessage="Play with friends"
+                                        description="Button to host or join a multiplayer room"
+                                        id="flipwarp.menuBar.friends"
+                                    />
+                                </RoomsMenuLabel>
+                            </span>
+                        </div>
                         {this.props.onClickAddonSettings && (
                             <div
                                 className={classNames(styles.menuBarItem, styles.hoverable)}
