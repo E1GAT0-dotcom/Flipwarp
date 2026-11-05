@@ -519,9 +519,8 @@ const tool = fn => async args => {
 
 const connectedMessage = () => {
     const others = waiting.filter(ws => ws.readyState === ws.OPEN).length;
-    const flagged = openFlags().length;
-    return `Connected. The editor is at ${editorUrl()}\nEvery chat's progress: http://127.0.0.1:${port}/control` +
-        (flagged ? `\nOther chats have flagged ${flagged} thing(s) about Flipwarp: list_flags shows them.` : '') +
+    return `Connected. The editor is at ${editorUrl()}\nThe person can watch from http://127.0.0.1:${port}/control ` +
+        '(that page is for them: other chats\' work is not yours to open).' +
         (others ?
         `\n${others} other Flipwarp tab(s) are open too and are not being used. ` +
         'Close them if that is confusing.' : '');
