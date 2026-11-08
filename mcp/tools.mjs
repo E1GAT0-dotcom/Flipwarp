@@ -29,6 +29,7 @@ export const registerTools = async (server, ctx, version = 0) => {
     const {PIECES, CONTRACT, pieceText, mergeText, piecesToAdd} = await import(`./library/index.mjs${v}`);
     const {PRESETS, VOICE_FIELDS, makeSound} = await import(`./sounds.mjs${v}`);
     const {KINDS, addFlag, openFlags, resolveFlag} = await import(`./flags.mjs${v}`);
+    const {makeSb3} = await import(`./zip.mjs${v}`);
     const {ask, text, json, failure, tool, describeParse, progress, notifyEditor, setProjectName, projectNameFrom,
         watch} = ctx;
     const handles = [];
@@ -332,14 +333,53 @@ export const registerTools = async (server, ctx, version = 0) => {
         description: 'Saves the project open in the editor as an .sb3 file on this computer.',
         inputSchema: {path: z.string().describe('Where to write the .sb3 file')}
     }, tool(async ({path: file}) => {
-        progress({label: `Saving ${path.basename(file)}`});
+        const label = `Saving ${path.basename(file)}`;
+        progress({label});
         try {
-            const r = await ask('saveProject', {}, 120000);
+            let data;
+            let start = null;
+            try {
+                start = await ask('saveFilesStart', {}, 120000);
+            } catch (e) {
+                // A tab opened before this way of saving existed zips it itself.
+                if (!/Unknown request|does not know "saveFilesStart"/.test(e.message)) throw e;
+            }
+            if (start) {
+                // The tab hands over its files in parts and they are zipped
+                // here: zipping a big game in a background tab took minutes.
+                const files = [];
+                let from = 0;
+                let got = 0;
+                while (from !== null) {
+                    const part = await ask('saveFilesPart', {from, maxBytes: 8 * 1024 * 1024}, 120000);
+                    for (const [name, base64] of part.files) {
+                        const bytes = Buffer.from(base64, 'base64');
+                        files.push([name, bytes]);
+                        got += bytes.length;
+                    }
+                    from = part.next;
+                    if (from !== null) {
+                        progress({label, done: got, total: start.bytes});
+                    }
+                }
+                data = makeSb3(files);
+            } else {
+                const r = await ask('saveProject', {}, 300000);
+                data = Buffer.from(r.base64, 'base64');
+            }
             const out = path.resolve(file);
             fs.mkdirSync(path.dirname(out), {recursive: true});
-            fs.writeFileSync(out, Buffer.from(r.base64, 'base64'));
+            // Written beside it first, so a save cut short never leaves half a file.
+            fs.writeFileSync(`${out}.saving`, data);
+            try {
+                fs.renameSync(`${out}.saving`, out);
+            } catch (e) {
+                // Something holds the old file open (Windows will not replace it then).
+                fs.writeFileSync(out, data);
+                fs.rmSync(`${out}.saving`, {force: true});
+            }
             if (!watch.name) setProjectName(projectNameFrom(out));
-            return text(`Saved ${r.bytes} bytes to ${out}`);
+            return text(`Saved ${data.length} bytes to ${out}`);
         } finally {
             progress(null);
         }

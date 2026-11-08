@@ -667,6 +667,9 @@ export const describe = (method, params = {}, result = {}, failed = false) => {
     case 'gameOptions': return {icon: '⚙️', text: 'changed game options', tone: 'dim'};
     case 'setVariable': return {icon: '🔧', text: `set ${params.name} to ${JSON.stringify(params.value)}`, tone: 'dim'};
     case 'saveProject': return {icon: '💾', text: 'saved the project'};
+    case 'saveFilesPart': return result.done ? {icon: '💾', text: 'saved the project'} :
+        (failed ? {icon: '⚠️', text: 'saving did not work', tone: 'bad'} : null);
+    case 'saveFilesStart': return failed ? {icon: '⚠️', text: 'saving did not work', tone: 'bad'} : null;
     case 'loadProject': return {icon: '📂', text: 'opened a project'};
     default:
         return failed ? {icon: '⚠️', text: `${method} did not work`, tone: 'bad'} : null;
