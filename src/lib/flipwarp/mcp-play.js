@@ -101,7 +101,9 @@ const eventFor = scratchKey => {
     const event = asEvent(scratchKey);
     if (!event) {
         throw new Error(`"${scratchKey}" is not a key Scratch knows. Use the names keyPressed uses: ` +
-            '"space", "up arrow", "down arrow", "left arrow", "right arrow", "enter", or a single letter or digit.');
+            '"space", "up arrow", "down arrow", "left arrow", "right arrow", "enter", a single letter or digit, ' +
+            'or TurboWarp\'s "backspace", "delete", "shift", "caps lock", "control", "escape", "insert", "home", ' +
+            '"end", "page up", "page down" and "scroll lock". There is no "alt".');
     }
     return event;
 };
@@ -318,6 +320,16 @@ export const PLAY_METHODS = {
         if (typeof down === 'boolean') {
             data.isDown = down;
             data.button = 0;
+            // A tab in the background never draws, so what a click picks would
+            // be where things were at the last drawing: clones made since are
+            // missed. Draw once first, so the click lands on what is there now.
+            if (vm.renderer && typeof document !== 'undefined' && document.hidden) {
+                try {
+                    vm.renderer.draw();
+                } catch (e) {
+                    // Picking still works on the older positions.
+                }
+            }
         }
         vm.postIOData('mouse', data);
         if (down === true) {

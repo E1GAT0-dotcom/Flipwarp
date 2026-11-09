@@ -388,6 +388,12 @@ export class Builder {
       this.blocks[r.id].parent = parentId;
       return [3, r.id, [ptype, defaultValueFor(ptype)]];
     }
+    // scratch.mit.edu refuses a whole project whose colour slot holds
+    // anything but #rrggbb, so a number typed there (12115440) is written as
+    // the colour it means. Scratch reads both the same way.
+    if (ptype === 9 && /^\d+$/.test(String(r.v).trim()) && Number(r.v) <= 0xFFFFFF) {
+      return [1, [ptype, `#${Number(r.v).toString(16).padStart(6, '0')}`]];
+    }
     return [1, [ptype, r.v]];
   }
 
@@ -459,8 +465,11 @@ export class Builder {
   }
 }
 
+// What a slot holds underneath when a block covers it. A colour slot must hold
+// a real colour even then: scratch.mit.edu refuses the whole project over an
+// empty one, though TurboWarp and Flipwarp load it.
 function defaultValueFor(ptype) {
-  return ptype === 10 || ptype === 9 ? '' : '';
+  return ptype === 9 ? '#000000' : '';
 }
 
 // ------------------------------------------------------------------ entry

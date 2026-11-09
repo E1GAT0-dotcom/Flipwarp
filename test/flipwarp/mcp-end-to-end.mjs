@@ -122,7 +122,12 @@ await step('turn it off again', 'set_extension_text', {enabled: false}, r => r.t
 const file = path.join(os.tmpdir(), `flipwarp-mcp-test-${Date.now()}.sb3`);
 await step('save to .sb3', 'save_project', {path: file}, r => !r.error && fs.statSync(file).size > 1000);
 await step('rename', 'rename_sprite', {sprite: 'Player', name: 'Hero'}, r => r.text.includes('Hero'));
-await step('load the saved file', 'load_project', {path: file}, r => !r.error && r.text.includes('Player'));
+await step('loading over an unsaved change refuses and says why', 'load_project', {path: file},
+    r => r.error && r.text.includes('discard_unsaved'));
+await step('load the saved file', 'load_project', {path: file, discard_unsaved: true},
+    r => !r.error && r.text.includes('Player'));
+await step('straight after loading, nothing is unsaved', 'load_project', {path: file},
+    r => !r.error && r.text.includes('Player'));
 await step('it still reads', 'read_sprite', {sprite: 'Player'}, r => r.text.includes('pen.penDown();'));
 await step('delete', 'delete_sprite', {sprite: 'Player'}, r => !r.error);
 fs.unlinkSync(file);

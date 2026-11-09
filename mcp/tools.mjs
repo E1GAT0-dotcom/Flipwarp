@@ -116,7 +116,10 @@ export const registerTools = async (server, ctx, version = 0) => {
         const shown = blocks.filter(b => !q || b.name.toLowerCase().includes(q) || b.opcode.toLowerCase().includes(q));
         const line = b => {
             if (b.infix) return `a ${b.infix} b`;
-            const args = b.args.map(a => (b.fields.includes(a) ? `"${a}"` : a)).join(', ');
+            // A variable or list is written by its name, like a message; other
+            // dropdowns are strings.
+            const args = b.args.map(a => (a === 'LIST' || a === 'VARIABLE' ? a.toLowerCase() :
+                (b.fields.includes(a) ? `"${a}"` : a))).join(', ');
             return `${b.name}(${args})${b.body ? ' { ... }' : ''}${b.kind === 'hat' ? ' { ... }   (hat)' : ''}` +
                 `${b.kind === 'reporter' ? '   -> value' : ''}${b.kind === 'boolean' ? '   -> true/false' : ''}` +
                 `${b.fromOtherExtension ? '   [other extension]' : ''}`;
@@ -130,7 +133,8 @@ export const registerTools = async (server, ctx, version = 0) => {
         const list = [...groups].map(([g, lines]) => `### ${g}\n${lines.join('\n')}`).join('\n\n');
         const head = search ? '' : `${GUIDE}\n`;
         return text(`${head}${note}\n## Blocks${search ? ` matching "${search}"` : ''}\n` +
-            '(Quoted arguments are dropdowns: always a string.)\n\n' +
+            '(Quoted arguments are dropdowns: always a string. list and variable are the name of one, ' +
+                'unquoted: itemOfList(inventory, 1).)\n\n' +
             `${list || '(none)'}`);
     }));
 
@@ -388,10 +392,30 @@ export const registerTools = async (server, ctx, version = 0) => {
     register('load_project', {
         title: 'Open a project',
         description: 'Opens an .sb3 file from this computer in the editor, replacing the project that is open. ' +
-            'Save first if it matters.',
-        inputSchema: {path: z.string().describe('The .sb3 file to open')}
-    }, tool(async ({path: file}) => {
+            'If you changed the open project since it was last saved, this refuses and says so: save_project ' +
+            'first, or pass discard_unsaved: true when throwing those changes away is what you mean.',
+        inputSchema: {
+            path: z.string().describe('The .sb3 file to open'),
+            discard_unsaved: z.boolean().optional()
+                .describe('Open it even though changes made in the editor since the last save will be lost')
+        }
+    }, tool(async ({path: file, discard_unsaved: discard}) => {
         const data = fs.readFileSync(path.resolve(file));
+        if (!discard) {
+            // Changes made with write_sprite and the like live only in the
+            // editor until saved; loading over them loses them for good.
+            let edits = false;
+            try {
+                edits = (await ask('unsavedEdits', {}, 30000)).edits;
+            } catch (e) {
+                // A tab from before this check, or one that cannot answer now.
+            }
+            if (edits) {
+                return failure('The open project has changes you made since it was last saved (with write_sprite, ' +
+                    'costumes, sounds and the like), and opening another file would lose them. save_project first ' +
+                    'if they matter, or call load_project again with discard_unsaved: true to throw them away.');
+            }
+        }
         // A browser gives a hidden tab little of a busy computer, and a big
         // project can then take minutes. It is still loading, not stuck.
         const hidden = watch.hidden;

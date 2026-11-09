@@ -65,6 +65,19 @@ const AS_EVENT = {
     'right arrow': {key: 'ArrowRight', keyCode: 39},
     'space': {key: ' ', keyCode: 32},
     'enter': {key: 'Enter', keyCode: 13},
+    // TurboWarp's extra keys, which keyPressed and "when key pressed" know.
+    'backspace': {key: 'Backspace', keyCode: 8},
+    'delete': {key: 'Delete', keyCode: 46},
+    'shift': {key: 'Shift', keyCode: 16},
+    'caps lock': {key: 'CapsLock', keyCode: 20},
+    'scroll lock': {key: 'ScrollLock', keyCode: 145},
+    'control': {key: 'Control', keyCode: 17},
+    'escape': {key: 'Escape', keyCode: 27},
+    'insert': {key: 'Insert', keyCode: 45},
+    'home': {key: 'Home', keyCode: 36},
+    'end': {key: 'End', keyCode: 35},
+    'page up': {key: 'PageUp', keyCode: 33},
+    'page down': {key: 'PageDown', keyCode: 34},
     // "any key" is a real choice in the dropdown, and the project means it, so
     // any key at all will do. Space is the one a thumb can find.
     'any': {key: ' ', keyCode: 32}

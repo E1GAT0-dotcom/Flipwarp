@@ -12,6 +12,7 @@ import {GUIDE} from '../../mcp/guide.mjs';
 const PRELUDE = [
     'variable speed;',
     'variable n;',
+    'list inventory;',
     'global variable score;',
     'global broadcast gameOver as "game over";'
 ].join('\n');
@@ -71,7 +72,13 @@ const INLINE = [
     'music.playDrumForBeats("1", 0.25);',
     'checkAmount(mouseDown(), 3);',
     'if (!isTurboWarp()) { show(); }',
-    'if (isCompiled()) { show(); }'
+    'if (isCompiled()) { show(); }',
+    'say(itemOfList(inventory, 1));',
+    'say(lengthOfList(inventory));',
+    'if (keyPressed("backspace")) { show(); }',
+    'if (keyPressed("shift")) { show(); }',
+    'if (keyPressed("escape")) { show(); }',
+    'setUp();'
 ];
 
 const HATS = [
@@ -82,7 +89,8 @@ const HATS = [
     'whenGreaterThan("timer", 10) {\n  show();\n}'
 ];
 
-const DEFINE_CHECK = 'define checkAmount(flag, n) as "check %b amount %s" {\n  show();\n}';
+const DEFINE_CHECK = 'define checkAmount(flag, n) as "check %b amount %s" {\n  show();\n}\n\n' +
+    'define fast setUp() {\n  show();\n}';
 
 let failures = 0;
 const tryText = (label, text) => {

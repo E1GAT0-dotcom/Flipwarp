@@ -24,7 +24,9 @@ time with write_sprite; it replaces every script in that sprite.
 
 Every variable, list and message the sprite uses must be declared at the top,
 including globals made by another sprite. A declared name that does not exist
-yet is created.
+yet is created. Nothing comes before the declarations, not even # comment
+lines: a comment above them gives a confusing "Expected a semicolon" on the
+first declaration. Put comments after the declarations.
 
 ## Scripts
 
@@ -76,7 +78,8 @@ whenBackdropSwitchesTo("level 2"), whenGreaterThan("timer", 10).
   createCloneOf("_myself_"), pointTowards("_mouse_"), stop("this script"),
   stop("other scripts in sprite"), setEffect("ghost", 50), goToLayer("front"),
   mathOp("abs", n), propertyOf("x position", "Player").
-- Messages are names, not strings: broadcast(gameOver), whenIReceive(gameOver).
+- Messages, variables and lists are names, not strings: broadcast(gameOver),
+  whenIReceive(gameOver), itemOfList(inventory, 1), lengthOfList(inventory).
 - isTurboWarp() is true in TurboWarp and Flipwarp and false on Scratch;
   isCompiled() is true when the compiler runs it. Use them as conditions:
   if (!isTurboWarp()) { ... }.
@@ -98,6 +101,15 @@ whenBackdropSwitchesTo("level 2"), whenGreaterThan("timer", 10).
 "fast" means run without screen refresh, which games want for anything that
 loops. In the label after "as", %s is a number or text slot and %b a boolean
 slot. Call them like any block: jump(10); checkAmount(mouseDown(), 3);
+A block with no inputs still has its brackets: define fast setUp() { ... }
+and setUp(); to call it.
+
+A broadcast restarts a "whenIReceive" script that is still running. A long
+fast block called from such a script (a big table built inside "when I receive
+render") can be cut off halfway when it takes longer than a frame, which is
+more likely with the editor tab hidden. Set any "done" flag at the END of the
+work, never the start, so a run that was cut short simply runs again; and do
+not hold a shared "busy" flag across a script a broadcast can restart.
 The name in the text is made from the block's label, so read the sprite back
 after writing if you used "as".
 
@@ -156,6 +168,19 @@ Making sprites look good:
 - After drawing, screenshot the stage: a sprite that looks fine alone can be
   too small, too big, or the wrong colour against its backdrop.
 
+SVG that looks right in preview_drawing but not on the stage (Scratch draws
+SVGs its own way):
+
+- No clipPath inside a moved group (<g transform>): the clip is shifted. Use
+  rounded rects (rx) and paths instead of clipping.
+- Arcs (the A command) inside a moved group can vanish in small costumes.
+  Draw arcs as circles, or as many short line pieces.
+- No filters (feGaussianBlur shadows come out as a pale box): stack a few
+  low-opacity shapes for a soft shadow.
+- Scratch will not shrink a costume below 5 steps on its longer side, so a
+  thin costume (5x27) cannot go much under size 100. Give letter and icon
+  costumes the same clear box around them.
+
 ## Playing and testing
 
 Writing a game is half the job; playing it is the other half. After writing:
@@ -174,7 +199,15 @@ Writing a game is half the job; playing it is the other half. After writing:
   reliable way to test: hold a key, step_frames 30, get_state, release.
 - click and move_mouse use Scratch coordinates. answer_question answers ask().
 - get_logs shows errors the page printed, such as a script that could not run.
-- Key names are the ones keyPressed uses: "space", "up arrow", "a".
+- Key names are the ones keyPressed uses: "space", "up arrow", "a", and
+  TurboWarp's "backspace", "delete", "shift", "caps lock", "control",
+  "escape", "insert", "home", "end", "page up", "page down". There is no
+  "alt". To test a "when any key pressed" script that checks keyPressed, hold
+  the key, step_frames 1, then release: a press while paused lets go before
+  the script looks.
+- touching("_mouse_") is true over a hidden sprite too (Scratch checks the
+  costume, shown or not), so a hidden card can swallow clicks meant for what
+  is under it. Guard hover and click checks with your own "showing" variable.
 
 Test what the game should do: does the player stop at the wall, does the
 score go up when the coin is touched, does game over show? Fix and play again.

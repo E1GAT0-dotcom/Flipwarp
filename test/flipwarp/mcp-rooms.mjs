@@ -109,7 +109,7 @@ try {
     // --- opening another game while hosting closes the room ----------------------------
     await must('Claude hosts again', 'room', {action: 'host'});
     await must('and then opens a different game', 'load_project',
-        {path: repoPath('test', 'flipwarp', 'fixtures', 'tools-test.sb3')});
+        {path: repoPath('test', 'flipwarp', 'fixtures', 'tools-test.sb3'), discard_unsaved: true});
     const closedStatus = JSON.parse((await must('the room status', 'room', {action: 'status'})).text);
     check(closedStatus.open === false, 'opening another game closes the room, so friends never get it',
         closedStatus);
