@@ -117,7 +117,9 @@ const makeMissingVariables = (vm, liveTarget, created = []) => {
             continue;
         }
         const owner = item.global ? stage : liveTarget;
-        if (!owner || owner.lookupVariableById(item.id)) continue;
+        // Only the owner's own variables count: lookupVariableById also looks
+        // on the stage, and a sprite's new variable is not the stage's.
+        if (!owner || owner.variables[item.id]) continue;
         // A global variable named "☁ something" is a cloud variable, the way
         // Scratch's own New Variable dialog names them. Made any other way it
         // would only look like one and never be shared.

@@ -188,6 +188,11 @@ const finding = (grade, kind, title, detail, where, fix) => ({
 // A loop that goes round once a frame, more or less: what a game loop is.
 const LOOPS = new Set(['control_forever', 'control_repeat_until', 'control_while']);
 
+// Sound blocks that wait for the next tick every time they run (with
+// TurboWarp's normal limits on), though nothing about them looks like a wait.
+const EVERY_TICK_SOUND = new Set(['sound_setvolumeto', 'sound_changevolumeby', 'sound_seteffectto',
+    'sound_changeeffectby']);
+
 // Blocks that wait for time to pass, which a fast custom block does not.
 const WAITS = new Set(['control_wait', 'control_wait_until', 'sensing_askandwait', 'motion_glidesecstoxy',
     'motion_glideto', 'looks_sayforsecs', 'looks_thinkforsecs', 'sound_playuntildone', 'event_broadcastandwait',
@@ -393,6 +398,35 @@ const scratchWay = (targets, stage) => {
                 'screen, so waiting inside it freezes the game until it is done. Untick "Run without screen ' +
                 'refresh", or do the waiting outside it.',
                 {sprite: name, script: w.index}, {type: 'not-fast', target: name, block: w.id}));
+        }
+
+        // -- volume and sound effects set every pass of a forever loop. Each
+        // of these waits for the next tick, so a game's frame loop with one
+        // in it runs every other frame, and step_frames runs it once a call.
+        const all = blocksOf(target);
+        let soundInLoop = null;
+        tops.forEach((top, index) => {
+            if (soundInLoop) return;
+            walkFrom(target, top.id, block => {
+                if (soundInLoop || block.opcode !== 'control_forever') return;
+                const body = block.inputs && block.inputs.SUBSTACK && block.inputs.SUBSTACK.block;
+                // Only what runs on every pass: not inside an if, which runs
+                // only when something changed.
+                for (let at = body && all[body]; at; at = at.next && all[at.next]) {
+                    if (EVERY_TICK_SOUND.has(at.opcode)) {
+                        soundInLoop = {index, what: (spec(at.opcode) || {}).name || at.opcode, id: at.id};
+                        return;
+                    }
+                }
+            });
+        });
+        if (soundInLoop) {
+            found.push(finding('warning', 'sound-every-frame',
+                `${name} sets the volume or a sound effect on every pass of a forever loop`,
+                `"${soundInLoop.what}" waits for the next frame each time it runs, so the loop runs only every ` +
+                'other frame (and once per step_frames call, which looks like the game froze). Set it only ' +
+                'when the value changes: if (!(volumeNow == wanted)) { ... }.',
+                {sprite: name, script: soundInLoop.index}, null));
         }
 
         // -- thousands of costumes

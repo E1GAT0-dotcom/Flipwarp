@@ -24,9 +24,8 @@ time with write_sprite; it replaces every script in that sprite.
 
 Every variable, list and message the sprite uses must be declared at the top,
 including globals made by another sprite. A declared name that does not exist
-yet is created. Nothing comes before the declarations, not even # comment
-lines: a comment above them gives a confusing "Expected a semicolon" on the
-first declaration. Put comments after the declarations.
+yet is created. A # comment above the declarations is kept as a loose comment
+on the canvas.
 
 ## Scripts
 

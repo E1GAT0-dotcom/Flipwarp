@@ -22,14 +22,21 @@ class Parser {
 
   // Comment lines sit in front of whatever they are about. One with a
   // statement under it is that statement's comment; anything else is loose.
-  takeComments() {
+  takeComments(allLoose = false) {
     let attached = null;
     while (this.at('comment')) {
       const tok = this.next();
-      if (tok.attached && attached === null) attached = tok.v;
+      if (tok.attached && attached === null && !allLoose) attached = tok.v;
       else this.freeComments.push({ text: tok.v, line: tok.line });
     }
     return attached;
+  }
+
+  // How many comment tokens come next, to look at what is under them.
+  commentsAhead() {
+    let k = 0;
+    while (this.peek(k).t === 'comment') k++;
+    return k;
   }
 
   peek(k = 0) { return this.toks[this.i + k]; }
@@ -64,9 +71,14 @@ class Parser {
     while (!this.at('eof')) {
       if (this.at('comment')) {
         // Between scripts there is nothing for a comment to attach to except
-        // the script that follows, which script() picks up itself.
-        if (this.peek().attached) { scripts.push(this.script()); continue; }
-        this.takeComments();
+        // the script that follows, which script() picks up itself. Above a
+        // declaration there is no block at all, so it lies loose on the canvas
+        // (refusing it said "Expected a semicolon" on the declaration).
+        if (this.peek().attached && !this.looksLikeDeclaration(this.commentsAhead())) {
+          scripts.push(this.script());
+          continue;
+        }
+        this.takeComments(true);
         continue;
       }
       if (this.looksLikeDeclaration()) { decls.push(this.declaration()); continue; }
@@ -77,9 +89,9 @@ class Parser {
 
   // "broadcast" is both a declaration keyword and a block name, so a line is
   // only a declaration when it reads like one: keyword, a name, then ; or as.
-  looksLikeDeclaration() {
-    let k = 0;
-    if (this.at('ident', 'global')) k = 1;
+  looksLikeDeclaration(from = 0) {
+    let k = from;
+    if (this.peek(k).t === 'ident' && this.peek(k).v === 'global') k++;
     const kw = this.peek(k);
     if (kw.t !== 'ident' || !['variable', 'list', 'broadcast'].includes(kw.v)) return false;
     const name = this.peek(k + 1);
@@ -108,6 +120,11 @@ class Parser {
 
   script() {
     let at = null;
+    // A comment written above the @at line belongs to the script's first
+    // block, the same as one written between @at and the block.
+    let lead = null;
+    const under = this.peek(this.commentsAhead());
+    if (this.at('comment') && under.t === 'punct' && under.v === '@') lead = this.takeComments();
     if (this.at('punct', '@')) {
       this.next();
       const kw = this.expect('ident', undefined, 'at');
@@ -121,6 +138,16 @@ class Parser {
     }
     // A script is everything up to the next @at marker (or the end).
     const stmts = [];
+    if (lead !== null) {
+      const line = this.peek().line;
+      const first = this.statement();
+      if (first.comment === undefined || first.comment === null) first.comment = lead;
+      else this.freeComments.push({ text: lead, line });
+      stmts.push(first);
+      if (this.at('eof') || this.at('punct', '@') || (this.at('comment') && !this.peek().attached)) {
+        return { at, stmts };
+      }
+    }
     do { stmts.push(this.statement()); }
     while (!this.at('eof') && !this.at('punct', '@') &&
       !(this.at('comment') && !this.peek().attached));

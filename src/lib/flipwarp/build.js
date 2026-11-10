@@ -498,6 +498,17 @@ export function buildTarget(ast, target, ctx, style) {
   // leaves every block using it pointing at a variable that is not there,
   // which is worse than the typo that caused it.
   const created = [];
+  // Every id already in use. A new one is made from its name, and a name can
+  // have been someone else's: rename "gear" to "gear shown" and its id is still
+  // variable-gear, so a new "gear" given that id was taken for the renamed one
+  // and every block using it quietly wrote into the other variable.
+  const taken = new Set([...globalVars, ...globalLists, ...localVars, ...localLists, ...bcTables].map(([id]) => id));
+  const freshId = base => {
+    let id = base;
+    for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+    taken.add(id);
+    return id;
+  };
 
   for (const d of ast.decls) {
     let table;
@@ -512,7 +523,7 @@ export function buildTarget(ast, target, ctx, style) {
       id = findByName(d.kind === 'list' ? globalLists : globalVars, d.name);
     }
     if (!id) {
-      id = `${d.kind}-${d.name.replace(/\s+/g, '-')}`;
+      id = freshId(`${d.kind}-${d.name.replace(/\s+/g, '-')}`);
       created.push({id, name: d.name, kind: d.kind, global: Boolean(d.global)});
     }
     names[d.ident] = { id, name: d.name, kind: d.kind };
