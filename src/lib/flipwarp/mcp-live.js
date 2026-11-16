@@ -671,6 +671,10 @@ export const describe = (method, params = {}, result = {}, failed = false) => {
         (failed ? {icon: '⚠️', text: 'saving did not work', tone: 'bad'} : null);
     case 'saveFilesStart': return failed ? {icon: '⚠️', text: 'saving did not work', tone: 'bad'} : null;
     case 'loadProject': return {icon: '📂', text: 'opened a project'};
+    case 'testPlayerOpen': return failed ? null : {icon: '👥', text: 'opened a test player in the room'};
+    case 'testPlayerClose': return result.closed ? {icon: '👥', text: 'closed the test player'} : null;
+    case 'testPlayerAsk': return failed ? {icon: '⚠️', text: 'the test player did not do it', tone: 'bad'} : null;
+    case 'testPlayerIsOpen': return null;
     default:
         return failed ? {icon: '⚠️', text: `${method} did not work`, tone: 'bad'} : null;
     }

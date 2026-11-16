@@ -9,6 +9,7 @@
 // person watching sees) comes in through ctx.
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {z} from 'zod';
@@ -243,16 +244,26 @@ export const registerTools = async (server, ctx, version = 0) => {
         svg: z.string().optional().describe('A whole SVG document with width and height. The middle of the ' +
             'drawing is where the sprite turns, unless center says otherwise.'),
         pixels: pixelsSchema.optional().describe('Pixel art written as text'),
-        file: z.string().optional().describe('Path to a .svg, .png or .jpg on this computer')
+        file: z.string().optional().describe('Path to a .svg, .png or .jpg on this computer'),
+        resolution: z.union([z.literal(1), z.literal(2)]).optional().describe('A .png or .jpg file only: ' +
+            '1 (default) is one pixel per stage step; 2 is an image drawn at twice size for sharpness ' +
+            '(a 2x render), shown at half its pixel size and stored as it is, like Scratch\'s own bitmaps. ' +
+            'center stays in the image\'s pixels either way.')
     };
 
-    const drawingFrom = ({svg, pixels, file}) => {
-        if (!file) return {svg, pixels};
+    const drawingFrom = ({svg, pixels, file, resolution}) => {
+        if (!file) {
+            if (resolution === 2) throw new Error('resolution 2 is for a .png or .jpg file; svg and pixels have their own size.');
+            return {svg, pixels};
+        }
         const data = fs.readFileSync(path.resolve(file));
         const ext = path.extname(file).toLowerCase();
-        if (ext === '.svg') return {svg: data.toString('utf8')};
-        if (ext === '.png') return {png: data.toString('base64')};
-        if (ext === '.jpg' || ext === '.jpeg') return {jpg: data.toString('base64')};
+        if (ext === '.svg') {
+            if (resolution === 2) throw new Error('resolution 2 is for a .png or .jpg file; an SVG is sized by its width and height.');
+            return {svg: data.toString('utf8')};
+        }
+        if (ext === '.png') return {png: data.toString('base64'), resolution};
+        if (ext === '.jpg' || ext === '.jpeg') return {jpg: data.toString('base64'), resolution};
         throw new Error(`${file} is not an .svg, .png or .jpg.`);
     };
 
@@ -274,7 +285,11 @@ export const registerTools = async (server, ctx, version = 0) => {
             y: z.number().optional()
         }
     }, tool(async ({name, x, y, ...rest}) => {
-        const r = await ask('createSprite', {name, x, y, ...drawingFrom(rest)});
+        const drawn = drawingFrom(rest);
+        // A 2x bitmap goes in through replace_costume's path, which keeps it
+        // as it is; the sprite upload would double it.
+        const r = await ask('createSprite', {name, x, y, ...(drawn.resolution === 2 ? {} : drawn)});
+        if (drawn.resolution === 2) await ask('replaceCostume', {sprite: r.name, costume: 1, ...drawn});
         const {png} = await ask('costumeSheet', {sprite: r.name});
         return pictureOf(`Created sprite "${r.name}".`, png);
     }));
@@ -506,55 +521,78 @@ export const registerTools = async (server, ctx, version = 0) => {
     const compactState = s => JSON.stringify(s, null, 1);
 
     // One step of a play sequence. Returns text lines and pictures for the result.
-    const runStep = async step => {
+    // via: who plays the step, the editor tab or the test player.
+    const runStep = async (step, via = ask) => {
         switch (step.do) {
         case 'green_flag': {
-            const r = await ask('greenFlag');
+            const r = await via('greenFlag');
             return {lines: [`green flag${r.frozen ? ' (the project is paused: use resume or step)' : ''}`],
                 visible: r.visible};
         }
         case 'stop':
-            await ask('stop');
+            await via('stop');
             return {lines: ['stopped']};
         case 'wait':
             await sleep(step.ms);
             return {lines: [`waited ${step.ms}ms`]};
         case 'press':
-            await ask('keys', {down: step.keys});
+            await via('keys', {down: step.keys});
             await sleep(step.ms || 150);
-            await ask('keys', {up: step.keys});
+            await via('keys', {up: step.keys});
             return {lines: [`pressed ${step.keys.join(' + ')} for ${step.ms || 150}ms`]};
         case 'hold': {
-            const r = await ask('keys', {down: step.keys});
+            const r = await via('keys', {down: step.keys});
             return {lines: [`holding ${r.keysHeld.join(', ')}`]};
         }
         case 'release':
-            if (step.keys && step.keys.length) await ask('keys', {up: step.keys});
-            else await ask('releaseKeys');
+            if (step.keys && step.keys.length) await via('keys', {up: step.keys});
+            else await via('releaseKeys');
             return {lines: [`released ${step.keys && step.keys.length ? step.keys.join(', ') : 'all keys'}`]};
         case 'click':
-            await ask('mouse', {x: step.x, y: step.y});
-            await ask('mouse', {x: step.x, y: step.y, down: true});
+            await via('mouse', {x: step.x, y: step.y});
+            await via('mouse', {x: step.x, y: step.y, down: true});
             await sleep(step.ms || 100);
-            await ask('mouse', {x: step.x, y: step.y, down: false});
+            await via('mouse', {x: step.x, y: step.y, down: false});
             return {lines: [`clicked (${step.x}, ${step.y})`]};
+        case 'drag': {
+            // Down, then moved a little each frame, then up, with real frames
+            // run in between (as step_frames runs them, so a background tab
+            // keeps up). Separate mouse steps sent back to back give a script
+            // like "repeat until not mouse down" no frames to follow the mouse
+            // in, so a drag made of them did nothing.
+            if ([step.x, step.y, step.toX, step.toY].some(n => typeof n !== 'number')) {
+                throw new Error('drag needs x and y (where it starts) and toX and toY (where it ends).');
+            }
+            const frames = Math.max(1, Math.min(120, Math.round(step.frames || 10)));
+            await via('mouse', {x: step.x, y: step.y});
+            await via('mouse', {x: step.x, y: step.y, down: true});
+            await via('stepFrames', {frames: 1});
+            for (let i = 1; i <= frames; i++) {
+                const t = i / frames;
+                await via('mouse', {x: step.x + ((step.toX - step.x) * t), y: step.y + ((step.toY - step.y) * t)});
+                await via('stepFrames', {frames: 1});
+            }
+            await via('mouse', {x: step.toX, y: step.toY, down: false});
+            await via('stepFrames', {frames: 1});
+            return {lines: [`dragged (${step.x}, ${step.y}) to (${step.toX}, ${step.toY}) over ${frames} frames`]};
+        }
         case 'mouse': {
             const args = {x: step.x, y: step.y};
             if (typeof step.down === 'boolean') args.down = step.down;
-            await ask('mouse', args);
+            await via('mouse', args);
             return {lines: [`mouse at (${step.x}, ${step.y})${typeof step.down === 'boolean' ?
                 (step.down ? ', button down' : ', button up') : ''}`]};
         }
         case 'step': {
-            const r = await ask('stepFrames', {frames: step.frames || 1}, 70000);
+            const r = await via('stepFrames', {frames: step.frames || 1}, 70000);
             return {lines: [`ran ${r.frames} frame(s), now paused`]};
         }
         case 'screenshot': {
-            const shot = await ask('screenshot', {grid: !!step.grid, scale: step.scale || 1});
+            const shot = await via('screenshot', {grid: !!step.grid, scale: step.scale || 1});
             return {lines: [`screenshot ${shot.width}x${shot.height}`], images: [image(shot)], visible: shot.visible};
         }
         case 'state': {
-            const s = await ask('state', {sprites: step.sprites});
+            const s = await via('state', {sprites: step.sprites});
             return {lines: [`state: ${compactState(s)}`], visible: s.visible};
         }
         default:
@@ -562,7 +600,7 @@ export const registerTools = async (server, ctx, version = 0) => {
         }
     };
 
-    const runSteps = async steps => {
+    const runSteps = async (steps, via = ask) => {
         const lines = [];
         const images = [];
         let visible = true;
@@ -573,7 +611,7 @@ export const registerTools = async (server, ctx, version = 0) => {
             else if (step.do === 'wait') progress({label: `Letting the game run for ${Math.round(step.ms / 100) / 10}s`,
                 ms: Math.min(step.ms || 0, 60000)});
             try {
-                const r = await runStep(step);
+                const r = await runStep(step, via);
                 lines.push(...r.lines);
                 if (r.images) images.push(...r.images);
                 if (r.visible === false) visible = false;
@@ -581,7 +619,7 @@ export const registerTools = async (server, ctx, version = 0) => {
                 lines.push(`step ${i + 1} (${step.do}) failed: ${e.message}`);
                 // A key left held by a sequence that stopped halfway would keep
                 // the sprite running into the wall.
-                await ask('releaseKeys').catch(() => {});
+                await via('releaseKeys').catch(() => {});
                 progress(null);
                 notifyEditor('test', {text: lines.slice(-2).join(' · '), failed: true});
                 return {content: [{type: 'text', text: lines.join('\n')}, ...images], isError: true};
@@ -740,14 +778,16 @@ export const registerTools = async (server, ctx, version = 0) => {
     }));
 
     const stepSchema = z.object({
-        do: z.enum(['green_flag', 'stop', 'wait', 'press', 'hold', 'release', 'click', 'mouse', 'step',
+        do: z.enum(['green_flag', 'stop', 'wait', 'press', 'hold', 'release', 'click', 'mouse', 'drag', 'step',
             'screenshot', 'state']),
         keys: z.array(key).optional().describe('press, hold, release'),
         ms: z.number().optional().describe('wait; press and click: how long to hold'),
-        x: z.number().optional().describe('click, mouse'),
-        y: z.number().optional().describe('click, mouse'),
+        x: z.number().optional().describe('click, mouse; drag: where it starts'),
+        y: z.number().optional().describe('click, mouse; drag: where it starts'),
+        toX: z.number().optional().describe('drag: where it ends'),
+        toY: z.number().optional().describe('drag: where it ends'),
         down: z.boolean().optional().describe('mouse: press or release the button'),
-        frames: z.number().optional().describe('step'),
+        frames: z.number().optional().describe('step; drag: how many frames the move takes (default 10)'),
         grid: z.boolean().optional().describe('screenshot'),
         scale: z.number().optional().describe('screenshot'),
         sprites: z.array(z.string()).optional().describe('state: only these sprites')
@@ -757,7 +797,9 @@ export const registerTools = async (server, ctx, version = 0) => {
         title: 'Play a sequence',
         description: 'Runs a list of steps in order, like a person playing, and returns every screenshot ' +
             'and state it was asked for. For example: green_flag, hold right arrow, wait 1000, press space, ' +
-            'wait 500, screenshot, release, state. Keys still held when a step fails are let go.',
+            'wait 500, screenshot, release, state. Keys still held when a step fails are let go. ' +
+            'To drag (a slider, a window corner, a sprite), use drag, not mouse down / mouse / mouse up: ' +
+            'it runs frames while the button is held, so the game sees the mouse move.',
         inputSchema: {steps: z.array(stepSchema).min(1).max(100)}
     }, tool(async ({steps}) => runSteps(steps)));
 
@@ -1133,6 +1175,105 @@ export const registerTools = async (server, ctx, version = 0) => {
                 `nothing else.\n${JSON.stringify(r, null, 2)}`);
         }
         return json(r);
+    }));
+
+    // --- a second player, to test a multiplayer game -----------------------------
+    //
+    // The test player's tab opens in the same browser as the editor tab (the
+    // two talk over a channel only tabs of one browser share): Flipwarp's own
+    // Chrome when there is one, as the server opens the editor in.
+    const flipwarpChrome = () => {
+        if (process.env.FLIPWARP_OWN_BROWSER === '0') return null;
+        const roots = process.platform === 'win32' ?
+            [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA].filter(Boolean)
+                .flatMap(root => [
+                    path.join(root, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+                    path.join(root, 'Microsoft', 'Edge', 'Application', 'msedge.exe')
+                ]) :
+            process.platform === 'darwin' ? ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'] :
+                ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'];
+        return roots.find(file => fs.existsSync(file)) || null;
+    };
+    const openTab = async url => {
+        // Tests open the tab themselves, in the browser they drive.
+        if (process.env.FLIPWARP_TABS_FILE) {
+            fs.appendFileSync(process.env.FLIPWARP_TABS_FILE, `${url}\n`);
+            return;
+        }
+        const {spawn} = await import('node:child_process');
+        const browser = flipwarpChrome();
+        if (browser) {
+            spawn(browser, [
+                `--user-data-dir=${path.join(os.homedir(), '.flipwarp', 'browser')}`,
+                '--no-first-run', '--no-default-browser-check',
+                '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                url
+            ], {detached: true, stdio: 'ignore'}).unref();
+            return;
+        }
+        const [cmd, args] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]] :
+            process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+        spawn(cmd, args, {detached: true, stdio: 'ignore'}).unref();
+    };
+    const asPlayer = (method, params = {}, timeout = 30000) =>
+        ask('testPlayerAsk', {method, params, timeout}, Math.min(timeout, 120000) + 5000);
+
+    register('test_player', {
+        title: 'Test as a second player',
+        description: 'Opens a temporary second player in a tab of its own, which joins the room this editor ' +
+            'is hosting (room action "host" first) and gets the game the way a friend would. Then play it ' +
+            'as that player: "play" runs the same steps as the play tool (keys, click, drag, step, ' +
+            'screenshot, state) in the test player\'s tab, while play and the other tools still act as the ' +
+            'host. Use it to check what one player does reaches the other: move as the host, screenshot as ' +
+            'the test player. "close" when done (it also closes with the room). "status" says if it is in.',
+        inputSchema: {
+            action: z.enum(['open', 'play', 'status', 'close']),
+            steps: z.array(stepSchema).min(1).max(100).optional().describe('play: the steps, as in the play tool')
+        }
+    }, tool(async ({action, steps}) => {
+        if (action === 'open') {
+            const {url, code} = await ask('testPlayerOpen');
+            await openTab(url);
+            // Joining takes the matchmaking server and the whole game sent
+            // across, like a friend's.
+            const until = Date.now() + 180000;
+            let s = null;
+            let lastError = null;
+            while (Date.now() < until) {
+                await sleep(1500);
+                try {
+                    s = await asPlayer('status', {}, 5000);
+                    lastError = null;
+                } catch (e) {
+                    lastError = e.message;
+                    continue;
+                }
+                if (s.ready) {
+                    return text(`The test player has joined room ${code} and has the game. Play it with ` +
+                        'test_player action "play"; the host is still the editor tab. Close it when done.\n' +
+                        JSON.stringify(s, null, 2));
+                }
+                // Failed for good: the tab tries joining again itself first.
+                if (s.error && !s.triesLeft && s.room !== 'joining') break;
+            }
+            await ask('testPlayerClose').catch(() => {});
+            return failure(`The test player did not get into room ${code}. ` +
+                (s ? `It got as far as: ${JSON.stringify(s)}` : `Its tab never answered (${lastError}). It opens ` +
+                    'in the browser the editor runs in; an editor opened by hand in another browser cannot ' +
+                    'reach it.'));
+        }
+        if (action === 'status') {
+            const {open} = await ask('testPlayerIsOpen');
+            if (!open) return text('No test player is open.');
+            return json(await asPlayer('status', {}, 10000));
+        }
+        if (action === 'close') return json(await ask('testPlayerClose'));
+        if (!steps || !steps.length) return failure('play needs steps, the same as the play tool takes.');
+        const r = await runSteps(steps, asPlayer);
+        // Said on every answer, so the screenshots are not taken for the host's.
+        r.content[0].text = `As the test player:\n${r.content[0].text}`;
+        return r;
     }));
 
     return handles;

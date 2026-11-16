@@ -8,6 +8,7 @@ import Box from '../box/box.jsx';
 import Modal from '../../containers/modal.jsx';
 import rooms, {normalizeCode} from '../../lib/flipwarp/rooms.js';
 import {isClaudeTab} from '../../lib/flipwarp/rooms-ai.js';
+import {testPlayerName} from '../../lib/flipwarp/test-player.js';
 import {getIsShowingProject} from '../../reducers/project-state';
 import {setProjectTitle} from '../../reducers/project-title';
 import {setFileHandle, setUsername} from '../../reducers/tw';
@@ -66,7 +67,7 @@ class RoomsPanel extends React.Component {
     }
     componentDidMount () {
         rooms.attach(this.props.vm, {
-            getName: () => this.state.name || this.props.username,
+            getName: () => testPlayerName() || this.state.name || this.props.username,
             getTitle: () => this.props.projectTitle,
             loader: this.loadProject
         });

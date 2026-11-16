@@ -146,7 +146,11 @@ before changing code; do not guess.
 
 ## 7. Finish
 
-- Title screen or instructions on the stage, a win and a lose.
+- A title screen, a win and a lose. Controls go in the project's
+  Instructions text (and in what you tell the person), not on the screen:
+  no hint bars, "Press X to..." banners or tutorial pop-ups. Let the game
+  teach through feedback instead: a sound, particles, a glow on the thing
+  to use, a character reacting.
 - Feel: animation frames, a bounce when squashing enemies, the camera
   easing. The pieces already do the hard parts of feel; keep them.
 - Sound: `add_sound` a preset for each thing that happens (jump, coin, hit,

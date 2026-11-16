@@ -107,15 +107,49 @@ export const imageFrom = source => {
             if (source.pixels.format === 'png') return {bytes: pngFromPixels(source.pixels), type: 'image/png'};
             return {bytes: new TextEncoder().encode(pixelsToSvg(source.pixels)), type: 'image/svg+xml', vector: true};
         }
-        if (source.png) return {bytes: base64ToBytes(source.png), type: 'image/png'};
-        return {bytes: base64ToBytes(source.jpg), type: 'image/jpeg'};
+        const at2x = source.resolution === 2;
+        if (source.png) return {bytes: base64ToBytes(source.png), type: 'image/png', at2x};
+        return {bytes: base64ToBytes(source.jpg), type: 'image/jpeg', at2x};
     } catch (e) {
         if (e instanceof PixelError) throw new Error(`Pixel art: ${e.message}`);
         throw e;
     }
 };
 
+// Scratch keeps bitmaps at twice their stage size (bitmapResolution 2). The
+// ordinary upload treats every image as one pixel per step and scales it up
+// to get there, so a picture drawn at 2x for sharpness came in twice too big.
+// One that says it is already at 2x is stored as it is.
+const uploadAt2x = (vm, image) => {
+    const storage = vm.runtime.storage;
+    const format = image.type === 'image/jpeg' ? storage.DataFormat.JPG : storage.DataFormat.PNG;
+    const asset = storage.createAsset(storage.AssetType.ImageBitmap, format, image.bytes, null, true);
+    return Promise.resolve({
+        name: null,
+        dataFormat: format,
+        asset,
+        md5: `${asset.assetId}.${format}`,
+        assetId: asset.assetId,
+        bitmapResolution: 2
+    });
+};
+
+// How the ordinary upload resizes a bitmap (BitmapAdapter's rule): small
+// ones are doubled, ones up to twice the stage are kept, bigger ones shrunk
+// to fit twice the stage. The turning point has to move with it.
+const uploadScale = (vm, width, height) => {
+    const sw = vm.runtime.stageWidth || 480;
+    const sh = vm.runtime.stageHeight || 360;
+    if (width <= sw && height <= sh) return 2;
+    if (width <= sw * 2 && height <= sh * 2) return 1;
+    return width / height >= sw / sh ? (sw * 2) / width : (sh * 2) / height;
+};
+
 const upload = (vm, image) => new Promise((resolve, reject) => {
+    if (image.at2x) {
+        uploadAt2x(vm, image).then(resolve, reject);
+        return;
+    }
     costumeUpload(image.bytes.buffer.slice(image.bytes.byteOffset, image.bytes.byteOffset + image.bytes.length),
         image.type, vm, costumes => resolve(costumes[0]),
         e => reject(new Error(`The image could not be read: ${e && e.message ? e.message : e}`)));
@@ -274,8 +308,9 @@ const previewImage = async image => {
     // An image shows on the stage one step per pixel (a bitmap is stored at
     // double size and half resolution, which comes to the same thing), and an
     // SVG at its width and height, which normaliseSvg has made its viewBox.
-    const w = img.width;
-    const h = img.height;
+    const half = image.at2x ? 2 : 1;
+    const w = img.width / half;
+    const h = img.height / half;
     // Beside the zoomed view, the real size, when it fits: what the player
     // will see at size 100.
     const actual = w <= CELL - 16 && h <= CELL - 16;
@@ -302,11 +337,15 @@ const previewImage = async image => {
 
 // --- changing costumes -------------------------------------------------------
 
-const applyCenter = (costume, center, image) => {
+// Given in the drawing's own units (SVG units, or image pixels). A bitmap is
+// stored at twice its stage size, after however the upload resized it.
+const applyCenter = async (vm, costume, center, image) => {
     if (!center) return;
-    // Given in the drawing's own units (SVG units, or image pixels); a bitmap
-    // is stored at twice its stage size.
-    const k = image.vector ? 1 : 2;
+    let k = 1;
+    if (!image.vector && !image.at2x) {
+        const img = await loadImage(image.bytes, image.type);
+        k = uploadScale(vm, img.width, img.height);
+    }
     costume.rotationCenterX = center.x * k;
     costume.rotationCenterY = center.y * k;
 };
@@ -315,7 +354,7 @@ const addCostume = async (vm, target, {name, center, select = true, ...source}) 
     const image = imageFrom(source);
     const costume = await upload(vm, image);
     costume.name = name || (source.pixels ? 'pixels' : 'costume');
-    applyCenter(costume, center, image);
+    await applyCenter(vm, costume, center, image);
     const before = target.currentCostume;
     await vm.addCostume(costume.md5, costume, target.id);
     // Found rather than assumed to be last: the folders addon may move a new
@@ -334,7 +373,7 @@ const replaceCostume = async (vm, target, {costume: which, center, ...source}) =
     const image = imageFrom(source);
     const costume = await upload(vm, image);
     costume.name = `${oldCostume.name} new`;
-    applyCenter(costume, center, image);
+    await applyCenter(vm, costume, center, image);
     // Loaded the ordinary way, which puts it at the end...
     await vm.addCostume(costume.md5, costume, target.id);
     // ...then swapped straight into the old one's place in the list, under

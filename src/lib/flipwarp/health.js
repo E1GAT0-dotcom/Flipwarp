@@ -361,6 +361,23 @@ const scratchWay = (targets, stage) => {
         }
     }
 
+    // Messages sent from inside a forever loop: their scripts start again
+    // every frame (a "render" broadcast).
+    const everyFrame = new Set();
+    for (const target of targets) {
+        for (const top of topBlocksOf(target)) {
+            walkFrom(target, top.id, block => {
+                if (block.opcode !== 'control_forever') return;
+                const body = block.inputs && block.inputs.SUBSTACK && block.inputs.SUBSTACK.block;
+                walkFrom(target, body, inner => {
+                    if (inner.opcode !== 'event_broadcast') return;
+                    const menu = menuIn(target, inner, 'BROADCAST_INPUT');
+                    if (menu && menu.chosen) everyFrame.add(menu.chosen);
+                });
+            });
+        }
+    }
+
     for (const target of targets) {
         const name = target.getName();
         const tops = topBlocksOf(target);
@@ -427,6 +444,35 @@ const scratchWay = (targets, stage) => {
                 'other frame (and once per step_frames call, which looks like the game froze). Set it only ' +
                 'when the value changes: if (!(volumeNow == wanted)) { ... }.',
                 {sprite: name, script: soundInLoop.index}, null));
+        }
+        // The same blocks in a script a broadcast restarts every frame, or in
+        // a fast custom block: the wait cuts the script off there. The next
+        // broadcast restarts it before it carries on, so nothing after the
+        // block ever runs, with no error; a fast block stops being fast.
+        let soundCut = null;
+        tops.forEach((top, index) => {
+            if (soundCut) return;
+            let why = null;
+            if (top.opcode === 'event_whenbroadcastreceived' && everyFrame.has(fieldIn(top, 'BROADCAST_OPTION'))) {
+                why = `whenIReceive(${fieldIn(top, 'BROADCAST_OPTION')}), which is sent every frame`;
+            } else if (top.opcode === 'procedures_definition') {
+                const proc = procCodeOf(target, top);
+                if (proc && proc.warp) why = `the fast custom block "${shortCode(proc.code)}"`;
+            }
+            if (!why) return;
+            walkFrom(target, top.next, block => {
+                if (!soundCut && EVERY_TICK_SOUND.has(block.opcode)) {
+                    soundCut = {index, why, what: (spec(block.opcode) || {}).name || block.opcode};
+                }
+            });
+        });
+        if (soundCut && !soundInLoop) {
+            found.push(finding('warning', 'sound-every-frame',
+                `${name} sets the volume or a sound effect in ${soundCut.why}`,
+                `"${soundCut.what}" waits for the next frame, so the script stops there; restarted by the next ` +
+                'broadcast, nothing after it ever runs (no error), and a fast block stops being fast. Set it ' +
+                'from its own script, only when the value changes: whenIReceive(pitchChanged) { ... }.',
+                {sprite: name, script: soundCut.index}, null));
         }
 
         // -- thousands of costumes

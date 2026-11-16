@@ -3,6 +3,7 @@ import {installPenguinModCompat} from '../lib/flipwarp/penguinmod-compat.js';
 import {installLoadingAssets} from '../lib/flipwarp/loading-assets.js';
 import {installExtensionText} from '../lib/flipwarp/runtime-extensions.js';
 import {installMcpBridge} from '../lib/flipwarp/mcp-bridge.js';
+import {installTestPlayer} from '../lib/flipwarp/test-player.js';
 import storage from '../lib/storage';
 import {MAXIMUM_CLOUD_VARIABLES} from '../lib/tw-cloud-limits';
 
@@ -20,6 +21,9 @@ installExtensionText(defaultVM);
 // Lets Claude Code drive the editor through flipwarp-mcp. Does nothing unless
 // the page was opened with ?mcp in its address.
 installMcpBridge(defaultVM);
+// A temporary second player Claude opened to test a game in its room. Does
+// nothing unless the page was opened with ?fwtest in its address.
+installTestPlayer(defaultVM);
 defaultVM.setCompatibilityMode(true);
 defaultVM.runtime.cloudOptions.limit = MAXIMUM_CLOUD_VARIABLES;
 defaultVM.attachStorage(storage);

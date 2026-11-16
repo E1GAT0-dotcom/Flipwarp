@@ -22,6 +22,15 @@ cd mcp && npm install
 The `.mcp.json` in the Flipwarp folder registers the server with Claude Code
 for anyone who opens that folder. Claude Code asks once before starting it.
 
+The server takes a few seconds to start (most of it loading the MCP SDK's
+files), and on a busy computer, with several editors already running, that
+can pass Claude Code's 30 second limit, so the tools never appear. Give it
+longer in the project's `.claude/settings.json`:
+
+```json
+{"env": {"MCP_TIMEOUT": "120000"}}
+```
+
 Then, in Claude Code, ask for something ("make a platformer"). Claude calls
 `open_editor`, which opens <http://127.0.0.1:8601/editor.html?mcp> in your
 browser. The server serves the built editor itself, so nothing else needs to
@@ -53,7 +62,7 @@ behaves exactly as normal.
 | `pause` / `resume` / `step_frames` | Freeze, and run exact frames |
 | `answer_question` | Answers an `askAndWait` |
 | `get_logs` | Errors and warnings the page printed |
-| `play` | A whole sequence of the above in one call |
+| `play` | A whole sequence of the above in one call, including a `drag` that runs frames while the button is held |
 | `preview_drawing` | Draws an SVG, pixel art or image file without adding it: zoomed, and at real size |
 | `add_costume` | Adds a costume (or a backdrop, to `Stage`) and answers with a picture of it |
 | `replace_costume` | Redraws a costume in place, keeping its name and number, and shows it |
@@ -65,6 +74,7 @@ behaves exactly as normal.
 | `set_game_options` | Framerate, fencing, interpolation, high-quality pen, infinite clones, stored in the project |
 | `set_variable` | Sets a variable while the game runs, to set up a test |
 | `room` | Play with friends: hosts a room for the game (code and invite link), sends an update, closes it, says who is in it. Only the person can join someone else's room, and a friend's game open in the tab switches the other tools off |
+| `test_player` | Tests a multiplayer game: opens a temporary second player in its own tab, which joins the room Claude is hosting; then plays as that player (the same steps as `play`) and closes it |
 | `add_sound` | Makes a sound effect from a preset (coin, jump, laser, explosion, hit, powerup, blip, select, bounce, whoosh, step, door, alarm, win, lose) or a recipe, or adds a .wav/.mp3, and describes it |
 | `list_sounds` / `play_sound` / `rename_sound` / `delete_sound` | The rest; `play_sound` plays it out loud for the person watching |
 | `speed_report` | Runs frames at full speed timing each frame, each script and the drawing: whether frames fit their time, where the time goes, clones, and what to try |

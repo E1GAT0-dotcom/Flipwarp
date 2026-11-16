@@ -39,6 +39,7 @@ import {installWatch, follow, showProgress, setIdentity, setPlan, setConnected, 
 import {setFrozen} from './gameplay.js';
 import rooms from './rooms.js';
 import {roomMethods, friendLocked, allowedWhileLocked, lockedMessage} from './rooms-ai.js';
+import {testPlayerMethods} from './test-player.js';
 
 const STYLE = getStyle('js');
 const TEXT_OPTIONS = {style: STYLE, indent: '  '};
@@ -275,6 +276,7 @@ const METHODS = {
     ...perfMethods((target, id) => scriptName(target, id)),
     ...renameMethods(targetNamed),
     ...roomMethods,
+    ...testPlayerMethods,
 
     overview: vm => overview(vm),
 

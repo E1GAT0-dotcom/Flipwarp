@@ -109,6 +109,11 @@ render") can be cut off halfway when it takes longer than a frame, which is
 more likely with the editor tab hidden. Set any "done" flag at the END of the
 work, never the start, so a run that was cut short simply runs again; and do
 not hold a shared "busy" flag across a script a broadcast can restart.
+setVolume, changeVolume, setSoundEffect and changeSoundEffect wait for the
+next frame, like a tiny wait: in a script restarted every frame nothing after
+one ever runs, and in a fast block they end the fast run. Set them from their
+own script, broadcast only when the value changes. (clearSoundEffects does
+not wait.)
 The name in the text is made from the block's label, so read the sprite back
 after writing if you used "as".
 
@@ -156,6 +161,10 @@ Two ways to draw:
   16x16 or 32x32 at scale 2 to 4 is the usual size. Outline in the darkest
   colour, light from the top left, 3 to 6 colours.
 
+A .png or .jpg file (a render, a photo) comes in at one pixel per step. One
+rendered at twice size for sharpness takes resolution: 2, and shows at half
+its pixel size and stays sharp.
+
 Making sprites look good:
 
 - Draw characters facing right. Direction 90 is right in Scratch, so
@@ -197,6 +206,10 @@ Writing a game is half the job; playing it is the other half. After writing:
   tab otherwise runs the game at about one frame a second), so it is the most
   reliable way to test: hold a key, step_frames 30, get_state, release.
 - click and move_mouse use Scratch coordinates. answer_question answers ask().
+- To drag (a slider, a window corner, a sprite that follows the mouse while
+  held), use play's drag step: {do: "drag", x, y, toX, toY, frames}. It runs
+  frames while the button is down; separate mouse down / move / up steps run
+  back to back with no frames between, so the game never sees the move.
 - get_logs shows errors the page printed, such as a script that could not run.
 - Key names are the ones keyPressed uses: "space", "up arrow", "a", and
   TurboWarp's "backspace", "delete", "shift", "caps lock", "control",
