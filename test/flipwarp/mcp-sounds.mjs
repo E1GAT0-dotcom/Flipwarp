@@ -4,7 +4,7 @@
 // to listen to.
 import fs from 'node:fs';
 import path from 'node:path';
-import {PRESETS, RATE, makeSound, render, voiceFor} from '../../mcp/sounds.mjs';
+import {PRESETS, RATE, STYLES, makeSound, randomStyle, render, voiceFor} from '../../mcp/sounds.mjs';
 
 let failures = 0;
 const check = (ok, what, detail) => {
@@ -28,6 +28,32 @@ for (const name of Object.keys(PRESETS)) {
         `${name}: ${about}`, `valid ${valid}, ${seconds}s, peak ${peak}`);
     if (keep) fs.writeFileSync(path.join(keep, `${name}.wav`), wav);
 }
+
+// Every style with every preset: still a clean sound, and not the plain one.
+let styleBad = [];
+for (const style of Object.keys(STYLES)) {
+    for (const name of Object.keys(PRESETS)) {
+        const samples = render(voiceFor({preset: name, style}));
+        const plainOne = render(voiceFor({preset: name}));
+        let peak = 0;
+        for (const s of samples) peak = Math.max(peak, Math.abs(s));
+        const same = samples.length === plainOne.length && samples.every((s, i) => s === plainOne[i]);
+        const seconds = samples.length / RATE;
+        if (!(peak > 0.1 && peak <= 1 && seconds < 5 && Math.abs(samples[samples.length - 1]) < 0.01) || same) {
+            styleBad.push(`${style} ${name}: ${seconds.toFixed(2)}s peak ${peak.toFixed(2)}${same ? ' same as plain' : ''}`);
+        }
+        if (keep) fs.writeFileSync(path.join(keep, `${style}-${name}.wav`), makeSound({preset: name, style}).wav);
+    }
+}
+check(!styleBad.length, `${Object.keys(STYLES).length} styles each change all ${Object.keys(PRESETS).length} presets cleanly`,
+    styleBad.join('; '));
+check(Object.keys(STYLES).includes(randomStyle()), 'a random style is a real one');
+const styledCustom = voiceFor({preset: 'coin', style: 'soft', custom: {wave: 'saw'}});
+check(styledCustom.wave === 'saw' && styledCustom.lowpass === 2200, 'a custom field wins over the style, the rest stays');
+check(/doubled.*echoing|echoing/.test(makeSound({preset: 'laser', style: 'space'}).about), 'the reply says it echoes',
+    makeSound({preset: 'laser', style: 'space'}).about);
+const echoed = render(voiceFor({preset: 'blip', custom: {echo: 0.1, echoMix: 0.5}}));
+check(echoed.length > render(voiceFor({preset: 'blip'})).length + (0.2 * RATE), 'an echo rings on after the sound');
 
 const a = render(voiceFor({preset: 'coin', variation: 1}));
 const b = render(voiceFor({preset: 'coin', variation: 2}));
@@ -56,6 +82,7 @@ const refuses = (request, words, what) => {
 refuses({preset: 'boing'}, 'Presets:', 'an unknown preset is refused, with the list');
 refuses({custom: {wave: 'kazoo'}}, 'is not a wave', 'an unknown wave is refused');
 refuses({}, 'Give a preset', 'nothing at all is refused');
+refuses({preset: 'coin', style: 'polka'}, 'Styles:', 'an unknown style is refused, with the list');
 
 if (failures) {
     console.log(`${failures} failure(s)`);

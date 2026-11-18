@@ -28,7 +28,7 @@ export const registerTools = async (server, ctx, version = 0) => {
     const v = version ? `?v=${version}` : '';
     const {GUIDE} = await import(`./guide.mjs${v}`);
     const {PIECES, CONTRACT, pieceText, mergeText, piecesToAdd} = await import(`./library/index.mjs${v}`);
-    const {PRESETS, VOICE_FIELDS, makeSound} = await import(`./sounds.mjs${v}`);
+    const {PRESETS, STYLES, VOICE_FIELDS, makeSound, randomStyle} = await import(`./sounds.mjs${v}`);
     const {KINDS, addFlag, openFlags, resolveFlag} = await import(`./flags.mjs${v}`);
     const {makeSb3} = await import(`./zip.mjs${v}`);
     const {ask, text, json, failure, tool, describeParse, progress, notifyEditor, setProjectName, projectNameFrom,
@@ -891,19 +891,26 @@ export const registerTools = async (server, ctx, version = 0) => {
 
     const soundRef = z.union([z.string(), z.number()]).describe('Sound name, or its number counting from 1');
     const presetList = Object.entries(PRESETS).map(([name, p]) => `${name} (${p.about})`).join(', ');
+    const styleList = Object.entries(STYLES).map(([name, st]) => `${name} (${st.about})`).join(', ');
 
     register('add_sound', {
         title: 'Add a sound',
         description: 'Makes a game sound effect and adds it to a sprite (or "Stage"), or adds a .wav/.mp3 file. ' +
             `Presets: ${presetList}. Play it in the game with startSound("name") (or playSoundUntilDone). ` +
-            'For different sounds of the same kind (two coins, a high and a low jump) use variation and pitch. ' +
+            'Every game should sound like itself, not like the last one: pick the style that fits this game ' +
+            `and give it to every sound (styles: ${styleList}), and shape the main sounds with custom. ` +
+            'Without a style, this chat keeps one picked at random; without a variation, each sound is a new ' +
+            'take. The reply gives both, to make the same sound again. ' +
             'You cannot hear it: the reply describes it, and play_sound plays it for the person watching.',
         inputSchema: {
             sprite,
             name: z.string().describe('What the blocks will call it, e.g. "jump"'),
             preset: z.enum(Object.keys(PRESETS)).optional(),
+            style: z.enum(Object.keys(STYLES)).optional()
+                .describe('The sound style for the whole game: the same one for all its sounds'),
             variation: z.number().int().min(0).max(9999).optional()
-                .describe('A different take on the preset; the same number always gives the same sound'),
+                .describe('A take on the preset; the same number always gives the same sound, 0 the preset as ' +
+                    'it is. Left out, a new one at random'),
             pitch: z.number().min(-24).max(24).optional().describe('Semitones up (+) or down (-)'),
             length: z.number().min(0.25).max(4).optional().describe('Longer (2) or shorter (0.5)'),
             volume: z.number().min(0).max(1).optional(),
@@ -923,9 +930,19 @@ export const registerTools = async (server, ctx, version = 0) => {
             format = ext;
             about = `from ${path.basename(file)}`;
         } else {
+            // A preset left as it is would be the same sound in every game
+            // every chat makes, so the style and the take vary unless given.
+            if (request.preset) {
+                if (!request.style) {
+                    if (!watch.soundStyle) watch.soundStyle = randomStyle();
+                    request.style = watch.soundStyle;
+                }
+                if (typeof request.variation !== 'number') request.variation = 1 + Math.floor(Math.random() * 9999);
+            }
             const made = makeSound(request);
             data = made.wav.toString('base64');
-            about = made.about;
+            about = made.about + (request.preset ?
+                ` (style "${request.style}", variation ${request.variation})` : '');
         }
         const r = await ask('addSound', {sprite: which, name, data, format}, 60000);
         const renamed = r.sound.name !== name ? ` (named "${r.sound.name}": "${name}" was taken)` : '';
@@ -1138,13 +1155,25 @@ export const registerTools = async (server, ctx, version = 0) => {
     register('set_variable', {
         title: 'Set a variable',
         description: 'Sets a variable (or list) while the project runs, to set up a test: move the player next ' +
-            'to an enemy, put the score near a win. A sprite\'s own variable, or a global one.',
+            'to an enemy, put the score near a win. A sprite\'s own variable, or a global one. A long run ' +
+            'of digits (a cloud message) in value can arrive as a rounded number: give it as text instead.',
         inputSchema: {
             sprite: z.string().optional().describe('Whose variable; leave out for a global'),
             name: z.string(),
-            value: z.union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))])
+            value: z.union([z.string(), z.number(), z.array(z.union([z.string(), z.number()]))]).optional(),
+            text: z.string().optional().describe('The value as text, kept exactly as written, in place of value')
         }
-    }, tool(async args => json(await ask('setVariable', args))));
+    }, tool(async ({text: asText, value, ...args}) => {
+        const given = typeof asText === 'string' ? asText : value;
+        if (given === null || typeof given === 'undefined') throw new Error('Give a value (or text).');
+        const r = await ask('setVariable', {...args, value: given});
+        // A number this long has lost digits on the way in.
+        if (typeof given === 'number' && Math.abs(given) >= 1e15) {
+            r.note = 'That number is past 15 digits, so it may have been rounded on the way in. If it was ' +
+                'meant as a string of digits (a cloud message), set it again with text.';
+        }
+        return json(r);
+    }));
 
     // Rooms: the person plays the game with friends, the editor tab being the
     // cloud variable server. Each player has their own Claude, so this one can
@@ -1229,9 +1258,12 @@ export const registerTools = async (server, ctx, version = 0) => {
             'the test player. "close" when done (it also closes with the room). "status" says if it is in.',
         inputSchema: {
             action: z.enum(['open', 'play', 'status', 'close']),
-            steps: z.array(stepSchema).min(1).max(100).optional().describe('play: the steps, as in the play tool')
+            steps: z.array(stepSchema).min(1).max(100).optional().describe('play: the steps, as in the play tool'),
+            keep_running: z.boolean().optional().describe('play: let the test player\'s game run on after the ' +
+                'steps instead of staying paused after a step, so it keeps talking to the host between calls ' +
+                '(a paused player can look as if it left). resume does the same for the host.')
         }
-    }, tool(async ({action, steps}) => {
+    }, tool(async ({action, steps, keep_running: keepRunning}) => {
         if (action === 'open') {
             const {url, code} = await ask('testPlayerOpen');
             await openTab(url);
@@ -1271,8 +1303,17 @@ export const registerTools = async (server, ctx, version = 0) => {
         if (action === 'close') return json(await ask('testPlayerClose'));
         if (!steps || !steps.length) return failure('play needs steps, the same as the play tool takes.');
         const r = await runSteps(steps, asPlayer);
+        let after = '';
+        if (keepRunning) {
+            try {
+                await asPlayer('freeze', {frozen: false}, 10000);
+                after = '\nIts game is running on.';
+            } catch (e) {
+                after = `\nIt could not be set running again: ${e.message}`;
+            }
+        }
         // Said on every answer, so the screenshots are not taken for the host's.
-        r.content[0].text = `As the test player:\n${r.content[0].text}`;
+        r.content[0].text = `As the test player:\n${r.content[0].text}${after}`;
         return r;
     }));
 

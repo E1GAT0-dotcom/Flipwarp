@@ -217,10 +217,32 @@ const screenshot = async (vm, {grid = false, scale = 1} = {}) => {
 
 // --- reading what the project is doing -----------------------------------
 
+// A reply too big to send takes the server down with it (a sprite holding
+// 20 MB of lists did). So long text is cut, and once a reply has used its
+// budget the remaining variables only say how big they are.
+const TEXT_LIMIT = 2000;
+const STATE_BUDGET = 1000000;
+let budget = STATE_BUDGET;
+
+const cut = value => {
+    if (typeof value !== 'string' || value.length <= TEXT_LIMIT) return value;
+    return `${value.slice(0, TEXT_LIMIT)}... (${value.length} characters in all)`;
+};
+
+const sizeOf = value => (typeof value === 'string' ? value.length : 8);
+
 const valueOf = v => {
-    if (v.type !== 'list') return v.value;
-    if (v.value.length <= LIST_LIMIT) return v.value;
-    return {first: v.value.slice(0, LIST_LIMIT), length: v.value.length};
+    if (v.type !== 'list') {
+        if (budget <= 0) return {notShown: true, characters: String(v.value).length};
+        const out = cut(v.value);
+        budget -= sizeOf(out);
+        return out;
+    }
+    if (budget <= 0) return {notShown: true, length: v.value.length};
+    const first = v.value.slice(0, LIST_LIMIT).map(cut);
+    budget -= first.reduce((sum, item) => sum + sizeOf(item) + 3, 0);
+    return v.value.length <= LIST_LIMIT && first.every((item, i) => item === v.value[i]) ? first :
+        {first, length: v.value.length};
 };
 
 const variablesOf = target => {
@@ -255,7 +277,8 @@ const stateOf = (vm, {sprites, clones = true} = {}) => {
     const originals = runtime.targets.filter(t => t.isSprite && t.isOriginal &&
         (!wanted || wanted.has(t.getName())));
     const mouse = runtime.ioDevices.mouse;
-    return {
+    budget = STATE_BUDGET;
+    const state = {
         running: runtime.threads.length > 0,
         visible: pageVisible(),
         frozen: isFrozen(),
@@ -282,6 +305,11 @@ const stateOf = (vm, {sprites, clones = true} = {}) => {
             return out;
         })
     };
+    if (budget <= 0) {
+        state.note = 'There was too much to show it all: variables marked notShown only give their size. Ask ' +
+            'for fewer sprites (sprites), or keep what you need to read in a small sprite or the Stage.';
+    }
+    return state;
 };
 
 // --- the requests ----------------------------------------------------------

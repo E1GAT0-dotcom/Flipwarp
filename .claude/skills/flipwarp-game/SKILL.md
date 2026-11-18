@@ -153,10 +153,16 @@ before changing code; do not guess.
   to use, a character reacting.
 - Feel: animation frames, a bounce when squashing enemies, the camera
   easing. The pieces already do the hard parts of feel; keep them.
-- Sound: `add_sound` a preset for each thing that happens (jump, coin, hit,
-  explosion, win, lose...) on the sprite it happens to, and `startSound("jump")`
-  at that moment. Use `variation` and `pitch` so two sounds of a kind differ.
-  You cannot hear them; `play_sound` lets the person hear one.
+- Sound: every game sounds like itself, never like the last game. Choose
+  the `style` that fits this game (chiptune, soft, arcade, space, cartoon,
+  toy, heavy, lofi, eerie) and give it to every `add_sound`. Shape the
+  game's main sounds with `custom` (wave, pitch, slide, echo, detune, crush)
+  so they suit what makes them: a slime's jump is not a robot's. Then
+  `add_sound` one for each thing that happens (jump, coin, hit, explosion,
+  win, lose...) on the sprite it happens to, and `startSound("jump")` at that
+  moment. Don't copy sound files or recipes from other games. Note the style
+  in the game's notes so later changes match. You cannot hear them;
+  `play_sound` lets the person hear one.
 - Speed: if it might be heavy (pen drawing, many clones, 3D), get to the
   busiest part and run `speed_report`; fix what it points at.
 - `save_project` if the user wants a file. Tell the user the controls, what

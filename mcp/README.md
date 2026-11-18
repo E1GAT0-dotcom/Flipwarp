@@ -75,7 +75,7 @@ behaves exactly as normal.
 | `set_variable` | Sets a variable while the game runs, to set up a test |
 | `room` | Play with friends: hosts a room for the game (code and invite link), sends an update, closes it, says who is in it. Only the person can join someone else's room, and a friend's game open in the tab switches the other tools off |
 | `test_player` | Tests a multiplayer game: opens a temporary second player in its own tab, which joins the room Claude is hosting; then plays as that player (the same steps as `play`) and closes it |
-| `add_sound` | Makes a sound effect from a preset (coin, jump, laser, explosion, hit, powerup, blip, select, bounce, whoosh, step, door, alarm, win, lose) or a recipe, or adds a .wav/.mp3, and describes it |
+| `add_sound` | Makes a sound effect from a preset (coin, jump, laser, explosion, hit, powerup, blip, select, bounce, whoosh, step, door, alarm, win, lose) in a game's style (chiptune, soft, arcade, space, cartoon, toy, heavy, lofi, eerie) or from a recipe, or adds a .wav/.mp3, and describes it. Without a style or variation each chat's sounds come out different, so games don't all sound the same |
 | `list_sounds` / `play_sound` / `rename_sound` / `delete_sound` | The rest; `play_sound` plays it out loud for the person watching |
 | `speed_report` | Runs frames at full speed timing each frame, each script and the drawing: whether frames fit their time, where the time goes, clones, and what to try |
 | `rename` | Renames a variable, list, message, custom block or custom block input everywhere it is used (not cloud variables) |

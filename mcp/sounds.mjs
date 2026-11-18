@@ -34,13 +34,111 @@ export const VOICE_FIELDS = {
     punch: '0 to 1: extra loudness at the start of the sustain',
     lowpass: 'Hz above which sound is softened (0 for none)',
     highpass: 'Hz below which sound is cut (0 for none)',
+    detune: 'cents: a second voice this far off the first, for a thicker, chorused sound (0 for none)',
+    echo: 'seconds between echoes (0 for none)',
+    echoMix: '0 to 0.8: how loud each echo is against the one before',
+    crush: '0 to 1: fewer loudness steps, from clean to crunchy and lo-fi',
     volume: '0 to 1'
 };
 
 const BASE = {
     wave: 'square', freq: 440, slide: 0, slideAccel: 0, duty: 0.5, dutySweep: 0,
     vibratoDepth: 0, vibratoSpeed: 0, notes: null, jumpAt: 0, jumpBy: 1,
-    attack: 0, sustain: 0.05, decay: 0.15, punch: 0, lowpass: 0, highpass: 0, volume: 0.5
+    attack: 0, sustain: 0.05, decay: 0.15, punch: 0, lowpass: 0, highpass: 0,
+    detune: 0, echo: 0, echoMix: 0.35, crush: 0, volume: 0.5
+};
+
+// A game's sound style: one for the whole game, so its sounds belong
+// together and sound unlike other games'. Each changes a preset's voice.
+const tonal = v => v.wave !== 'noise';
+const notesBy = (v, k) => {
+    if (v.notes) v.notes = v.notes.map(([f, d]) => [f * k, d]);
+};
+export const STYLES = {
+    chiptune: {about: 'bright 8-bit console beeps', apply: v => {
+        if (tonal(v)) {
+            v.wave = 'square';
+            v.duty = v.duty > 0.3 ? 0.5 : 0.125;
+        }
+        v.lowpass = 0;
+        v.crush = 0.35;
+    }},
+    soft: {about: 'gentle and round, for calm or cute games', apply: v => {
+        if (tonal(v)) v.wave = v.freq > 600 ? 'sine' : 'triangle';
+        v.lowpass = v.lowpass ? Math.min(v.lowpass, 2200) : 2200;
+        v.attack = Math.max(v.attack, 0.008);
+        v.decay *= 1.4;
+        v.punch *= 0.3;
+    }},
+    arcade: {about: 'buzzy, punchy coin-op sounds', apply: v => {
+        if (tonal(v)) v.wave = 'saw';
+        v.punch = Math.min(1, v.punch + 0.3);
+        v.highpass = Math.max(v.highpass, 150);
+        v.slide *= 1.3;
+    }},
+    space: {about: 'wide sci-fi synth with echoes', apply: v => {
+        if (tonal(v)) {
+            v.wave = 'saw';
+            v.detune = 14;
+            v.vibratoDepth = v.vibratoDepth || 0.3;
+            v.vibratoSpeed = v.vibratoSpeed || 5;
+        }
+        v.lowpass = v.lowpass ? Math.min(v.lowpass, 3500) : 3500;
+        v.echo = 0.11;
+        v.echoMix = 0.4;
+    }},
+    cartoon: {about: 'bouncy, slidey and silly', apply: v => {
+        if (tonal(v)) v.wave = 'triangle';
+        v.slide = v.slide ? v.slide * 1.8 : 1.2;
+        v.vibratoDepth = Math.max(v.vibratoDepth, 0.8);
+        v.vibratoSpeed = v.vibratoSpeed || 9;
+        v.decay *= 1.2;
+    }},
+    toy: {about: 'small, high, music-box plinks', apply: v => {
+        if (tonal(v)) v.wave = 'sine';
+        v.freq *= 1.6;
+        notesBy(v, 2);
+        v.sustain *= 0.6;
+        v.decay *= 1.5;
+        v.echo = 0.07;
+        v.echoMix = 0.25;
+    }},
+    heavy: {about: 'low, thick and loud, for action and monsters', apply: v => {
+        v.freq *= 0.6;
+        notesBy(v, 0.5);
+        if (tonal(v)) {
+            v.wave = 'saw';
+            v.detune = 22;
+        }
+        v.lowpass = v.lowpass ? Math.min(v.lowpass, 1800) : 1800;
+        v.punch = Math.min(1, v.punch + 0.4);
+        v.decay *= 1.4;
+    }},
+    lofi: {about: 'crunchy, muffled and old', apply: v => {
+        v.crush = 0.75;
+        v.lowpass = v.lowpass ? Math.min(v.lowpass, 2600) : 2600;
+        v.highpass = Math.max(v.highpass, 200);
+        v.freq *= 0.85;
+        notesBy(v, 0.85);
+    }},
+    eerie: {about: 'wobbly and hollow, for spooky or dark games', apply: v => {
+        if (tonal(v)) v.wave = 'sine';
+        v.vibratoDepth = Math.max(v.vibratoDepth, 1.2);
+        v.vibratoSpeed = 4;
+        v.detune = 35;
+        v.attack = Math.max(v.attack, 0.02);
+        v.decay *= 1.8;
+        v.echo = 0.18;
+        v.echoMix = 0.45;
+        v.freq *= 0.8;
+        notesBy(v, 0.94);
+    }}
+};
+
+/** @returns {string} a style picked at random, so a game nobody chose a style for still sounds its own */
+export const randomStyle = () => {
+    const names = Object.keys(STYLES);
+    return names[Math.floor(Math.random() * names.length)];
 };
 
 const note = (name, octave) => {
@@ -119,12 +217,18 @@ const seeded = seed => {
  * @param {object} request {preset, custom, variation, pitch, length, volume}
  * @returns {object} a complete voice
  */
-export const voiceFor = ({preset, custom, variation = 0, pitch = 0, length = 1, volume}) => {
+export const voiceFor = ({preset, custom, style, variation = 0, pitch = 0, length = 1, volume}) => {
     if (!preset && !custom) throw new Error('Give a preset or a custom sound.');
     if (preset && !PRESETS[preset]) {
         throw new Error(`There is no sound preset "${preset}". Presets: ${Object.keys(PRESETS).join(', ')}.`);
     }
-    const voice = {...BASE, ...(preset ? PRESETS[preset].voice : {}), ...(custom || {})};
+    if (style && !STYLES[style]) {
+        throw new Error(`There is no sound style "${style}". Styles: ${Object.keys(STYLES).join(', ')}.`);
+    }
+    const voice = {...BASE, ...(preset ? PRESETS[preset].voice : {})};
+    // The game's style changes the preset; the recipe's own fields still win.
+    if (style) STYLES[style].apply(voice);
+    Object.assign(voice, custom || {});
     if (!['square', 'saw', 'triangle', 'sine', 'noise'].includes(voice.wave)) {
         throw new Error(`"${voice.wave}" is not a wave. Use square, saw, triangle, sine or noise.`);
     }
@@ -156,6 +260,22 @@ export const voiceFor = ({preset, custom, variation = 0, pitch = 0, length = 1, 
 
 const envelopeLength = v => v.attack + v.sustain + v.decay;
 
+// One cycle of a tonal wave, at p from 0 to 1.
+const oscillator = (v, p, t) => {
+    switch (v.wave) {
+    case 'square': {
+        const duty = Math.min(0.5, Math.max(0.05, v.duty + (v.dutySweep * t)));
+        return p < duty ? 1 : -1;
+    }
+    case 'saw':
+        return (2 * p) - 1;
+    case 'triangle':
+        return p < 0.5 ? (4 * p) - 1 : 3 - (4 * p);
+    default:
+        return Math.sin(2 * Math.PI * p);
+    }
+};
+
 /**
  * Render a voice to samples between -1 and 1.
  * @param {object} v a voice from voiceFor
@@ -166,7 +286,9 @@ export const render = v => {
     // decay; a single sound is its envelope.
     const parts = v.notes ? v.notes.map(([freq, seconds]) => ({freq, seconds})) :
         [{freq: v.freq, seconds: envelopeLength(v)}];
-    const total = parts.reduce((sum, p) => sum + p.seconds, 0) + (v.notes ? v.decay : 0);
+    const echoes = v.echo > 0 && v.echoMix > 0;
+    const total = parts.reduce((sum, p) => sum + p.seconds, 0) + (v.notes ? v.decay : 0) +
+        (echoes ? v.echo * Math.ceil(Math.log(0.02) / Math.log(Math.min(0.8, v.echoMix))) : 0);
     const length = Math.max(1, Math.min(RATE * 10, Math.round(total * RATE)));
     const out = new Float32Array(length);
     const random = seeded(7);
@@ -180,6 +302,7 @@ export const render = v => {
         const tail = v.notes ? (last ? v.decay : Math.min(v.decay, 0.02)) : 0;
         const partLength = Math.round((part.seconds + tail) * RATE);
         let phase = 0;
+        let phase2 = 0;
         let noiseValue = 0;
         let lastNoisePhase = 0;
         let low = 0;
@@ -211,23 +334,7 @@ export const render = v => {
             phase += freq / RATE;
 
             let s;
-            const p = phase % 1;
-            switch (v.wave) {
-            case 'square': {
-                const duty = Math.min(0.5, Math.max(0.05, v.duty + (v.dutySweep * t)));
-                s = p < duty ? 1 : -1;
-                break;
-            }
-            case 'saw':
-                s = (2 * p) - 1;
-                break;
-            case 'triangle':
-                s = p < 0.5 ? (4 * p) - 1 : 3 - (4 * p);
-                break;
-            case 'sine':
-                s = Math.sin(2 * Math.PI * p);
-                break;
-            default:
+            if (v.wave === 'noise') {
                 // Noise: a new random level twice a cycle, so its "pitch"
                 // still means something.
                 if (phase - lastNoisePhase >= 0.5) {
@@ -235,6 +342,14 @@ export const render = v => {
                     lastNoisePhase = phase;
                 }
                 s = noiseValue;
+            } else {
+                s = oscillator(v, phase % 1, t);
+                if (v.detune) {
+                    // A second voice slightly off the first: the two beat
+                    // against each other, which sounds wider.
+                    phase2 += freq * Math.pow(2, v.detune / 1200) / RATE;
+                    s = (s + oscillator(v, phase2 % 1, t)) * 0.6;
+                }
             }
 
             if (v.lowpass > 0) {
@@ -248,9 +363,20 @@ export const render = v => {
                 lastIn = s;
                 s = high;
             }
-            out[start + i] += s * env * v.volume * 0.8;
+            let level = s * env * v.volume * 0.8;
+            if (v.crush > 0) {
+                // Few loudness steps, so the fade-out goes in stairs.
+                const levels = Math.round(Math.pow(2, 7 - (5 * Math.min(1, v.crush))));
+                level = Math.round(level * levels) / levels;
+            }
+            out[start + i] += level;
         }
         at += part.seconds;
+    }
+    if (echoes) {
+        const gap = Math.max(1, Math.round(v.echo * RATE));
+        const mix = Math.min(0.8, v.echoMix);
+        for (let i = gap; i < length; i++) out[i] += out[i - gap] * mix;
     }
     // No clicks at the very end.
     const tail = Math.min(length, Math.round(RATE * 0.005));
@@ -307,7 +433,10 @@ export const describeSound = (v, samples) => {
         pitch = Math.abs(Math.log2(to / v.freq)) < 0.05 ? `${Math.round(v.freq)} Hz` :
             `${Math.round(v.freq)} Hz ${to > v.freq ? 'rising' : 'falling'} to ${Math.round(to)} Hz`;
     }
-    return `${seconds.toFixed(2)}s, ${v.wave}, ${pitch}, peak ${Math.round(peak * 100)}%`;
+    const extras = [v.detune && 'doubled', v.echo > 0 && v.echoMix > 0 && 'echoing', v.crush > 0 && 'crunchy',
+        v.vibratoDepth && 'wobbling'].filter(Boolean);
+    return `${seconds.toFixed(2)}s, ${v.wave}${extras.length ? ` (${extras.join(', ')})` : ''}, ${pitch}, ` +
+        `peak ${Math.round(peak * 100)}%`;
 };
 
 /**

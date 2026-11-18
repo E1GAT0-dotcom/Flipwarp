@@ -4,6 +4,7 @@ import {installLoadingAssets} from '../lib/flipwarp/loading-assets.js';
 import {installExtensionText} from '../lib/flipwarp/runtime-extensions.js';
 import {installMcpBridge} from '../lib/flipwarp/mcp-bridge.js';
 import {installTestPlayer} from '../lib/flipwarp/test-player.js';
+import {installSaveFixes} from '../lib/flipwarp/save-fixes.js';
 import storage from '../lib/storage';
 import {MAXIMUM_CLOUD_VARIABLES} from '../lib/tw-cloud-limits';
 
@@ -24,6 +25,8 @@ installMcpBridge(defaultVM);
 // A temporary second player Claude opened to test a game in its room. Does
 // nothing unless the page was opened with ?fwtest in its address.
 installTestPlayer(defaultVM);
+// Saved list monitors always hold a list, or the saved game can crash TurboWarp.
+installSaveFixes(defaultVM);
 defaultVM.setCompatibilityMode(true);
 defaultVM.runtime.cloudOptions.limit = MAXIMUM_CLOUD_VARIABLES;
 defaultVM.attachStorage(storage);
