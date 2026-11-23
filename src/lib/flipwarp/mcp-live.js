@@ -665,6 +665,7 @@ export const describe = (method, params = {}, result = {}, failed = false) => {
     case 'health': return {icon: '🩺', text: 'ran the health check', tone: 'dim'};
     case 'fixHealth': return {icon: '🩺', text: 'fixed what the health check found'};
     case 'gameOptions': return {icon: '⚙️', text: 'changed game options', tone: 'dim'};
+    case 'loadExtension': return failed ? null : {icon: '🧩', text: `added the extension ${params.extension}`};
     case 'setVariable': return {icon: '🔧', text: `set ${params.name} to ${JSON.stringify(params.value)}`, tone: 'dim'};
     case 'saveProject': return {icon: '💾', text: 'saved the project'};
     case 'saveFilesPart': return result.done ? {icon: '💾', text: 'saved the project'} :

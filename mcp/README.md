@@ -41,7 +41,7 @@ behaves exactly as normal.
 
 | Tool | What it does |
 |---|---|
-| `open_editor` | Opens the editor and waits for it to connect |
+| `open_editor` | Opens the editor and waits for it to connect. If the tab in use has frozen (a huge project), opens a fresh one that takes over |
 | `text_reference` | The rules of the text and every block it knows, or the blocks matching a search |
 | `project_overview` | Sprites, costumes, sounds, variables, extensions |
 | `read_sprite` | A sprite's scripts as text |
@@ -52,7 +52,8 @@ behaves exactly as normal.
 | `health_check` / `fix_health` | The project health check, and its automatic fixes |
 | `create_sprite` / `delete_sprite` / `rename_sprite` / `select_sprite` | Sprites |
 | `set_extension_text` | The "Text for other extensions' blocks" setting |
-| `save_project` / `load_project` | `.sb3` files on this computer |
+| `add_extension` | Adds a TurboWarp gallery extension (only extensions.turbowarp.org) and lists its blocks in text |
+| `save_project` / `load_project` | `.sb3` files on this computer. `load_project` stops before a file over 20 MB until `big_ok`, so the person is told first |
 | `green_flag` / `stop` | Start and stop the project |
 | `press_keys` / `hold_keys` / `release_keys` | Keyboard, by the names `keyPressed` uses |
 | `click` / `move_mouse` | The mouse, in Scratch coordinates |
@@ -77,6 +78,7 @@ behaves exactly as normal.
 | `test_player` | Tests a multiplayer game: opens a temporary second player in its own tab, which joins the room Claude is hosting; then plays as that player (the same steps as `play`) and closes it |
 | `add_sound` | Makes a sound effect from a preset (coin, jump, laser, explosion, hit, powerup, blip, select, bounce, whoosh, step, door, alarm, win, lose) in a game's style (chiptune, soft, arcade, space, cartoon, toy, heavy, lofi, eerie) or from a recipe, or adds a .wav/.mp3, and describes it. Without a style or variation each chat's sounds come out different, so games don't all sound the same |
 | `list_sounds` / `play_sound` / `rename_sound` / `delete_sound` | The rest; `play_sound` plays it out loud for the person watching |
+| `library` | Scratch's own library: searches, shows and adds its sprites (with all their costumes and sounds), costumes, backdrops and sounds. Files come from Scratch's asset server and are kept in `~/.flipwarp/library` |
 | `speed_report` | Runs frames at full speed timing each frame, each script and the drawing: whether frames fit their time, where the time goes, clones, and what to try |
 | `rename` | Renames a variable, list, message, custom block or custom block input everywhere it is used (not cloud variables) |
 | `restyle_workflow` | How to rebuild a finished game the Scratch way without changing how it plays |

@@ -89,15 +89,63 @@ const ask = (method, params = {}, timeout = 30000) => new Promise((resolve, reje
         return;
     }
     const id = nextId++;
+    const asked = editor;
     const timer = setTimeout(() => {
         pending.delete(id);
         reject(new Error(`Flipwarp did not answer "${method}" within ${timeout / 1000}s.`));
+        // A newer tab of this chat is waiting: if this one has frozen, it
+        // takes over, so the next call does not wait on a dead tab too.
+        if (asked === editor && waiting.some(ws => ws.readyState === ws.OPEN)) {
+            answers(asked, 10000).then(ok => {
+                if (!ok && asked === editor) handOver('the tab in use stopped answering');
+            });
+        }
     }, timeout);
     pending.set(id, {resolve, reject, timer, method, socket: editor});
     // Why Claude is doing it, for the person watching; an older editor tab
     // ignores it.
     editor.send(JSON.stringify({id, method, params, why: currentWhy}));
 });
+
+// Whether a tab still answers at all: a cheap question every editor knows.
+// A tab frozen by a huge project answers nothing until the person reloads it.
+const answers = (ws, ms) => new Promise(resolve => {
+    if (!ws || ws.readyState !== ws.OPEN) {
+        resolve(false);
+        return;
+    }
+    const id = nextId++;
+    const timer = setTimeout(() => {
+        pending.delete(id);
+        resolve(false);
+    }, ms);
+    pending.set(id, {resolve: () => resolve(true), reject: () => resolve(true), timer, method: 'unsavedEdits', socket: ws});
+    ws.send(JSON.stringify({id, method: 'unsavedEdits', params: {}}));
+});
+
+// The tab in use has frozen: the newest tab of this chat that is waiting gets
+// the job. What the frozen one was asked fails now, saying so.
+const handOver = reason => {
+    const old = editor;
+    promote();
+    if (!editor || editor === old) {
+        editor = old;
+        return false;
+    }
+    for (const [id, request] of pending) {
+        if (request.socket !== old) continue;
+        clearTimeout(request.timer);
+        request.reject(new Error('That Flipwarp tab stopped answering, so a newer tab of this chat took over. ' +
+            'It has its own project open: check it with project_overview, and load_project the game again.'));
+        pending.delete(id);
+    }
+    old.retired = true;
+    log(`a newer editor tab took over: ${reason}`);
+    watch.takenOver = false;
+    notifyEditor('welcome', {...identity(), plan: watch.plan});
+    writeStatus();
+    return true;
+};
 
 // --- what the person watching sees -------------------------------------------
 //
@@ -418,6 +466,11 @@ sockets.on('connection', ws => {
                 }
                 waiting.push(ws);
                 log('another editor tab connected; it waits until the first one closes');
+                // Unless the first one has frozen: then this one takes over.
+                const inUse = editor;
+                answers(inUse, 15000).then(ok => {
+                    if (!ok && editor === inUse && waiting.includes(ws)) handOver('the tab in use did not answer for 15s');
+                });
             } else {
                 editor = ws;
                 resetStale();
@@ -668,7 +721,26 @@ server.registerTool('open_editor', {
         'default browser and waits for it to connect.',
     inputSchema: {launch: z.boolean().optional().describe('Open a browser tab if none is connected (default true)')}
 }, tool(async ({launch = true}) => {
-    if (editor && editor.readyState === editor.OPEN) return text(connectedMessage());
+    if (editor && editor.readyState === editor.OPEN) {
+        if (await answers(editor, 10000)) return text(connectedMessage());
+        // Connected but frozen (a huge project, most often): a fresh tab of
+        // this chat takes over from it.
+        if (!launch) {
+            return failure('A Flipwarp tab is connected but has not answered for 10s: it may be frozen. Call ' +
+                'open_editor again to open a fresh tab that takes over, or ask the person to reload it.');
+        }
+        const frozen = editor;
+        launchEditor();
+        const until = Date.now() + 60000;
+        while (Date.now() < until && editor === frozen) await new Promise(r => setTimeout(r, 1000));
+        if (editor !== frozen && editor && editor.readyState === editor.OPEN) {
+            return text('The tab in use had stopped answering, so a fresh tab took over. It has a new, empty ' +
+                'project: load_project the game again (anything not saved was in the frozen tab).\n' +
+                connectedMessage());
+        }
+        return failure(`The tab in use is frozen and a fresh one did not connect within a minute. Open ` +
+            `${editorUrl()} in a browser, or ask the person to reload the frozen tab.`);
+    }
     await listening;
     if (!serving) {
         return failure(`This server could not use port ${PORTS.join(', ')} (other copies of flipwarp-mcp ` +

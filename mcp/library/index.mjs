@@ -51,7 +51,11 @@ export const CONTRACT = `How the pieces fit together:
 - Globals: levelRows (list), tileSize, solidTiles, tileChars, levelCols, levelRowCount,
   spawnX, spawnY, camX, camY, viewX, viewY, playerX, playerY, playerVY, score.
 - Fencing must be off (set_game_options), or sprites near the edges are pushed back
-  onto the screen. Adding a piece that needs it turns it off.`;
+  onto the screen. Adding a piece that needs it turns it off. Scratch's own website
+  ignores that setting and always fences, so for a game shared there, every sprite that
+  can leave the screen hides itself when Scratch has pushed it back: after goToXY, if
+  abs(xPosition() - wantedX) > 0.5 (or y), hide and count it off screen; check touching
+  only while it is on screen; delete clones by their world position, not xPosition().`;
 
 export const PIECES = {
     level: {

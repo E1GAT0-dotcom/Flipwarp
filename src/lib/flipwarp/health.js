@@ -185,6 +185,10 @@ const finding = (grade, kind, title, detail, where, fix) => ({
 // games people made, and set so that the people's games pass: each threshold
 // is above anything in those.
 
+// The hats a clone runs too (all but the green flag).
+const CLONE_HATS = new Set(['control_start_as_clone', 'event_whenbroadcastreceived', 'event_whenkeypressed',
+    'event_whenthisspriteclicked', 'event_whenbackdropswitchesto', 'event_whengreaterthan',
+    'event_whentouchingobject']);
 // A loop that goes round once a frame, more or less: what a game loop is.
 const LOOPS = new Set(['control_forever', 'control_repeat_until', 'control_while']);
 
@@ -581,7 +585,9 @@ export const checkProject = vm => {
                     clonesMade.get(who).push(at);
                 }
             }
-            if (block.opcode === 'control_start_as_clone') clonesHandled.add(name);
+            // Clones run every hat but the green flag: "when I receive",
+            // keys, clicks and the like start in each clone too.
+            if (CLONE_HATS.has(block.opcode)) clonesHandled.add(name);
 
             for (const field of Object.values(block.fields || {})) {
                 if (field && field.id) {
@@ -730,9 +736,12 @@ export const checkProject = vm => {
                     `It is made ${where} and no block ever reads it or changes it.`,
                     {sprite: name},
                     {type: 'delete-variable', target: name, variable: variable.id}));
-            } else if (target.isStage && users.size === 1 && !users.has(name) && !variable.isCloud) {
+            } else if (target.isStage && users.size === 1 && !users.has(name) && !variable.isCloud &&
+                !clonesMade.has([...users][0])) {
                 // A cloud variable has to stay on the Stage: made for one
                 // sprite it would stop being shared, so it is never suggested.
+                // Nor for a sprite that makes clones: each clone would get its
+                // own copy, and clones that share it would stop sharing.
                 const only = [...users][0];
                 found.push(finding('tidy', 'global-used-once',
                     `The ${what} "${variable.name}" could belong to ${only}`,

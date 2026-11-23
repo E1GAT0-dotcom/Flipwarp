@@ -347,6 +347,25 @@ export const registerTools = async (server, ctx, version = 0) => {
             `${r.otherExtensionText ? `: ${r.blocks} block(s) from loaded extensions have a text form.` : '.'}`);
     }));
 
+    register('add_extension', {
+        title: 'Add a gallery extension',
+        description: 'Adds an extension from TurboWarp\'s gallery (extensions.turbowarp.org) to the project, ' +
+            'turns on text for other extensions, and lists its blocks as you write them in write_sprite. ' +
+            'Use it before writing blocks of an extension the project does not have yet (Gamepad, Pen+, ' +
+            'files, local storage...), instead of editing project.json. Give the id from the gallery\'s ' +
+            'address, like "gamepad", "obviousAlexC/penPlus" or "Lily/MoreTimers". Games using one still ' +
+            'play in TurboWarp and Flipwarp, not on scratch.mit.edu.',
+        inputSchema: {extension: z.string().describe('The gallery id, or its https://extensions.turbowarp.org/ address')}
+    }, tool(async args => {
+        const r = await ask('loadExtension', args, 60000);
+        if (!r.extensions.length) {
+            return text(`${r.url} was already in the project (or added no blocks). text_reference and read_sprite ` +
+                'show its blocks.');
+        }
+        return text(`Added ${r.extensions.map(e => `${e.name} (${e.id})`).join(', ')} from ${r.url}. Its blocks ` +
+            `in text, with their inputs:\n${r.blocks.join('\n')}`);
+    }));
+
     register('save_project', {
         title: 'Save the project',
         description: 'Saves the project open in the editor as an .sb3 file on this computer.',
@@ -412,10 +431,21 @@ export const registerTools = async (server, ctx, version = 0) => {
         inputSchema: {
             path: z.string().describe('The .sb3 file to open'),
             discard_unsaved: z.boolean().optional()
-                .describe('Open it even though changes made in the editor since the last save will be lost')
+                .describe('Open it even though changes made in the editor since the last save will be lost'),
+            big_ok: z.boolean().optional()
+                .describe('Open a file over 20 MB, once the person knows it will be slow')
         }
-    }, tool(async ({path: file, discard_unsaved: discard}) => {
+    }, tool(async ({path: file, discard_unsaved: discard, big_ok: bigOk}) => {
         const data = fs.readFileSync(path.resolve(file));
+        // Big projects take minutes and can freeze the tab, which only the
+        // person can then reload: they should know before it starts.
+        const megabytes = data.length / 1048576;
+        if (megabytes > 20 && !bigOk) {
+            return failure(`${path.basename(file)} is ${megabytes.toFixed(0)} MB. Projects this big take minutes to ` +
+                'open and can freeze the editor tab, which only the person can reload. Tell them first, then ' +
+                'pass big_ok: true. While working on it, save_project after every few changes. For a huge one, ' +
+                'a light copy (most pictures swapped for a tiny placeholder) opens in seconds.');
+        }
         if (!discard) {
             // Changes made with write_sprite and the like live only in the
             // editor until saved; loading over them loses them for good.
@@ -973,6 +1003,153 @@ export const registerTools = async (server, ctx, version = 0) => {
         description: 'Removes a sound from a sprite.',
         inputSchema: {sprite, sound: soundRef}
     }, tool(async args => json(await ask('deleteSound', args))));
+
+    // --- Scratch's own library -----------------------------------------------------
+    //
+    // The sprites, costumes, backdrops and sounds Scratch's editor offers, drawn
+    // and recorded by people. The lists ship with the editor; the files come
+    // from Scratch's asset server, kept once fetched.
+
+    const LIBRARY_KINDS = {sprite: 'sprites', costume: 'costumes', backdrop: 'backdrops', sound: 'sounds'};
+    const libraryCache = {};
+    const libraryOf = kind => {
+        if (!libraryCache[kind]) {
+            const file = path.join(here, '..', 'src', 'lib', 'libraries', `${LIBRARY_KINDS[kind]}.json`);
+            libraryCache[kind] = JSON.parse(fs.readFileSync(file, 'utf8'));
+        }
+        return libraryCache[kind];
+    };
+    const libraryItem = (kind, name) => {
+        const all = libraryOf(kind);
+        const item = all.find(i => i.name === name) ||
+            all.find(i => i.name.toLowerCase() === String(name).toLowerCase());
+        if (!item) {
+            throw new Error(`Scratch's library has no ${kind} called "${name}". Search it first: library action ` +
+                '"search".');
+        }
+        return item;
+    };
+    const ASSET_DIR = path.join(os.homedir(), '.flipwarp', 'library');
+    const fetchAsset = async md5ext => {
+        if (!/^[a-f0-9]{32}\.[a-z0-9]+$/.test(md5ext)) throw new Error(`"${md5ext}" is not a library file.`);
+        const cached = path.join(ASSET_DIR, md5ext);
+        if (fs.existsSync(cached)) return fs.readFileSync(cached);
+        const response = await fetch(`https://assets.scratch.mit.edu/internalapi/asset/${md5ext}/get/`,
+            {signal: AbortSignal.timeout(30000)});
+        if (!response.ok) throw new Error(`Scratch's asset server answered ${response.status} for ${md5ext}.`);
+        const data = Buffer.from(await response.arrayBuffer());
+        fs.mkdirSync(ASSET_DIR, {recursive: true});
+        fs.writeFileSync(cached, data);
+        return data;
+    };
+    // A library costume as a drawing the costume tools take, turning where
+    // Scratch has it turn (its centre is in the file's own units).
+    const libraryDrawing = async costume => {
+        const data = await fetchAsset(costume.md5ext);
+        const at = {x: costume.rotationCenterX, y: costume.rotationCenterY};
+        if (costume.dataFormat === 'svg') return {svg: data.toString('utf8'), center: at};
+        const resolution = costume.bitmapResolution === 2 ? 2 : 1;
+        if (costume.dataFormat === 'png') return {png: data.toString('base64'), resolution, center: at};
+        return {jpg: data.toString('base64'), resolution, center: at};
+    };
+    const librarySummary = (kind, item) => {
+        const tags = item.tags && item.tags.length ? ` [${item.tags.join(', ')}]` : '';
+        if (kind === 'sprite') {
+            const sounds = item.sounds && item.sounds.length ? `, sounds ${item.sounds.map(s => s.name).join(', ')}` : '';
+            return `${item.name}${tags}: costumes ${item.costumes.map(c => c.name).join(', ')}${sounds}`;
+        }
+        if (kind === 'sound') {
+            const seconds = item.sampleCount && item.rate ? `${(item.sampleCount / item.rate).toFixed(2)}s` : '';
+            return `${item.name}${tags} ${seconds}`;
+        }
+        const look = item.dataFormat === 'svg' ? 'vector' : `${item.dataFormat}${item.bitmapResolution === 2 ? ', 2x' : ''}`;
+        return `${item.name}${tags} (${look})`;
+    };
+
+    register('library', {
+        title: 'Scratch\'s library',
+        description: 'Scratch\'s own sprites, costumes, backdrops and sounds: 333 sprites, 859 costumes, ' +
+            '85 backdrops and 353 sounds, drawn and recorded by people, the ones a Scratcher picks from in ' +
+            'the editor. Use them where they fit the game (characters, animals, objects, places, music loops, ' +
+            'real sound effects) instead of drawing everything yourself; draw your own when the game needs its ' +
+            'own look. "search" with words (cat, dragon, space, jungle, drum, laser...) lists what matches; ' +
+            '"look" shows a sprite\'s, costume\'s or backdrop\'s pictures; "add" puts it in the project: a ' +
+            'sprite as a new sprite with all its costumes and sounds, a costume or sound into a sprite, a ' +
+            'backdrop into the Stage. Needs the internet the first time a file is used.',
+        inputSchema: {
+            action: z.enum(['search', 'look', 'add']),
+            kind: z.enum(Object.keys(LIBRARY_KINDS)),
+            query: z.string().optional().describe('search: words to match in names and tags; leave out for ' +
+                'the first ones'),
+            name: z.string().optional().describe('look, add: the library item\'s name, from search'),
+            sprite: z.string().optional().describe('add: the sprite a costume or sound goes into (a backdrop ' +
+                'goes into the Stage); for a sprite, the new sprite\'s name if not the library\'s'),
+            as: z.string().optional().describe('add: a name for the costume or sound in the project')
+        }
+    }, tool(async ({action, kind, query, name, sprite: into, as}) => {
+        if (action === 'search') {
+            const words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+            const found = libraryOf(kind).filter(item => {
+                const hay = `${item.name} ${(item.tags || []).join(' ')}`.toLowerCase();
+                return words.every(w => hay.includes(w));
+            });
+            if (!found.length) return text(`No ${LIBRARY_KINDS[kind]} in Scratch's library match "${query}".`);
+            const shown = found.slice(0, 40);
+            return text(`${found.length} ${LIBRARY_KINDS[kind]} in Scratch's library match` +
+                `${query ? ` "${query}"` : ''}${found.length > shown.length ? ` (the first ${shown.length})` : ''}:\n` +
+                shown.map(item => librarySummary(kind, item)).join('\n'));
+        }
+        if (!name) return failure(`${action} needs the name of a library ${kind}, from search.`);
+        const item = libraryItem(kind, name);
+        if (action === 'look') {
+            if (kind === 'sound') return text(`${librarySummary(kind, item)}. Add it, then play_sound to hear it.`);
+            const costumes = (kind === 'sprite' ? item.costumes : [item]).slice(0, 6);
+            const content = [{type: 'text', text: librarySummary(kind, item)}];
+            for (const costume of costumes) {
+                const {center: unused, ...drawn} = await libraryDrawing(costume);
+                void unused;
+                const r = await ask('previewImage', drawn, 120000);
+                content.push({type: 'text', text: `"${costume.name}": ${r.width}x${r.height} steps at size 100`},
+                    {type: 'image', data: r.png, mimeType: 'image/png'});
+            }
+            return {content};
+        }
+        // add
+        if (kind === 'sound') {
+            if (!into) return failure('Say which sprite the sound goes into (sprite), or "Stage".');
+            const data = await fetchAsset(item.md5ext);
+            const r = await ask('addSound', {sprite: into, name: as || item.name, data: data.toString('base64'),
+                format: item.dataFormat === 'mp3' ? 'mp3' : 'wav'}, 60000);
+            return text(`Added Scratch's "${item.name}" to ${into} as "${r.sound.name}". ` +
+                `${into} has: ${r.sounds.map(s => `"${s}"`).join(', ')}`);
+        }
+        if (kind === 'costume' || kind === 'backdrop') {
+            const target = kind === 'backdrop' ? 'Stage' : into;
+            if (!target) return failure('Say which sprite the costume goes into (sprite).');
+            const {center: at, ...drawn} = await libraryDrawing(item);
+            const r = await ask('addCostume', {sprite: target, name: as || item.name, center: at, ...drawn}, 120000);
+            return pictureOf(`Added Scratch's ${kind} "${item.name}" to ${target}: ${describeCostume(r.costume)}.`, r.png);
+        }
+        // A whole sprite: its first costume makes it, the rest follow, then its sounds.
+        const [first, ...rest] = item.costumes;
+        const firstDrawn = await libraryDrawing(first);
+        const {center: firstAt, ...firstImage} = firstDrawn;
+        const made = await ask('createSprite', {name: into || item.name}, 120000);
+        await ask('replaceCostume', {sprite: made.name, costume: 1, center: firstAt, ...firstImage}, 120000);
+        await ask('renameCostume', {sprite: made.name, costume: 1, name: first.name}).catch(() => {});
+        for (const costume of rest) {
+            const {center: at, ...drawn} = await libraryDrawing(costume);
+            await ask('addCostume', {sprite: made.name, name: costume.name, center: at, select: false, ...drawn}, 120000);
+        }
+        for (const sound of item.sounds || []) {
+            const data = await fetchAsset(sound.md5ext);
+            await ask('addSound', {sprite: made.name, name: sound.name, data: data.toString('base64'),
+                format: sound.dataFormat === 'mp3' ? 'mp3' : 'wav'}, 60000);
+        }
+        const {png} = await ask('costumeSheet', {sprite: made.name}, 120000);
+        return pictureOf(`Added Scratch's sprite "${item.name}" as "${made.name}", with ${item.costumes.length} ` +
+            `costume(s) and ${(item.sounds || []).length} sound(s), no scripts.`, png);
+    }));
 
     // --- speed -------------------------------------------------------------------
 

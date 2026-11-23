@@ -25,6 +25,9 @@ const NAME = 'Claude test player';
 // a host it has not heard from for HOST_GONE.
 const PING_EVERY = 5000;
 const HOST_GONE = 30000;
+// A test player is temporary: one nobody has played for this long closes, even
+// while its host tab still checks on it (a host whose chat has ended, say).
+const IDLE_CLOSE = 10 * 60 * 1000;
 // Joining goes through the public matchmaking server and a WebRTC handshake,
 // which on a busy computer can miss the room's time limit: tried again.
 const JOIN_TRIES = 3;
@@ -101,6 +104,7 @@ export const installTestPlayer = vm => {
     installPlay(vm);
     const channel = new BroadcastChannel(CHANNEL + token);
     let heard = Date.now();
+    let played = Date.now();
     let closing = false;
     const close = () => {
         if (closing) return;
@@ -113,6 +117,7 @@ export const installTestPlayer = vm => {
         if (!data || data.from !== 'host' || closing) return;
         heard = Date.now();
         if (data.method === 'ping') return;
+        played = Date.now();
         const reply = out => channel.postMessage({from: 'player', id: data.id, ...out});
         if (data.method === 'close') {
             reply({result: {closed: true}});
@@ -159,7 +164,7 @@ export const installTestPlayer = vm => {
         }
     });
     setInterval(() => {
-        if (Date.now() - heard > HOST_GONE) close();
+        if (Date.now() - heard > HOST_GONE || Date.now() - played > IDLE_CLOSE) close();
     }, 5000);
 };
 

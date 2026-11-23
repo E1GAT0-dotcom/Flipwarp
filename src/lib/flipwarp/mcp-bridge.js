@@ -20,7 +20,7 @@ import {checkProject, applyFixes} from './health.js';
 import {getStyle} from './styles.js';
 import {getSettings, setSettings} from './settings.js';
 import {BLOCKS, addedOpcodes} from './phrasebook.js';
-import {syncExtensionText} from './runtime-extensions.js';
+import {defsForCategory, syncExtensionText} from './runtime-extensions.js';
 import {spriteUpload} from '../file-uploader.js';
 import FLIPWARP_EXTENSIONS, {flipwarpBase} from './flipwarp-extensions.js';
 import {PLAY_METHODS, installPlay} from './mcp-play.js';
@@ -267,7 +267,40 @@ let savingFiles = null;
 // load_project can say what it would throw away. Running the game does not
 // count: only requests that edit it, which are named for what they do.
 let editedSinceSave = false;
-const EDITS = /^(write|create|delete|rename|replace|add|fix|tidy|undo|gameOptions)/;
+const EDITS = /^(write|create|delete|rename|replace|add|fix|tidy|undo|gameOptions|loadExtension)/;
+
+// Nothing a person would miss: no scripts anywhere, at most one sprite, and
+// no more pictures and sounds than a new project starts with.
+const isEmptyProject = vm => {
+    const targets = vm.runtime.targets.filter(t => t.isOriginal);
+    const sprites = targets.filter(t => !t.isStage);
+    if (sprites.length > 1) return false;
+    for (const t of targets) {
+        if (Object.keys(t.blocks._blocks || {}).length) return false;
+        if (t.getCostumes().length > 2 || t.getSounds().length > 2) return false;
+    }
+    return true;
+};
+
+// Text that now says "global list x;" for a list the sprite already has as its
+// own: the sprite's one moves to the Stage, keeping its id and items, rather
+// than a second "x" being made beside it and the old one left behind.
+const GLOBAL_DECL = new RegExp('^[ \\t]*global[ \\t]+(variable|list)[ \\t]+([A-Za-z_$][\\w$]*)[ \\t]*' +
+    '(?:as[ \\t]+"((?:[^"\\\\]|\\\\.)*)")?[ \\t]*;', 'gm');
+const moveToGlobal = (vm, target, text) => {
+    if (!target || target.isStage) return;
+    const stage = vm.runtime.getTargetForStage();
+    if (!stage) return;
+    for (const match of String(text).matchAll(GLOBAL_DECL)) {
+        const type = match[1] === 'list' ? 'list' : '';
+        const name = typeof match[3] === 'string' ? match[3].replace(/\\(.)/g, '$1') : match[2];
+        if (stage.lookupVariableByNameAndType(name, type, true)) continue;
+        const own = Object.values(target.variables).find(v => v.name === name && v.type === type);
+        if (!own || own.isCloud) continue;
+        delete target.variables[own.id];
+        stage.variables[own.id] = own;
+    }
+};
 
 const METHODS = {
     ...PLAY_METHODS,
@@ -324,6 +357,7 @@ const METHODS = {
             // Checked before anything is loaded, so a mistake in the text
             // cannot leave an extension added to the project for nothing.
             checkText(vm, text, positions, STYLE);
+            moveToGlobal(vm, target, text);
             const extensionsLoaded = await loadExtensionsFor(vm, text);
             settleEditor();
             const result = await applyText(vm, text, positions, STYLE);
@@ -453,6 +487,41 @@ const METHODS = {
         setSettings({otherExtensionText: !!enabled});
         const added = syncExtensionText(vm);
         return {otherExtensionText: !!enabled, blocks: added.length};
+    },
+
+    // A TurboWarp gallery extension, loaded into the project with text for its
+    // blocks, so write_sprite can use them. Only the gallery: it is reviewed,
+    // and runs unsandboxed in TurboWarp without asking anyone.
+    loadExtension: async (vm, {extension}) => {
+        let url = String(extension || '').trim();
+        if (!/^https?:/i.test(url)) url = `https://extensions.turbowarp.org/${url.replace(/^\/+/, '').replace(/\.js$/, '')}.js`;
+        let parsed;
+        try {
+            parsed = new URL(url);
+        } catch (e) {
+            throw new Error(`"${extension}" is not an extension's address.`);
+        }
+        if (parsed.protocol !== 'https:' || parsed.hostname !== 'extensions.turbowarp.org') {
+            throw new Error('Only extensions from TurboWarp\'s gallery (extensions.turbowarp.org) can be added ' +
+                'here. Give its id, like "gamepad" or "obviousAlexC/penPlus", or its address there.');
+        }
+        const before = new Set((vm.runtime._blockInfo || []).map(c => c.id));
+        await vm.extensionManager.loadExtensionURL(parsed.href);
+        setSettings({otherExtensionText: true});
+        syncExtensionText(vm);
+        const added = (vm.runtime._blockInfo || []).filter(c => c && !before.has(c.id));
+        const blocks = [];
+        for (const category of added) {
+            const {defs, skipped} = defsForCategory(category, new Set());
+            for (const def of Object.values(defs)) {
+                const args = (def.args || []).filter(a => !(def.fields || []).includes(a));
+                const fields = def.fields || [];
+                blocks.push(`${def.name}(${[...args, ...fields.map(f => `${f}: menu`)].join(', ')}) ${def.kind}`);
+            }
+            for (const op of skipped) blocks.push(`${op}: has no text form (more than one body)`);
+        }
+        vm.runtime.emitProjectChanged();
+        return {url: parsed.href, extensions: added.map(c => ({id: c.id, name: c.name})), blocks};
     },
 
     saveProject: async vm => {
@@ -737,12 +806,19 @@ export const installMcpBridge = vm => {
         if (ended) return;
         ended = true;
         status('the chat that opened this tab has ended');
-        if (unsaved) {
+        // Claude's test player goes with the chat that opened it. A room the
+        // person is playing in stays.
+        testPlayerMethods.testPlayerClose().catch(() => {});
+        // "Unsaved" counts any change at all, even a setting; a project with
+        // no scripts and no more than the starting sprite holds nothing to lose.
+        if (unsaved && !isEmptyProject(vm)) {
             narrate('The Claude chat that opened this tab has ended. This project has changes that were not ' +
                 'saved: save it (File > Save to your computer), then close this tab.');
             return;
         }
-        narrate('The Claude chat that opened this tab has ended, and its project is saved, so this tab is closing.');
+        narrate(unsaved ? 'The Claude chat that opened this tab has ended and left nothing in it, so this tab is ' +
+            'closing.' : 'The Claude chat that opened this tab has ended, and its project is saved, so this tab ' +
+            'is closing.');
         setTimeout(() => {
             window.close();
             // Still here: the browser would not let a page close its own tab.
