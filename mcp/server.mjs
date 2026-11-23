@@ -82,7 +82,20 @@ const allowedOrigin = origin => {
     }
 };
 
-const ask = (method, params = {}, timeout = 30000) => new Promise((resolve, reject) => {
+// With FLIPWARP_OPEN=1 the editor opens the first time a tool needs it, and
+// the tool waits for it, rather than when the chat starts.
+const ask = async (method, params = {}, timeout = 30000) => {
+    if (OPEN_AT_START && (!editor || editor.readyState !== editor.OPEN) && await listening && serving &&
+        fs.existsSync(path.join(BUILD, 'editor.html'))) {
+        // eslint-disable-next-line no-use-before-define
+        if (Date.now() - openedAt > 30000) launchEditor();
+        // eslint-disable-next-line no-use-before-define
+        await waitForEditor(45000);
+    }
+    return askNow(method, params, timeout);
+};
+
+const askNow = (method, params = {}, timeout = 30000) => new Promise((resolve, reject) => {
     if (!editor || editor.readyState !== editor.OPEN) {
         reject(new Error(`Flipwarp is not connected. Open ${editorUrl()} in a browser ` +
             '(or call open_editor), then try again.'));
@@ -874,12 +887,10 @@ const staleNote = () => {
 };
 staleNoteHook = staleNote;
 
-if (OPEN_AT_START) {
-    server.server.oninitialized = async () => {
-        if (!await listening || !fs.existsSync(path.join(BUILD, 'editor.html'))) return;
-        if (!editor) launchEditor();
-    };
-}
+// FLIPWARP_OPEN=1 used to open the editor the moment the chat connected.
+// Claude Code starts this server whenever a chat opens, resumes or
+// reconnects, so tabs popped up for chats that never touched a game. Now the
+// tab opens the first time a tool needs the editor (see ask).
 
 // When the chat ends, Claude Code closes this server's input: take this chat
 // out of the control room and let the port go, rather than hold it with
