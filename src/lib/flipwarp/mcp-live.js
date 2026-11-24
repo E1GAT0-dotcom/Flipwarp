@@ -671,6 +671,7 @@ export const describe = (method, params = {}, result = {}, failed = false) => {
     case 'saveFilesPart': return result.done ? {icon: '💾', text: 'saved the project'} :
         (failed ? {icon: '⚠️', text: 'saving did not work', tone: 'bad'} : null);
     case 'saveFilesStart': return failed ? {icon: '⚠️', text: 'saving did not work', tone: 'bad'} : null;
+    case 'exportStart': return failed ? null : {icon: '📦', text: `exported the project as code for ${params.target}`};
     case 'loadProject': return {icon: '📂', text: 'opened a project'};
     case 'testPlayerOpen': return failed ? null : {icon: '👥', text: 'opened a test player in the room'};
     case 'testPlayerClose': return result.closed ? {icon: '👥', text: 'closed the test player'} : null;

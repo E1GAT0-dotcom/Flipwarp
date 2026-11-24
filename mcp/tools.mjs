@@ -423,6 +423,49 @@ export const registerTools = async (server, ctx, version = 0) => {
         }
     }));
 
+    // --- the project as code for somewhere else ---------------------------------------
+
+    const EXPORT_TARGETS = {
+        weblab: 'Code.org Web Lab: HTML, CSS and JavaScript that runs the game in any web page'
+    };
+    register('export_project', {
+        title: 'Export as code',
+        description: 'Exports the project open in the editor as source code for another place to run it: ' +
+            `${Object.entries(EXPORT_TARGETS).map(([k, v]) => `"${k}" (${v})`).join(', ')}. Every script ` +
+            'becomes code that behaves like Scratch, with a README.txt saying how to put it there and listing ' +
+            'anything that did not come across. Writes a folder, or a .zip when path ends in .zip. Same as ' +
+            'File > Export as code in the editor.',
+        inputSchema: {
+            target: z.enum(Object.keys(EXPORT_TARGETS)),
+            path: z.string().describe('A folder to write the files into, or a .zip file'),
+            title: z.string().optional().describe('The game\'s name, for the page title (default: the project\'s)')
+        }
+    }, tool(async ({target, path: where, title}) => {
+        const name = title || watch.name || projectNameFrom(where) || 'Project';
+        const start = await ask('exportStart', {target, title: name}, 120000);
+        const files = [];
+        let from = 0;
+        while (from !== null) {
+            const part = await ask('saveFilesPart', {from, maxBytes: 8 * 1024 * 1024}, 120000);
+            for (const [file, base64] of part.files) files.push([file, Buffer.from(base64, 'base64')]);
+            from = part.next;
+        }
+        const out = path.resolve(where);
+        if (/\.zip$/i.test(out)) {
+            fs.mkdirSync(path.dirname(out), {recursive: true});
+            fs.writeFileSync(out, makeSb3(files.map(([file, data]) => [`${start.folder}/${file}`, data])));
+        } else {
+            fs.mkdirSync(out, {recursive: true});
+            for (const [file, data] of files) fs.writeFileSync(path.join(out, file), data);
+        }
+        const notes = start.notes.length ?
+            `\nWhat did not come across:\n${start.notes.map(n => `- ${n.where}: ${n.what}`).join('\n')}` :
+            '\nEverything in the project came across.';
+        return text(`Exported "${name}" for ${EXPORT_TARGETS[target].split(':')[0]} to ${out}: ` +
+            `${files.length} files (${files.map(f => f[0]).slice(0, 8).join(', ')}` +
+            `${files.length > 8 ? ', ...' : ''}). README.txt says how to put it there.${notes}`);
+    }));
+
     register('load_project', {
         title: 'Open a project',
         description: 'Opens an .sb3 file from this computer in the editor, replacing the project that is open. ' +

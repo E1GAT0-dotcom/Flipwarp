@@ -40,6 +40,7 @@ import {setFrozen} from './gameplay.js';
 import rooms from './rooms.js';
 import {roomMethods, friendLocked, allowedWhileLocked, lockedMessage} from './rooms-ai.js';
 import {testPlayerMethods} from './test-player.js';
+import {exportProject} from './export/index.js';
 
 const STYLE = getStyle('js');
 const TEXT_OPTIONS = {style: STYLE, indent: '  '};
@@ -544,6 +545,19 @@ const METHODS = {
         const files = Object.entries(vm.saveProjectSb3DontZip());
         savingFiles = files;
         return {count: files.length, bytes: files.reduce((sum, [, data]) => sum + data.length, 0)};
+    },
+
+    // The project exported as code (export/index.js). Its files are handed
+    // over in parts with saveFilesPart, as a save's are.
+    exportStart: (vm, {target, title}) => {
+        const result = exportProject(vm, target, title);
+        savingFiles = result.files;
+        return {
+            count: result.files.length,
+            bytes: result.files.reduce((sum, [, data]) => sum + data.length, 0),
+            folder: result.folder,
+            notes: result.notes
+        };
     },
 
     saveFilesPart: (vm, {from, maxBytes}) => {
