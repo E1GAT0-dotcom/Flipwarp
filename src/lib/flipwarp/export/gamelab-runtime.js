@@ -678,11 +678,24 @@ Game.prototype.load = function (test) {
     this.testKeys = test ? {} : null;
     if (test) this.virtualTime = 0;
     World.frameRate = this.framerate;
+    // The costumes' pictures, when the code carries them (costumePictures, at the end of the code).
+    this.pictureData = typeof costumePictures === 'function' ? costumePictures() : {};
+    this.pictures = {};
+    for (var name in this.pictureData) {
+        if (Object.prototype.hasOwnProperty.call(this.pictureData, name)) {
+            this.pictures[name] = loadImage(this.pictureData[name]);
+        }
+    }
     this.backdropGroup = createGroup();
     this.stampGroup = createGroup();
     this.spriteGroup = createGroup();
     this.stage.makeSprite(this.backdropGroup);
     for (var i = 0; i < this.layers.length; i++) this.layers[i].makeSprite(this.spriteGroup);
+};
+
+/** A costume's picture carried in the code, or null when it is an uploaded animation. */
+Game.prototype.picture = function (name) {
+    return (this.pictures && this.pictures[name]) || null;
 };
 
 /** Each Game Lab frame (draw): keys and clicks, then a Scratch frame, then the picture. */
@@ -1269,7 +1282,18 @@ Target.prototype.pose = function (s) {
     if (!c) return;
     var game = this.game;
     if (s.animationName !== c.animation) {
-        s.setAnimation(c.animation);
+        var picture = game.picture(c.animation);
+        if (picture) {
+            // A picture carried in this code (costumePictures, at the end): nothing to upload.
+            if (!s.pictureNames) s.pictureNames = {};
+            if (!s.pictureNames[c.animation]) {
+                s.addImage(c.animation, picture);
+                s.pictureNames[c.animation] = true;
+            }
+            s.changeImage(c.animation);
+        } else {
+            s.setAnimation(c.animation);
+        }
         s.animationName = c.animation;
     }
     var size = this.isStage ? 1 : this.size / 100;

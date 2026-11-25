@@ -17,13 +17,17 @@ await page.waitForTimeout(3000);
 
 // Six costumes, and a script that switches to one of them by name, the thing
 // that breaks if a folder is hidden in the name.
-await page.evaluate(() => {
+// Real copies, each with its own picture: copies sharing one picture made
+// loading the project again destroy that picture twice and fail.
+await page.evaluate(async () => {
     const vm = window.vm;
     const t = vm.editingTarget;
-    const first = t.getCostumes()[0];
-    for (let i = 2; i <= 6; i++) {
-        t.addCostume(Object.assign({}, first, {name: `costume${i}`}), t.getCostumes().length);
+    while (t.getCostumes().length < 6) {
+        await vm.duplicateCostume(0);
     }
+    t.getCostumes().forEach((c, i) => {
+        if (i > 0) t.renameCostume(i, `costume${i + 1}`);
+    });
     vm.emitTargetsUpdate();
 });
 await page.click('text=Costumes');

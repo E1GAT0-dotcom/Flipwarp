@@ -9,6 +9,8 @@ import {readProject} from './front.js';
 import {writeWebGame} from './web.js';
 import {writePythonGame} from './python.js';
 import {writeGameLabGame} from './gamelab.js';
+import {startHere} from './helper.js';
+import {stripJs, stripPython, stripCss} from './strip.js';
 
 export const TARGETS = {
     weblab: {
@@ -21,7 +23,7 @@ export const TARGETS = {
     },
     gamelab: {
         title: 'Code.org Game Lab',
-        description: 'Game Lab JavaScript, with the costumes as animations to upload'
+        description: 'Game Lab JavaScript, with the costumes\' pictures inside the code'
     }
 };
 
@@ -35,6 +37,117 @@ const slug = text => String(text).toLowerCase()
     .replace(/[\s_-]+/g, '-')
     .slice(0, 40) || 'item';
 
+// Pictures and sounds up to this size go inside a one-file Web Lab page.
+const SINGLE_FILE_LIMIT = 5 * 1024 * 1024;
+// Game Lab will not save a program much over 4 MB (tried: 4 MB saves, 5 MB is refused),
+// so code.js, with the pictures inside it, is kept under this.
+const GAMELAB_CODE_LIMIT = 4300000;
+// How the pictures are shrunk to fit, a step at a time until they do: pixels per
+// costume unit (Game Lab shows the stage at 5/6 of Scratch's size) and WebP quality.
+const GAMELAB_STEPS = [
+    {perUnit: 1, quality: 0.9},
+    {perUnit: 5 / 6, quality: 0.8},
+    {perUnit: 5 / 6, quality: 0.65},
+    {perUnit: 0.7, quality: 0.6}
+];
+
+const MIME_TYPES = {svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+    webp: 'image/webp',
+    wav: 'audio/wav', mp3: 'audio/mpeg', ogg: 'audio/ogg'};
+const base64 = data => {
+    let binary = '';
+    for (let i = 0; i < data.length; i += 0x8000) {
+        binary += String.fromCharCode.apply(null, data.subarray(i, i + 0x8000));
+    }
+    return btoa(binary);
+};
+const dataUrl = (file, data) => `data:${MIME_TYPES[file.split('.').pop()
+    .toLowerCase()] || 'application/octet-stream'};base64,${base64(data)}`;
+// Script text inside the page: "</script" in it would end the script early.
+const inScript = text => String(text).replace(/<\/script/gi, '<\\/script');
+
+/**
+ * Everything in one index.html: the style, the runtime, the pictures and sounds (as data), and the game.
+ * @param {string} title the page title, HTML-escaped
+ * @param {object} options the project's options (stage size)
+ * @param {string} runtime scratch-runtime.js
+ * @param {string} game game.js
+ * @param {Array<[string, Uint8Array]>} assets the pictures and sounds
+ * @returns {string} the page
+ */
+const singlePage = (title, options, runtime, game, assets) => {
+    const table = assets.map(([file, data]) => `  ${JSON.stringify(file)}: "${dataUrl(file, data)}"`).join(',\n');
+    return PAGE(title, options.width, options.height)
+        .replace('<link rel="stylesheet" href="style.css">', `<style>\n${stripCss(STYLE)}</style>`)
+        .replace('<script src="scratch-runtime.js"></script>\n<script src="game.js"></script>',
+            `<script>\n${inScript(runtime)}</script>\n` +
+            `<script>\nwindow.SCRATCH_ASSETS = {\n${table}\n};\n</script>\n` +
+            `<script>\n${inScript(game)}</script>`);
+};
+
+// Web Lab takes uploads up to about 5 MB (tried: 4.4 MB is taken, 5.1 MB refused).
+const PACK_LIMIT = 4500000;
+
+/**
+ * The pictures and sounds packed into a few files, for Web Lab: it will not take
+ * sounds as uploads, and uploads each file slowly. A pack is "FWPK", the index's
+ * length (4 bytes, little-endian), the index as JSON ([file, type, offset, length]
+ * each), then the files. Named .png so Web Lab takes them; they are not pictures.
+ * @param {Array<[string, Uint8Array]>} assets the pictures and sounds
+ * @returns {Array<[string, Uint8Array]>} the packs, game-assets-1.png and on
+ */
+const makePacks = assets => {
+    // Biggest first, each into the first pack with room: the fewest packs to upload.
+    const groups = [];
+    for (const [file, data] of assets.slice().sort((a, b) => b[1].length - a[1].length)) {
+        const entry = JSON.stringify([file, MIME_TYPES[file.split('.').pop()
+            .toLowerCase()] || 'application/octet-stream', 0, data.length]).length + 12;
+        let group = groups.find(g => g.size + data.length + entry <= PACK_LIMIT);
+        if (!group) {
+            group = {items: [], size: 64};
+            groups.push(group);
+        }
+        group.items.push([file, data]);
+        group.size += data.length + entry;
+    }
+    return groups.map((g, n) => {
+        let offset = 0;
+        const index = g.items.map(([file, data]) => {
+            const item = [file, MIME_TYPES[file.split('.').pop()
+                .toLowerCase()] || 'application/octet-stream', offset, data.length];
+            offset += data.length;
+            return item;
+        });
+        const indexBytes = textBytes(JSON.stringify(index));
+        const pack = new Uint8Array(8 + indexBytes.length + offset);
+        pack.set(textBytes('FWPK'), 0);
+        new DataView(pack.buffer).setUint32(4, indexBytes.length, true);
+        pack.set(indexBytes, 8);
+        let at = 8 + indexBytes.length;
+        for (const [, data] of g.items) {
+            pack.set(data, at);
+            at += data.length;
+        }
+        return [`game-assets-${n + 1}.png`, pack];
+    });
+};
+
+/**
+ * One index.html whose pictures and sounds are in packs uploaded beside it.
+ * @param {string} title the page title, HTML-escaped
+ * @param {object} options the project's options (stage size)
+ * @param {string} runtime scratch-runtime.js
+ * @param {string} game game.js
+ * @param {Array<string>} packs the packs' file names
+ * @returns {string} the page
+ */
+const packedPage = (title, options, runtime, game, packs) => PAGE(title, options.width, options.height)
+    .replace('<link rel="stylesheet" href="style.css">', `<style>\n${stripCss(STYLE)}</style>`)
+    .replace('<script src="scratch-runtime.js"></script>\n<script src="game.js"></script>',
+        `<script>\n${inScript(runtime)}</script>\n` +
+        `<script type="text/plain" id="scratch-game">\n${inScript(game)}</script>\n` +
+        `<script>\nstartPackedGame(${JSON.stringify(packs)}, "scratch-game");\n</script>`);
+
 const PAGE = (title, width, height) => `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -44,8 +157,6 @@ const PAGE = (title, width, height) => `<!DOCTYPE html>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<!-- ${title}: made in Flipwarp (Scratch) and exported as code. game.js has the game's scripts;
-     scratch-runtime.js runs them the way Scratch does. -->
 <main id="game" class="player">
   <div class="controls">
     <button class="green-flag" title="Start">&#9873; Start</button>
@@ -176,25 +287,33 @@ canvas.stage {
 `;
 
 const HOW_TO = {
-    gamelab: title => `${title}, exported for Code.org Game Lab
+    gamelab: (title, embedded, uploads) => `${title}, exported for Code.org Game Lab
 ${'='.repeat(title.length + 32)}
+
+Open START-HERE.html: it has a button that copies the code, ready to paste.
 
 What is here
 ------------
-code.js       the whole program: the Scratch runtime first, then the game's sprites and scripts
-*.png         one picture for each costume and backdrop: Game Lab calls them animations
-*.wav, *.mp3  the sounds
+code.js       the whole program: the Scratch runtime first, then the game's sprites and scripts${
+    embedded ? `,\n              and last ${uploads ? 'most of ' : ''}the costumes' pictures, written out as text` : ''}
+${uploads ? `*.png         ${embedded ? 'the pictures too big to go inside the code' :
+        'one picture for each costume and backdrop'}: Game Lab calls them animations\n` : ''
+}*.mp3         the sounds
 
 Putting it in Game Lab
 ----------------------
 1. Start a new Game Lab project, and switch the code area to text (the "Show Text" button).
-2. Select all the code there, delete it, and paste in everything from code.js.
+2. Select all the code there, delete it, and paste in everything from code.js.${uploads ? `
 3. Open the Animation tab and upload every .png from this folder. Keep their names:
-   the code asks for each animation by its file name without ".png".
-4. Sounds: Game Lab plays MP3 files you upload (in the gear-shaped Asset Manager, or
-   from playSound's "Choose..." button). Upload each sound as an .mp3 with the same name
-   as here; convert any .wav to .mp3 first.
-5. Press Run, then click the stage to start (that is the green flag).
+   the code asks for each animation by its file name without ".png".` : `
+   The pictures are inside the code: there is nothing to upload in the Animation tab.`}
+${uploads ? '4' : '3'}. Sounds: Game Lab plays MP3 files you upload (in the gear-shaped Asset Manager, or
+   from playSound's "Choose..." button). Upload each .mp3 here with the same name.
+   Code.org does not let code carry sounds; without them the game plays silently.
+${uploads ? '5' : '4'}. Press Run, then click the stage to start (that is the green flag).
+
+Game Lab will not save a program much over 4 MB, so the pictures inside the code are
+drawn at the size Game Lab shows them and saved as WebP, which is much smaller than PNG.
 
 What is different in Game Lab
 -----------------------------
@@ -237,6 +356,65 @@ time round a loop, during a wait), the script says "yield", and the runtime move
 on to the next script; once something on the stage has changed, it draws the
 frame. That is how many scripts run "at once", as in Scratch.
 `,
+    weblabSingle: title => `${title}, exported for Code.org Web Lab
+${'='.repeat(title.length + 30)}
+
+Open START-HERE.html: it has a button that copies the game, ready to paste.
+
+What is here
+------------
+index.html        the whole game in one page: the style, the runtime that runs it the way
+                  Scratch does, the pictures and sounds, and the game's own scripts
+START-HERE.html   the steps, with a Copy button
+
+Putting it in Web Lab
+---------------------
+1. Start a new "Web Lab (new)" project: studio.code.org/projects/weblab2/new. The old Web Lab
+   removes all JavaScript, so the game cannot run there.
+2. Open its index.html, select everything, and paste in this index.html instead.
+3. Run it, then click the stage or Start. There is nothing to upload: the pictures and
+   sounds are inside the page.
+
+To play it on your own computer, open index.html in a browser.
+
+How the code works
+------------------
+In index.html, the script after the pictures and sounds is the game: each Scratch script
+is a function. Where Scratch lets other scripts have a turn (each time round a loop,
+during a wait), the script says "yield", and the runtime moves on to the next script;
+once something on the stage has changed, it draws the frame. That is how many scripts
+run "at once", as in Scratch.
+`,
+    weblabPacked: (title, packs) => `${title}, exported for Code.org Web Lab
+${'='.repeat(title.length + 30)}
+
+Open START-HERE.html: it has a button that copies the game, ready to paste.
+
+What is here
+------------
+index.html        the whole game in one page: the style, the runtime that runs it the way
+                  Scratch does, and the game's own scripts
+${packs.map(p => `${p.padEnd(18)}the game's pictures and sounds, packed together`).join('\n')}
+START-HERE.html   the steps, with a Copy button
+
+The game's pictures and sounds are too big to go inside the page, so they are packed
+into ${packs.length === 1 ? 'one file' : `${packs.length} files`} named .png. They are not really pictures: Web Lab will not take
+sounds as uploads, and uploading hundreds of files one by one is slow, so the page
+reads the packs and unpacks them when it starts.
+
+Putting it in Web Lab
+---------------------
+1. Start a new "Web Lab (new)" project: studio.code.org/projects/weblab2/new. The old Web Lab
+   removes all JavaScript, so the game cannot run there.
+2. Open its index.html, select everything, and paste in this index.html instead.
+3. In the Files list click +, then Upload, and choose ${packs.length === 1 ? packs[0] :
+        `all of ${packs.join(', ')} at once`}.
+   Keep the names.
+4. Run it, then click the stage or Start.
+
+Opened straight from a file, the browser will not let the page read the packs: play it in
+Web Lab, or serve this folder from a web server (for example: python -m http.server).
+`,
     weblab: title => `${title}, exported for Code.org Web Lab
 ${'='.repeat(title.length + 30)}
 
@@ -250,7 +428,8 @@ the rest            the costumes, backdrops and sounds, named for what they are
 
 Putting it in Web Lab
 ---------------------
-1. Start a new Web Lab project.
+1. Start a new "Web Lab (new)" project: studio.code.org/projects/weblab2/new. The old Web Lab
+   removes all JavaScript, so the game cannot run there.
 2. Replace index.html and style.css with the ones here (open each, copy all, paste).
 3. Add two new files named scratch-runtime.js and game.js, and paste these in.
 4. Upload every picture and sound file from this folder (keep the same names).
@@ -309,8 +488,8 @@ const gameLabPicture = async (costume, data, options) => {
             note = `the costume "${costume.name}" is an SVG; Game Lab needs it as a PNG`;
         }
     }
-    let measured = null;
-    if (options.measure) {
+    let measured = picture !== data && options.lastDrawn ? options.lastDrawn(picture) : null;
+    if (!measured && options.measure) {
         try {
             measured = await options.measure(picture, ext);
         } catch (e) {
@@ -334,6 +513,20 @@ const gameLabPicture = async (costume, data, options) => {
                 (measured.box[2] / resolution) - 0.5, (measured.box[3] / resolution) - 0.5]
         }
     };
+};
+
+// Run fn over items, at most limit at once.
+const runLimited = async (items, limit, fn) => {
+    let next = 0;
+    const worker = async () => {
+        while (next < items.length) {
+            const item = items[next++];
+            await fn(item);
+        }
+    };
+    const workers = [];
+    for (let i = 0; i < Math.min(limit, items.length); i++) workers.push(worker());
+    await Promise.all(workers);
 };
 
 /**
@@ -362,6 +555,7 @@ export const buildExport = async (source, target, title, runtimes, options = {})
     const out = [];
     const notes = [];
     const used = new Set(['index.html', 'style.css', 'scratch-runtime.js', 'game.js', 'readme.txt', 'main.py',
+        'start-here.html', 'code.js',
         'scratch_runtime.py']);
     const fileName = (owner, item, ext) => {
         const base = `${slug(owner)}-${slug(item)}`;
@@ -371,54 +565,148 @@ export const buildExport = async (source, target, title, runtimes, options = {})
         used.add(file.toLowerCase());
         return file;
     };
+    // The costumes that need drawing (SVGs as PNGs) or measuring are done
+    // first, a few at a time, then named and added in the project's order.
+    const progress = (label, done, total) => {
+        if (options.progress) options.progress({label, done, total});
+    };
+    const jobs = [];
+    const seen = new Set();
     for (const t of parsed.targets) {
         const owner = t.isStage ? 'stage' : t.name;
         for (const costume of t.costumes) {
-            if (gamelab) {
-                if (glCostumes[costume.md5ext]) continue;
-                const data = source[costume.md5ext];
-                if (!data) continue;
-                const picture = await gameLabPicture(costume, data, options);
-                const file = fileName(owner, costume.name, picture.ext);
-                glCostumes[costume.md5ext] = {...picture.measure, animation: file.replace(/\.[^.]+$/, '')};
-                out.push([file, picture.data]);
-                if (picture.note) notes.push({where: owner, what: picture.note});
-                continue;
-            }
-            if (files[costume.md5ext]) continue;
-            const data = source[costume.md5ext];
-            if (!data) continue;
-            if (python && costume.dataFormat === 'svg' && options.rasterize) {
-                try {
-                    const png = await options.rasterize(data);
-                    const file = fileName(owner, costume.name, 'png');
-                    files[costume.md5ext] = {file, scale: png.scale};
-                    out.push([file, png.data]);
-                    continue;
-                } catch (e) {
-                    notes.push({where: owner, what: `the costume "${costume.name}" could not be drawn as a picture ` +
-                        'pygame shows well, so it is kept as an SVG'});
-                }
-            }
-            const file = fileName(owner, costume.name, costume.md5ext.split('.').pop());
-            files[costume.md5ext] = python ? {file} : file;
-            out.push([file, data]);
+            if (seen.has(costume.md5ext) || !source[costume.md5ext]) continue;
+            seen.add(costume.md5ext);
+            jobs.push({owner, costume, data: source[costume.md5ext]});
         }
+    }
+    const needsWork = job => gamelab || (python && job.costume.dataFormat === 'svg' && options.rasterize);
+    const working = jobs.filter(needsWork);
+    let finished = 0;
+    await runLimited(working, 4, async job => {
+        if (gamelab) {
+            job.picture = await gameLabPicture(job.costume, job.data, options);
+        } else {
+            try {
+                job.png = await options.rasterize(job.data);
+            } catch (e) {
+                job.failed = true;
+            }
+        }
+        finished++;
+        progress(`Drawing the costumes: ${finished} of ${working.length}`, finished, working.length);
+    });
+    // Game Lab: each costume's picture, chosen below to go inside code.js or be uploaded.
+    const glJobs = [];
+    const glPictures = [];
+    for (const job of jobs) {
+        const {owner, costume, data} = job;
+        if (gamelab) {
+            const picture = job.picture;
+            job.file = fileName(owner, costume.name, picture.ext);
+            job.animation = job.file.replace(/\.[^.]+$/, '');
+            glCostumes[costume.md5ext] = {...picture.measure, animation: job.animation};
+            glJobs.push(job);
+            if (picture.note) notes.push({where: owner, what: picture.note});
+            continue;
+        }
+        if (job.png) {
+            const file = fileName(owner, costume.name, 'png');
+            files[costume.md5ext] = {file, scale: job.png.scale};
+            out.push([file, job.png.data]);
+            continue;
+        }
+        if (job.failed) {
+            notes.push({where: owner, what: `the costume "${costume.name}" could not be drawn as a picture ` +
+                'pygame shows well, so it is kept as an SVG'});
+        }
+        const file = fileName(owner, costume.name, costume.md5ext.split('.').pop());
+        files[costume.md5ext] = python ? {file} : file;
+        out.push([file, data]);
+    }
+    for (const t of parsed.targets) {
+        const owner = t.isStage ? 'stage' : t.name;
         for (const sound of t.sounds) {
             if (files[sound.md5ext] || glSounds[sound.md5ext]) continue;
             const data = source[sound.md5ext];
             if (!data) continue;
-            const file = fileName(owner, sound.name, sound.md5ext.split('.').pop());
             if (gamelab) {
-                // Game Lab plays MP3s: the code asks for the .mp3 of the same name.
+                // Game Lab plays MP3s: a sound that is not one is made one, if the editor can.
+                let mp3 = sound.dataFormat === 'mp3' ? data : null;
+                if (!mp3 && options.toMp3) {
+                    progress(`Making the sounds MP3s: ${sound.name}`, 1, 1);
+                    try {
+                        mp3 = await options.toMp3(sound.md5ext, data);
+                    } catch (e) {
+                        mp3 = null;
+                    }
+                }
+                const file = fileName(owner, sound.name, mp3 ? 'mp3' : sound.md5ext.split('.').pop());
                 glSounds[sound.md5ext] = file.replace(/\.[^.]+$/, '.mp3');
-                out.push([file, data]);
+                out.push([file, mp3 || data]);
+                if (!mp3) {
+                    notes.push({where: owner, what: `the sound "${sound.name}" could not be made an MP3: convert ` +
+                        `${file} to ${glSounds[sound.md5ext]} before uploading it`});
+                }
                 continue;
             }
+            const file = fileName(owner, sound.name, sound.md5ext.split('.').pop());
             files[sound.md5ext] = python ? {file} : file;
             out.push([file, data]);
         }
     }
+    if (gamelab) {
+        // As many pictures as fit go inside code.js: shrunk a step at a time until
+        // they all fit, then, if they still do not, the biggest are left to upload.
+        const runtimeSize = String(runtimes.gamelab || '').length;
+        const codeSize = writeGameLabGame(parsed, glCostumes, glSounds, name).code.length;
+        // Room for the pictures, less a margin for the costumes' new sizes and the
+        // costumePictures function round them.
+        const room = GAMELAB_CODE_LIMIT - runtimeSize - codeSize - 60000;
+        const cost = job => (Math.ceil(job.embed.data.length / 3) * 4) + job.animation.length + 40;
+        const candidates = glJobs.filter(job => job.picture.ext !== 'svg');
+        const chosen = new Set();
+        if (options.singleFile !== false && room > 0 && candidates.length) {
+            if (options.compact) {
+                for (let step = 0; step < GAMELAB_STEPS.length; step++) {
+                    const {perUnit, quality} = GAMELAB_STEPS[step];
+                    let shrunk = 0;
+                    await runLimited(candidates, 4, async job => {
+                        try {
+                            job.embed = await options.compact(job.picture.data, job.picture.ext,
+                                perUnit / job.picture.measure.resolution, quality);
+                        } catch (e) {
+                            job.embed = null;
+                        }
+                        shrunk++;
+                        progress(`Fitting the pictures inside the code${step ? ` (try ${step + 1})` : ''}: ` +
+                            `${shrunk} of ${candidates.length}`, shrunk, candidates.length);
+                    });
+                    const total = candidates.reduce((sum, job) => sum + (job.embed ? cost(job) : 0), 0);
+                    if (total <= room) break;
+                }
+            } else {
+                for (const job of candidates) job.embed = {data: job.picture.data, ext: job.picture.ext, scale: 1};
+            }
+            // Smallest first, so the fewest pictures are left to upload.
+            let used = 0;
+            for (const job of candidates.filter(j => j.embed).sort((a, b) => cost(a) - cost(b))) {
+                if (used + cost(job) > room) break;
+                used += cost(job);
+                chosen.add(job);
+            }
+        }
+        for (const job of glJobs) {
+            if (chosen.has(job)) {
+                glPictures.push([job.animation, dataUrl(`picture.${job.embed.ext}`, job.embed.data)]);
+                const resolution = job.picture.measure.resolution * job.embed.scale;
+                glCostumes[job.costume.md5ext].resolution = Math.round(resolution * 1e6) / 1e6;
+            } else {
+                out.push([job.file, job.picture.data]);
+            }
+        }
+    }
+    progress('Writing the code', 1, 1);
 
     const written = gamelab ? writeGameLabGame(parsed, glCostumes, glSounds, name) :
         python ? writePythonGame(parsed, files, name) : writeWebGame(parsed, files, name);
@@ -427,27 +715,162 @@ export const buildExport = async (source, target, title, runtimes, options = {})
         `\nWhat did not come across\n------------------------\n` +
             `${notes.map(n => `- ${n.where}: ${n.what}`).join('\n')}\n` :
         '\nEverything in the project came across.\n';
-    const runtime = String(runtimes[target] || '').replace(/^\/\* eslint-disable \*\/\r?\n/, '');
+    // The exported code has no comments in it: the runtime's and the game's are taken out.
+    const strip = python ? stripPython : stripJs;
+    const runtime = strip(String(runtimes[target] || ''));
+    const gameCode = strip(written.code);
+    const uploadsOf = list => list.map(([file]) => ({name: file,
+        kind: /\.(png|jpe?g|gif|svg)$/i.test(file) ? 'picture' : 'sound'}));
     if (gamelab) {
+        // The pictures, last: a function, so the code above can use them before this line is reached.
+        const picturesCode = glPictures.length ?
+            '\nfunction costumePictures() {\n    return {\n' +
+            `${glPictures.map(([animation, url]) => `        ${JSON.stringify(animation)}: "${url}"`).join(',\n')}\n` +
+            '    };\n}\n' : '';
+        const code = `${runtime}\n${gameCode}${picturesCode}`;
+        const assets = out.slice();
+        const pictureUploads = uploadsOf(assets).filter(u => u.kind === 'picture');
+        const soundUploads = uploadsOf(assets).filter(u => u.kind === 'sound');
+        const soundsStep = soundUploads.length ?
+            `Sounds: upload ${soundUploads.length === 1 ? 'the sound' : `the ${soundUploads.length} sounds`} ` +
+                'as MP3s in the gear-shaped Asset Manager above the toolbox (or a playSound block\'s "Choose..." ' +
+                'button), keeping the names. Code.org does not let code carry sounds, so these are the only ' +
+                'uploads; the game plays without them, just silently.{sounds}' :
+            'There are no sounds to add.';
+        const soundList = soundUploads.length ? `<ul class="sounds">${soundUploads
+            .map(u => `<li>${u.name.replace(/[<>&"]/g, c => `&#${c.charCodeAt(0)};`)}</li>`).join('')}</ul>` : '';
         out.unshift(
-            ['code.js', textBytes(`${runtime}\n${written.code}`)],
-            ['README.txt', textBytes(HOW_TO.gamelab(name) + report)]
+            ['START-HERE.html', textBytes(startHere({
+                title: name,
+                where: 'Code.org Game Lab',
+                copies: [{label: 'the code', name: 'code.js', text: code}],
+                uploads: pictureUploads,
+                steps: [
+                    '<a class="open" href="https://studio.code.org/projects/gamelab/new" target="_blank">Open a new ' +
+                        'Game Lab project</a> and press <b>Show Text</b> above the code, so the code area is text.',
+                    'Click in the code area, select everything (Ctrl+A or Cmd+A) and delete it, then paste the game ' +
+                        `in:{copy:0}${glPictures.length && !pictureUploads.length ? 'The costumes\' pictures are ' +
+                        'inside the code: there is nothing to upload in the Animation tab.' : ''}${
+                        glPictures.length && pictureUploads.length ? `${glPictures.length} of the pictures are ` +
+                        `inside the code; the other ${pictureUploads.length} would make it too big for Game Lab ` +
+                        'to save, so they are uploaded next.' : ''}`,
+                    ...(pictureUploads.length ? ['Open the <b>Animation</b> tab and upload ' +
+                        `${glPictures.length ? 'these pictures' : 'these pictures (Game Lab cannot save code ' +
+                        'with them inside it)'}. Keep their names: the code asks for each by its name ` +
+                        'without ".png".{uploads}'] : []),
+                    soundsStep.replace('{sounds}', soundList),
+                    'Press <b>Run</b>, then click the stage to start (that is the green flag).'
+                ]
+            }))],
+            ['code.js', textBytes(code)],
+            ['README.txt', textBytes(HOW_TO.gamelab(name, glPictures.length > 0, pictureUploads.length > 0) + report)]
         );
     } else if (python) {
         out.unshift(
-            ['main.py', textBytes(written.code)],
+            ['main.py', textBytes(gameCode)],
             ['scratch_runtime.py', textBytes(runtime)],
             ['README.txt', textBytes(HOW_TO.python(name) + report)]
         );
     } else {
         const escaped = name.replace(/[<>&"]/g, c => ({'<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;'}[c]));
-        out.unshift(
-            ['index.html', textBytes(PAGE(escaped, parsed.options.width, parsed.options.height))],
-            ['style.css', textBytes(STYLE)],
-            ['scratch-runtime.js', textBytes(runtime)],
-            ['game.js', textBytes(written.code)],
-            ['README.txt', textBytes(HOW_TO.weblab(name) + report)]
-        );
+        const assets = out.slice();
+        const assetBytes = assets.reduce((sum, [, data]) => sum + data.length, 0);
+        // Small enough to carry everything inside one page: nothing to upload.
+        if (options.singleFile !== false && assetBytes <= SINGLE_FILE_LIMIT) {
+            const page = singlePage(escaped, parsed.options, runtime, gameCode, assets);
+            out.length = 0;
+            out.push(
+                ['START-HERE.html', textBytes(startHere({
+                    title: name,
+                    where: 'Code.org Web Lab',
+                    copies: [{label: 'the page', name: 'index.html', text: page}],
+                    uploads: [],
+                    steps: [
+                        '<a class="open" href="https://studio.code.org/projects/weblab2/new" target="_blank">Open a ' +
+                            'new "Web Lab (new)" project</a> (the old Web Lab removes JavaScript, so the game ' +
+                            'cannot run there).',
+                        'Open its <b>index.html</b>, select everything (Ctrl+A or Cmd+A) and delete it, then paste ' +
+                            'the game in:{copy:0}',
+                        'Run it, then click the stage (or Start). The pictures and sounds are inside the page: ' +
+                            'there is nothing to upload.'
+                    ]
+                }))],
+                ['index.html', textBytes(page)],
+                ['README.txt', textBytes(HOW_TO.weblabSingle(name) + report)]
+            );
+        } else if (options.singleFile !== false) {
+            // Too big for one page: the pictures and sounds in a few packs to upload at once.
+            const packs = makePacks(assets);
+            const page = packedPage(escaped, parsed.options, runtime, gameCode, packs.map(([file]) => file));
+            const many = packs.length > 1;
+            const packList = `<ul class="sounds">${packs.map(([file, data]) =>
+                `<li>${file} (${Math.max(1, Math.round(data.length / 1024 / 1024 * 10) / 10)} MB)</li>`).join('')}</ul>`;
+            const totalMB = packs.reduce((sum, [, data]) => sum + data.length, 0) / 1024 / 1024;
+            if (totalMB > 19) {
+                notes.push({where: 'Project', what: `the pictures and sounds come to ${Math.round(totalMB)} MB, ` +
+                    'more than a Web Lab project holds (20 MB in all)'});
+            }
+            out.length = 0;
+            out.push(
+                ['START-HERE.html', textBytes(startHere({
+                    title: name,
+                    where: 'Code.org Web Lab',
+                    copies: [{label: 'the page', name: 'index.html', text: page}],
+                    uploads: [],
+                    steps: [
+                        '<a class="open" href="https://studio.code.org/projects/weblab2/new" target="_blank">Open a ' +
+                            'new "Web Lab (new)" project</a> (the old Web Lab removes JavaScript, so the game ' +
+                            'cannot run there).',
+                        'Open its <b>index.html</b>, select everything (Ctrl+A or Cmd+A) and delete it, then paste ' +
+                            'the game in:{copy:0}',
+                        `<b>You must upload ${many ? `these ${packs.length} files` : 'this file'}</b>: ` +
+                            `${many ? 'they hold' : 'it holds'} all the game's pictures and sounds, and the game ` +
+                            'will not start without them. In the <b>Files</b> list click <b>+</b>, then ' +
+                            `<b>Upload</b>, and choose ${many ? 'all of them at once (click the first, then ' +
+                                'Shift+click the last)' : 'it'}. Keep the ${many ? 'names' : 'name'}.${packList}` +
+                            `${many ? 'They end' : 'It ends'} in .png so Web Lab will take ${many ? 'them' : 'it'}, ` +
+                            `but ${many ? 'they are not pictures: they are' : 'it is not a picture: it is'} every ` +
+                            'picture and sound packed together, because Web Lab will not take sounds as uploads, ' +
+                            'and a few uploads are much quicker than hundreds.',
+                        'Run it, then click the stage (or Start).'
+                    ]
+                }))],
+                ['index.html', textBytes(page)],
+                ...packs,
+                ['README.txt', textBytes(HOW_TO.weblabPacked(name, packs.map(([file]) => file)) + report)]
+            );
+        } else {
+            const pageText = PAGE(escaped, parsed.options.width, parsed.options.height);
+            out.unshift(
+                ['START-HERE.html', textBytes(startHere({
+                    title: name,
+                    where: 'Code.org Web Lab',
+                    copies: [
+                        {label: 'index.html', name: 'index.html', text: pageText},
+                        {label: 'style.css', name: 'style.css', text: stripCss(STYLE)},
+                        {label: 'scratch-runtime.js', name: 'scratch-runtime.js', text: runtime},
+                        {label: 'game.js', name: 'game.js', text: gameCode}
+                    ],
+                    uploads: uploadsOf(assets),
+                    steps: [
+                        '<a class="open" href="https://studio.code.org/projects/weblab2/new" target="_blank">Open a ' +
+                            'new "Web Lab (new)" project</a> (the old Web Lab removes JavaScript, so the game ' +
+                            'cannot run there).',
+                        'Replace its index.html and style.css with these:{copy:0}{copy:1}',
+                        'Add two new files with these names and paste these in:{copy:2}{copy:3}',
+                        'Upload these pictures and sounds, keeping their names:{uploads}',
+                        'Run it, then click the stage (or Start).'
+                    ],
+                    note: 'This game\'s pictures and sounds are too big to fit inside one page, so they are ' +
+                        'separate files to upload.'
+                }))],
+                ['index.html', textBytes(pageText)],
+                ['style.css', textBytes(stripCss(STYLE))],
+                ['scratch-runtime.js', textBytes(runtime)],
+                ['game.js', textBytes(gameCode)],
+                ['README.txt', textBytes(HOW_TO.weblab(name) + report)]
+            );
+        }
     }
     return {files: out, notes, folder: `${slug(name)}-${target}`};
 };

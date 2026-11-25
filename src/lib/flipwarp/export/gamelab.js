@@ -709,9 +709,6 @@ export const writeGameLabGame = (project, costumes, sounds, title) => {
     }
     for (const t of project.targets) {
         if (t.variables.some(v => v.cloud)) note(t.name, 'cloud variables are ordinary variables in the export');
-        if (t.sounds.some(s => s.dataFormat !== 'mp3')) {
-            note(t.name, 'Game Lab plays MP3 sounds: convert the .wav sounds to .mp3 (same names) before uploading');
-        }
     }
     return {code: out.join('\n'), notes};
 };

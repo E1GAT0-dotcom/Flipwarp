@@ -444,7 +444,7 @@ export const registerTools = async (server, ctx, version = 0) => {
         }
     }, tool(async ({target, path: where, title}) => {
         const name = title || watch.name || projectNameFrom(where) || 'Project';
-        const start = await ask('exportStart', {target, title: name}, 120000);
+        const start = await ask('exportStart', {target, title: name}, 600000);
         const files = [];
         let from = 0;
         while (from !== null) {

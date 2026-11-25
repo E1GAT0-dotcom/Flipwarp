@@ -554,6 +554,7 @@ export const checkProject = vm => {
     const broadcastsHeard = new Map();
     const clonesMade = new Map();
     const clonesHandled = new Set();
+    const cloneListens = [];
     const variableUses = new Map();
     const unknownOpcodes = [];
 
@@ -586,8 +587,13 @@ export const checkProject = vm => {
                 }
             }
             // Clones run every hat but the green flag: "when I receive",
-            // keys, clicks and the like start in each clone too.
-            if (CLONE_HATS.has(block.opcode)) clonesHandled.add(name);
+            // keys, clicks and the like start in each clone too. A "when I
+            // receive" only counts once its message is known to be sent.
+            if (block.opcode === 'event_whenbroadcastreceived') {
+                cloneListens.push([name, fieldIn(block, 'BROADCAST_OPTION')]);
+            } else if (CLONE_HATS.has(block.opcode)) {
+                clonesHandled.add(name);
+            }
 
             for (const field of Object.values(block.fields || {})) {
                 if (field && field.id) {
@@ -837,6 +843,9 @@ export const checkProject = vm => {
     }
 
     // -- clones nobody catches
+    for (const [who, message] of cloneListens) {
+        if (message && broadcastsSent.has(message)) clonesHandled.add(who);
+    }
     for (const [who, made] of clonesMade) {
         if (clonesHandled.has(who)) continue;
         found.push(finding('warning', 'clone-unhandled',

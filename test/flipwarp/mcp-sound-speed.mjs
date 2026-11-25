@@ -14,8 +14,11 @@ const {call, check, must, finish} = await start('sound and speed test');
 
 // --- sounds ------------------------------------------------------------------
 
-let r = await must('add a coin sound', 'add_sound', {sprite: 'Sprite1', name: 'coin', preset: 'coin'});
-check(/Added sound "coin" to Sprite1: 0\.\d+s, square, 988 Hz rising/.test(r.text), 'it is described', r.text);
+// A style and a take of its own: with neither, add_sound picks them at random so games differ.
+let r = await must('add a coin sound', 'add_sound', {sprite: 'Sprite1', name: 'coin', preset: 'coin', style: 'chiptune',
+    variation: 0});
+check(/Added sound "coin" to Sprite1: 0\.\d+s, square( \([^)]*\))?, 988 Hz rising/.test(r.text) &&
+    /style "chiptune", variation 0/.test(r.text), 'it is described', r.text);
 r = await must('add a jump with a variation and pitch', 'add_sound',
     {sprite: 'Sprite1', name: 'jump', preset: 'jump', variation: 3, pitch: 2});
 r = await must('add a custom sound', 'add_sound',

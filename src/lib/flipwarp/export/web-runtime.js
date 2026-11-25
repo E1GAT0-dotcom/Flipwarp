@@ -1137,6 +1137,81 @@ class Target {
 
 // --- pictures and sounds --------------------------------------------------------
 
+// A one-file export carries its pictures and sounds inside the page
+// (window.SCRATCH_ASSETS); otherwise they are files beside it. Inside the
+// page they are turned into blob: addresses, which Code.org's Web Lab allows
+// where it blocks data: ones.
+const blobUrls = {};
+const assetUrl = file => {
+    if (window.SCRATCH_BLOBS && window.SCRATCH_BLOBS[file]) return window.SCRATCH_BLOBS[file];
+    const data = window.SCRATCH_ASSETS && window.SCRATCH_ASSETS[file];
+    if (!data) return file;
+    if (!blobUrls[file]) {
+        const comma = data.indexOf(',');
+        const type = data.slice(5, data.indexOf(';'));
+        const binary = atob(data.slice(comma + 1));
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        blobUrls[file] = URL.createObjectURL(new Blob([bytes], {type}));
+    }
+    return blobUrls[file];
+};
+
+// A big game's pictures and sounds come packed in a few files (game-assets-1.png
+// and on), because Web Lab takes those as uploads where it will not take sounds,
+// and one upload is quicker than hundreds. Each pack: "FWPK", the index's length
+// (4 bytes), the index as JSON ([file, type, offset, length] each), then the files.
+const unpack = buffer => {
+    const bytes = new Uint8Array(buffer);
+    if (String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]) !== 'FWPK') {
+        throw new Error('it is not a pack of the game\'s pictures and sounds');
+    }
+    const size = new DataView(buffer).getUint32(4, true);
+    const index = JSON.parse(new TextDecoder().decode(bytes.subarray(8, 8 + size)));
+    const base = 8 + size;
+    window.SCRATCH_BLOBS = window.SCRATCH_BLOBS || {};
+    for (const [file, type, offset, length] of index) {
+        const data = bytes.subarray(base + offset, base + offset + length);
+        window.SCRATCH_BLOBS[file] = URL.createObjectURL(new Blob([data], {type}));
+    }
+};
+
+/**
+ * Load the packs, then run the game's code (kept as text in the page until they are in).
+ * @param {Array<string>} names the packs' file names
+ * @param {string} codeId the id of the script element holding the game's code
+ */
+const startPackedGame = (names, codeId) => {
+    const loading = document.querySelector('.loading');
+    if (loading) loading.textContent = 'Loading the pictures and sounds...';
+    Promise.all(names.map(name => fetch(name)
+        .then(response => {
+            if (!response.ok) throw new Error(`${name} is not in this project (${response.status})`);
+            return response.arrayBuffer();
+        })
+        .then(buffer => {
+            try {
+                unpack(buffer);
+            } catch (e) {
+                throw new Error(`${name}: ${e.message}`);
+            }
+        })))
+        .then(() => {
+            const script = document.createElement('script');
+            script.textContent = document.getElementById(codeId).textContent;
+            document.body.appendChild(script);
+        }, e => {
+            console.error(e);
+            if (loading) {
+                loading.textContent = `The game's pictures and sounds did not load: ${e.message}. Upload ` +
+                    `${names.join(', ')} to this project. (Opened straight from a file, the browser will not ` +
+                    'read them: play it in Web Lab, or from a web server.)';
+                loading.style.cssText += ';white-space: normal; padding: 1em; text-align: center;';
+            }
+        });
+};
+window.startPackedGame = startPackedGame;
+
 class Costume {
     constructor (game, spec) {
         this.name = spec.name;
@@ -1167,7 +1242,7 @@ class Costume {
                 reject();
             };
         }));
-        this.image.src = this.file;
+        this.image.src = assetUrl(this.file);
     }
 }
 
@@ -1180,7 +1255,7 @@ class Sound {
     }
     play (volume, effects) {
         if (!this.game.audioUnlocked) return null;
-        const audio = new Audio(this.file);
+        const audio = new Audio(assetUrl(this.file));
         const handle = {sound: this, audio, ended: false};
         audio.preservesPitch = false;
         audio.mozPreservesPitch = false;

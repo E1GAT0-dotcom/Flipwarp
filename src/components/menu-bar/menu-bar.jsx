@@ -100,7 +100,7 @@ import advancedIcon from './fw-advanced.svg';
 import friendsIcon from './fw-friends.svg';
 import rooms from '../../lib/flipwarp/rooms.js';
 import RoomsMenuLabel from '../flipwarp/rooms-menu-label.jsx';
-import {exportProject, TARGETS as EXPORT_TARGETS} from '../../lib/flipwarp/export/index.js';
+import {exportProject, showExportProgress, TARGETS as EXPORT_TARGETS} from '../../lib/flipwarp/export/index.js';
 import downloadBlob from '../../lib/download-blob.js';
 import JSZip from 'jszip';
 
@@ -299,17 +299,29 @@ class MenuBar extends React.Component {
         // .zip with a README that says how to put it there.
         return async () => {
             this.props.onRequestCloseFile();
+            const bar = showExportProgress(`Exporting for ${EXPORT_TARGETS[target].title}`);
             try {
-                const result = await exportProject(this.props.vm, target, this.props.projectTitle);
+                // Drawing the costumes is most of the wait, zipping the rest.
+                const result = await exportProject(this.props.vm, target, this.props.projectTitle,
+                    ({label, done, total}) => bar.update(label, 0.8 * (total ? done / total : 1)));
+                bar.update('Writing the code', 0.85);
                 const zip = new JSZip();
                 const folder = zip.folder(result.folder);
-                for (const [name, data] of result.files) folder.file(name, data);
-                const blob = await zip.generateAsync({type: 'blob', compression: 'DEFLATE'});
+                for (const [name, data] of result.files) {
+                    // Pictures and MP3s are squeezed already: squeezing them again only takes time.
+                    const packed = /\.(png|jpe?g|gif|mp3)$/i.test(name);
+                    folder.file(name, data, packed ? {compression: 'STORE'} : {});
+                }
+                const blob = await zip.generateAsync({type: 'blob', compression: 'DEFLATE'},
+                    meta => bar.update(`Making the .zip: ${Math.round(meta.percent)}%`,
+                        0.85 + (0.15 * meta.percent / 100)));
                 downloadBlob(`${result.folder}.zip`, blob);
             } catch (e) {
                 console.error(e); // eslint-disable-line no-console
                 // eslint-disable-next-line no-alert
                 alert(`The project could not be exported: ${e && e.message ? e.message : e}`);
+            } finally {
+                bar.close();
             }
         };
     }
