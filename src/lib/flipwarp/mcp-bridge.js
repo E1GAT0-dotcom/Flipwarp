@@ -549,8 +549,8 @@ const METHODS = {
 
     // The project exported as code (export/index.js). Its files are handed
     // over in parts with saveFilesPart, as a save's are.
-    exportStart: (vm, {target, title}) => {
-        const result = exportProject(vm, target, title);
+    exportStart: async (vm, {target, title}) => {
+        const result = await exportProject(vm, target, title);
         savingFiles = result.files;
         return {
             count: result.files.length,

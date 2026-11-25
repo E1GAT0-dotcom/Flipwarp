@@ -54,7 +54,7 @@ behaves exactly as normal.
 | `set_extension_text` | The "Text for other extensions' blocks" setting |
 | `add_extension` | Adds a TurboWarp gallery extension (only extensions.turbowarp.org) and lists its blocks in text |
 | `save_project` / `load_project` | `.sb3` files on this computer. `load_project` stops before a file over 20 MB until `big_ok`, so the person is told first |
-| `export_project` | The project as code for another place: `weblab` (Code.org Web Lab: HTML, CSS and JavaScript that behaves like Scratch), with a README saying how to put it there and what did not come across. Same as File > Export as code |
+| `export_project` | The project as code for another place: `weblab` (Code.org Web Lab: HTML, CSS and JavaScript that behaves like Scratch) or `python` (a pygame program), with a README saying how to put it there and what did not come across. Same as File > Export as code |
 | `green_flag` / `stop` | Start and stop the project |
 | `press_keys` / `hold_keys` / `release_keys` | Keyboard, by the names `keyPressed` uses |
 | `click` / `move_mouse` | The mouse, in Scratch coordinates |

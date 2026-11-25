@@ -275,7 +275,8 @@ before changing code; do not guess.
 - Speed: if it might be heavy (pen drawing, many clones, 3D), get to the
   busiest part and run `speed_report`; fix what it points at.
 - `export_project` when the person wants the game as code for somewhere
-  else (target "weblab": Code.org Web Lab, or any web page). Pass on what its
+  else (target "weblab": Code.org Web Lab, or any web page; "python": a pygame
+  program, run with python main.py). Pass on what its
   reply says did not come across, and that README.txt says how to put it in.
 - `save_project` if the user wants a file. Tell the user the controls, what
   to try, and anything you could not make work.

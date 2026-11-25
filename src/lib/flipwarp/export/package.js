@@ -7,11 +7,16 @@
 
 import {readProject} from './front.js';
 import {writeWebGame} from './web.js';
+import {writePythonGame} from './python.js';
 
 export const TARGETS = {
     weblab: {
         title: 'Code.org Web Lab',
         description: 'HTML, CSS and JavaScript that runs the game in a web page'
+    },
+    python: {
+        title: 'Python (pygame)',
+        description: 'A Python program that runs the game in a window, with pygame'
     }
 };
 
@@ -166,6 +171,34 @@ canvas.stage {
 `;
 
 const HOW_TO = {
+    python: title => `${title}, exported as Python
+${'='.repeat(title.length + 20)}
+
+What is here
+------------
+main.py             the game itself: every script, as Python
+scratch_runtime.py  runs the game the way Scratch does (sprites, clones, the pen, sounds...)
+the rest            the costumes, backdrops and sounds, named for what they are
+
+Running it
+----------
+1. Install Python 3 (python.org) and then pygame:   pip install pygame
+2. In this folder:                                    python main.py
+
+The game starts as soon as the window opens, as if the green flag were clicked.
+F5 starts it again, Esc stops it, and the window's close button quits.
+
+It also runs on Replit and in other online Python editors that have pygame.
+Code.org's Python Lab cannot run it: Python Lab has no pygame.
+
+How the code works
+------------------
+Each Scratch script is a function in main.py, with its hat written above it
+(@Player.when_flag_clicked). Where Scratch lets other scripts have a turn (each
+time round a loop, during a wait), the script says "yield", and the runtime moves
+on to the next script; once something on the stage has changed, it draws the
+frame. That is how many scripts run "at once", as in Scratch.
+`,
     weblab: title => `${title}, exported for Code.org Web Lab
 ${'='.repeat(title.length + 30)}
 
@@ -203,47 +236,87 @@ draws the frame. That is how many scripts run "at once", as in Scratch.
  * @param {object} source file name -> Uint8Array, as in an .sb3
  * @param {string} target a key of TARGETS
  * @param {string} title the project's name
- * @param {string} runtimeText scratch-runtime.js
- * @returns {{files: Array<[string, Uint8Array]>, notes: Array, folder: string}} the export
+ * @param {object} runtimes target -> the runtime file's text (scratch-runtime.js, scratch_runtime.py)
+ * @param {object} [options] {rasterize(svgBytes) -> Promise<{data: Uint8Array, scale: number}>}: draws an SVG
+ *     costume as a PNG, for targets that cannot show SVGs well (Python)
+ * @returns {Promise<{files: Array<[string, Uint8Array]>, notes: Array, folder: string}>} the export
  */
-export const buildExport = (source, target, title, runtimeText) => {
+export const buildExport = async (source, target, title, runtimes, options = {}) => {
     if (!TARGETS[target]) throw new Error(`Flipwarp cannot export to "${target}".`);
     const name = String(title || 'Project').replace(/\.sb3$/i, '')
         .trim() || 'Project';
     const project = JSON.parse(new TextDecoder().decode(source['project.json']));
     const parsed = readProject(project);
+    const python = target === 'python';
 
     // Each costume and sound file, under a readable name.
     const files = {};
     const out = [];
-    const used = new Set(['index.html', 'style.css', 'scratch-runtime.js', 'game.js', 'readme.txt']);
+    const notes = [];
+    const used = new Set(['index.html', 'style.css', 'scratch-runtime.js', 'game.js', 'readme.txt', 'main.py',
+        'scratch_runtime.py']);
+    const fileName = (owner, item, ext) => {
+        const base = `${slug(owner)}-${slug(item)}`;
+        let file = `${base}.${ext}`;
+        let n = 2;
+        while (used.has(file.toLowerCase())) file = `${base}-${n++}.${ext}`;
+        used.add(file.toLowerCase());
+        return file;
+    };
     for (const t of parsed.targets) {
-        for (const item of [...t.costumes, ...t.sounds]) {
-            if (files[item.md5ext]) continue;
-            const data = source[item.md5ext];
+        const owner = t.isStage ? 'stage' : t.name;
+        for (const costume of t.costumes) {
+            if (files[costume.md5ext]) continue;
+            const data = source[costume.md5ext];
             if (!data) continue;
-            const ext = item.md5ext.split('.').pop();
-            let file = `${slug(t.isStage ? 'stage' : t.name)}-${slug(item.name)}.${ext}`;
-            let n = 2;
-            while (used.has(file.toLowerCase())) file = `${slug(t.isStage ? 'stage' : t.name)}-${slug(item.name)}-${n++}.${ext}`;
-            used.add(file.toLowerCase());
-            files[item.md5ext] = file;
+            if (python && costume.dataFormat === 'svg' && options.rasterize) {
+                try {
+                    const png = await options.rasterize(data);
+                    const file = fileName(owner, costume.name, 'png');
+                    files[costume.md5ext] = {file, scale: png.scale};
+                    out.push([file, png.data]);
+                    continue;
+                } catch (e) {
+                    notes.push({where: owner, what: `the costume "${costume.name}" could not be drawn as a picture ` +
+                        'pygame shows well, so it is kept as an SVG'});
+                }
+            }
+            const file = fileName(owner, costume.name, costume.md5ext.split('.').pop());
+            files[costume.md5ext] = python ? {file} : file;
+            out.push([file, data]);
+        }
+        for (const sound of t.sounds) {
+            if (files[sound.md5ext]) continue;
+            const data = source[sound.md5ext];
+            if (!data) continue;
+            const file = fileName(owner, sound.name, sound.md5ext.split('.').pop());
+            files[sound.md5ext] = python ? {file} : file;
             out.push([file, data]);
         }
     }
 
-    const {code, notes} = writeWebGame(parsed, files, name);
-    const escaped = name.replace(/[<>&"]/g, c => ({'<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;'}[c]));
-    const runtime = runtimeText.replace(/^\/\* eslint-disable \*\/\r?\n/, '');
+    const written = python ? writePythonGame(parsed, files, name) : writeWebGame(parsed, files, name);
+    notes.push(...written.notes);
     const report = notes.length ?
-        `\nWhat did not come across\n------------------------\n${notes.map(n => `- ${n.where}: ${n.what}`).join('\n')}\n` :
+        `\nWhat did not come across\n------------------------\n` +
+            `${notes.map(n => `- ${n.where}: ${n.what}`).join('\n')}\n` :
         '\nEverything in the project came across.\n';
-    out.unshift(
-        ['index.html', textBytes(PAGE(escaped, parsed.options.width, parsed.options.height))],
-        ['style.css', textBytes(STYLE)],
-        ['scratch-runtime.js', textBytes(runtime)],
-        ['game.js', textBytes(code)],
-        ['README.txt', textBytes(HOW_TO[target](name) + report)]
-    );
+    const runtime = String(runtimes[target] || '').replace(/^\/\* eslint-disable \*\/\r?\n/, '');
+    if (python) {
+        out.unshift(
+            ['main.py', textBytes(written.code)],
+            ['scratch_runtime.py', textBytes(runtime)],
+            ['README.txt', textBytes(HOW_TO.python(name) + report)]
+        );
+    } else {
+        const escaped = name.replace(/[<>&"]/g, c => ({'<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;'}[c]));
+        out.unshift(
+            ['index.html', textBytes(PAGE(escaped, parsed.options.width, parsed.options.height))],
+            ['style.css', textBytes(STYLE)],
+            ['scratch-runtime.js', textBytes(runtime)],
+            ['game.js', textBytes(written.code)],
+            ['README.txt', textBytes(HOW_TO.weblab(name) + report)]
+        );
+    }
     return {files: out, notes, folder: `${slug(name)}-${target}`};
 };

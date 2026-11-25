@@ -300,7 +300,7 @@ class MenuBar extends React.Component {
         return async () => {
             this.props.onRequestCloseFile();
             try {
-                const result = exportProject(this.props.vm, target, this.props.projectTitle);
+                const result = await exportProject(this.props.vm, target, this.props.projectTitle);
                 const zip = new JSZip();
                 const folder = zip.folder(result.folder);
                 for (const [name, data] of result.files) folder.file(name, data);
