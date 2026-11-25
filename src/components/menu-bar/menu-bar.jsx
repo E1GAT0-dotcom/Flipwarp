@@ -100,6 +100,9 @@ import advancedIcon from './fw-advanced.svg';
 import friendsIcon from './fw-friends.svg';
 import rooms from '../../lib/flipwarp/rooms.js';
 import RoomsMenuLabel from '../flipwarp/rooms-menu-label.jsx';
+import {exportProject, showExportProgress, TARGETS as EXPORT_TARGETS} from '../../lib/flipwarp/export/index.js';
+import downloadBlob from '../../lib/download-blob.js';
+import JSZip from 'jszip';
 
 import ninetiesLogo from './nineties_logo.svg';
 import catLogo from './cat_logo.svg';
@@ -228,6 +231,7 @@ class MenuBar extends React.Component {
             'handleClickSave',
             'handleClickSaveAsCopy',
             'handleClickPackager',
+            'getExportHandler',
             'handleClickPublish',
             'handleClickFriends',
             'handleClickDesktopSettings',
@@ -289,6 +293,37 @@ class MenuBar extends React.Component {
     handleClickPublish () {
         this.props.onOpenPublishModal();
         this.props.onRequestCloseFile();
+    }
+    getExportHandler (target) {
+        // The project as code for another place (Code.org Web Lab...), in a
+        // .zip with a README that says how to put it there.
+        return async () => {
+            this.props.onRequestCloseFile();
+            const bar = showExportProgress(`Exporting for ${EXPORT_TARGETS[target].title}`);
+            try {
+                // Drawing the costumes is most of the wait, zipping the rest.
+                const result = await exportProject(this.props.vm, target, this.props.projectTitle,
+                    ({label, done, total}) => bar.update(label, 0.8 * (total ? done / total : 1)));
+                bar.update('Writing the code', 0.85);
+                const zip = new JSZip();
+                const folder = zip.folder(result.folder);
+                for (const [name, data] of result.files) {
+                    // Pictures and MP3s are squeezed already: squeezing them again only takes time.
+                    const packed = /\.(png|jpe?g|gif|mp3)$/i.test(name);
+                    folder.file(name, data, packed ? {compression: 'STORE'} : {});
+                }
+                const blob = await zip.generateAsync({type: 'blob', compression: 'DEFLATE'},
+                    meta => bar.update(`Making the .zip: ${Math.round(meta.percent)}%`,
+                        0.85 + (0.15 * meta.percent / 100)));
+                downloadBlob(`${result.folder}.zip`, blob);
+            } catch (e) {
+                console.error(e); // eslint-disable-line no-console
+                // eslint-disable-next-line no-alert
+                alert(`The project could not be exported: ${e && e.message ? e.message : e}`);
+            } finally {
+                bar.close();
+            }
+        };
     }
     handleClickFriends () {
         if (rooms.state.panelOpen) rooms.closePanel();
@@ -746,6 +781,24 @@ class MenuBar extends React.Component {
                                                     id="tw.menuBar.package"
                                                 />
                                             </MenuItem>
+                                        </MenuSection>
+                                    )}
+                                    {this.props.onClickPackager && (
+                                        <MenuSection>
+                                            {Object.keys(EXPORT_TARGETS).map(target => (
+                                                <MenuItem
+                                                    key={target}
+                                                    onClick={this.getExportHandler(target)}
+                                                >
+                                                    <FormattedMessage
+                                                        defaultMessage="Export as code for {where}"
+                                                        // eslint-disable-next-line max-len
+                                                        description="Menu bar item to export the project as source code for another tool, such as Code.org Web Lab"
+                                                        id="flipwarp.menuBar.exportCode"
+                                                        values={{where: EXPORT_TARGETS[target].title}}
+                                                    />
+                                                </MenuItem>
+                                            ))}
                                         </MenuSection>
                                     )}
                                     <MenuSection>
