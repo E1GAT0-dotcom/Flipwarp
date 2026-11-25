@@ -1694,7 +1694,7 @@ class Costume:
         if rects:
             box = rects[0].unionall(rects[1:])
             # From the centre of the outermost drawn pixels, as Scratch measures.
-            self.box = ((box.left + 0.5) / r, (box.top + 0.5) / r, (box.right - 0.5) / r, (box.bottom - 0.5) / r)
+            self.box = (box.left / r + 0.5, box.top / r + 0.5, box.right / r - 0.5, box.bottom / r - 0.5)
         else:
             self.box = (self.center_x, self.center_y, self.center_x, self.center_y)
 

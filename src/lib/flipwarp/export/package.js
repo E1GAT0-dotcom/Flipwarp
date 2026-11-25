@@ -8,6 +8,7 @@
 import {readProject} from './front.js';
 import {writeWebGame} from './web.js';
 import {writePythonGame} from './python.js';
+import {writeGameLabGame} from './gamelab.js';
 
 export const TARGETS = {
     weblab: {
@@ -17,6 +18,10 @@ export const TARGETS = {
     python: {
         title: 'Python (pygame)',
         description: 'A Python program that runs the game in a window, with pygame'
+    },
+    gamelab: {
+        title: 'Code.org Game Lab',
+        description: 'Game Lab JavaScript, with the costumes as animations to upload'
     }
 };
 
@@ -171,6 +176,39 @@ canvas.stage {
 `;
 
 const HOW_TO = {
+    gamelab: title => `${title}, exported for Code.org Game Lab
+${'='.repeat(title.length + 32)}
+
+What is here
+------------
+code.js       the whole program: the Scratch runtime first, then the game's sprites and scripts
+*.png         one picture for each costume and backdrop: Game Lab calls them animations
+*.wav, *.mp3  the sounds
+
+Putting it in Game Lab
+----------------------
+1. Start a new Game Lab project, and switch the code area to text (the "Show Text" button).
+2. Select all the code there, delete it, and paste in everything from code.js.
+3. Open the Animation tab and upload every .png from this folder. Keep their names:
+   the code asks for each animation by its file name without ".png".
+4. Sounds: Game Lab plays MP3 files you upload (in the gear-shaped Asset Manager, or
+   from playSound's "Choose..." button). Upload each sound as an .mp3 with the same name
+   as here; convert any .wav to .mp3 first.
+5. Press Run, then click the stage to start (that is the green flag).
+
+What is different in Game Lab
+-----------------------------
+- Game Lab's screen is 400 by 400, so Scratch's 480 by 360 stage is shrunk to fit,
+  with bars above and below.
+- "Touching" uses each costume's outline box, turned with the sprite, not its exact
+  pixels: Game Lab cannot read a picture's pixels.
+- Game Lab cannot ask for typed answers, change a sound's volume, pitch or pan, or draw
+  the color, brightness, fisheye, whirl, pixelate and mosaic effects (ghost works).
+- Game Lab runs older JavaScript (no generators), so each script is a small "state
+  machine": numbered steps in a switch, saving which step comes next each time it would
+  let other scripts have a turn. Code with no waits in it is ordinary code.
+- Game Lab runs programs slower than a browser does, so very busy games can lag.
+`,
     python: title => `${title}, exported as Python
 ${'='.repeat(title.length + 20)}
 
@@ -231,6 +269,73 @@ draws the frame. That is how many scripts run "at once", as in Scratch.
 `
 };
 
+// The size of a picture, without a browser: from the SVG's width and height,
+// or a PNG's header. Used when the editor's measuring is not there (tests).
+const plainSize = (data, format) => {
+    if (format === 'svg') {
+        const text = new TextDecoder().decode(data.slice(0, 2000));
+        const tag = (text.match(/<svg[^>]*>/) || [''])[0];
+        const w = parseFloat((tag.match(/\swidth="([\d.]+)/) || [])[1]) || 100;
+        const h = parseFloat((tag.match(/\sheight="([\d.]+)/) || [])[1]) || 100;
+        return [w, h];
+    }
+    if (format === 'png' && data.length > 24) {
+        const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        return [view.getUint32(16), view.getUint32(20)];
+    }
+    return [100, 100];
+};
+
+/**
+ * A costume as Game Lab will have it: a PNG (or JPG), its size in costume units,
+ * its turning resolution, and the box of its drawn pixels.
+ * @param {object} costume from readProject
+ * @param {Uint8Array} data the costume's file
+ * @param {object} options {rasterize, measure}, from the editor
+ * @returns {Promise<object>} {data, ext, measure: {width, height, resolution, box}, note}
+ */
+const gameLabPicture = async (costume, data, options) => {
+    let picture = data;
+    let ext = costume.dataFormat;
+    let resolution = costume.bitmapResolution || 1;
+    let note = null;
+    if (costume.dataFormat === 'svg') {
+        if (options.rasterize) {
+            const png = await options.rasterize(data);
+            picture = png.data;
+            ext = 'png';
+            resolution = png.scale;
+        } else {
+            note = `the costume "${costume.name}" is an SVG; Game Lab needs it as a PNG`;
+        }
+    }
+    let measured = null;
+    if (options.measure) {
+        try {
+            measured = await options.measure(picture, ext);
+        } catch (e) {
+            measured = null;
+        }
+    }
+    if (!measured) {
+        const [w, h] = plainSize(picture, ext);
+        measured = {width: w, height: h, box: [0, 0, w, h]};
+    }
+    return {
+        data: picture,
+        ext,
+        note,
+        measure: {
+            width: measured.width / resolution,
+            height: measured.height / resolution,
+            resolution,
+            // The drawn pixels' edges, in from by half a costume unit, as Scratch measures.
+            box: [(measured.box[0] / resolution) + 0.5, (measured.box[1] / resolution) + 0.5,
+                (measured.box[2] / resolution) - 0.5, (measured.box[3] / resolution) - 0.5]
+        }
+    };
+};
+
 /**
  * Export a project from its files: project.json and its costumes and sounds.
  * @param {object} source file name -> Uint8Array, as in an .sb3
@@ -248,6 +353,9 @@ export const buildExport = async (source, target, title, runtimes, options = {})
     const project = JSON.parse(new TextDecoder().decode(source['project.json']));
     const parsed = readProject(project);
     const python = target === 'python';
+    const gamelab = target === 'gamelab';
+    const glCostumes = {};
+    const glSounds = {};
 
     // Each costume and sound file, under a readable name.
     const files = {};
@@ -266,6 +374,17 @@ export const buildExport = async (source, target, title, runtimes, options = {})
     for (const t of parsed.targets) {
         const owner = t.isStage ? 'stage' : t.name;
         for (const costume of t.costumes) {
+            if (gamelab) {
+                if (glCostumes[costume.md5ext]) continue;
+                const data = source[costume.md5ext];
+                if (!data) continue;
+                const picture = await gameLabPicture(costume, data, options);
+                const file = fileName(owner, costume.name, picture.ext);
+                glCostumes[costume.md5ext] = {...picture.measure, animation: file.replace(/\.[^.]+$/, '')};
+                out.push([file, picture.data]);
+                if (picture.note) notes.push({where: owner, what: picture.note});
+                continue;
+            }
             if (files[costume.md5ext]) continue;
             const data = source[costume.md5ext];
             if (!data) continue;
@@ -286,23 +405,35 @@ export const buildExport = async (source, target, title, runtimes, options = {})
             out.push([file, data]);
         }
         for (const sound of t.sounds) {
-            if (files[sound.md5ext]) continue;
+            if (files[sound.md5ext] || glSounds[sound.md5ext]) continue;
             const data = source[sound.md5ext];
             if (!data) continue;
             const file = fileName(owner, sound.name, sound.md5ext.split('.').pop());
+            if (gamelab) {
+                // Game Lab plays MP3s: the code asks for the .mp3 of the same name.
+                glSounds[sound.md5ext] = file.replace(/\.[^.]+$/, '.mp3');
+                out.push([file, data]);
+                continue;
+            }
             files[sound.md5ext] = python ? {file} : file;
             out.push([file, data]);
         }
     }
 
-    const written = python ? writePythonGame(parsed, files, name) : writeWebGame(parsed, files, name);
+    const written = gamelab ? writeGameLabGame(parsed, glCostumes, glSounds, name) :
+        python ? writePythonGame(parsed, files, name) : writeWebGame(parsed, files, name);
     notes.push(...written.notes);
     const report = notes.length ?
         `\nWhat did not come across\n------------------------\n` +
             `${notes.map(n => `- ${n.where}: ${n.what}`).join('\n')}\n` :
         '\nEverything in the project came across.\n';
     const runtime = String(runtimes[target] || '').replace(/^\/\* eslint-disable \*\/\r?\n/, '');
-    if (python) {
+    if (gamelab) {
+        out.unshift(
+            ['code.js', textBytes(`${runtime}\n${written.code}`)],
+            ['README.txt', textBytes(HOW_TO.gamelab(name) + report)]
+        );
+    } else if (python) {
         out.unshift(
             ['main.py', textBytes(written.code)],
             ['scratch_runtime.py', textBytes(runtime)],

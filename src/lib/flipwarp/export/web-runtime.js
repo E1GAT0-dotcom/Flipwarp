@@ -1209,7 +1209,7 @@ Game.prototype.opaqueBox = function (costume) {
     // box Scratch measures edges and fences with: from the centre of the
     // outermost drawn pixels, so a 24-wide box is 23 wide to Scratch.
     const r = costume.resolution;
-    const full = {left: 0.5 / r, top: 0.5 / r, right: costume.width - (0.5 / r), bottom: costume.height - (0.5 / r)};
+    const full = {left: 0.5, top: 0.5, right: costume.width - 0.5, bottom: costume.height - 0.5};
     try {
         const w = Math.max(1, Math.round(costume.width * r));
         const h = Math.max(1, Math.round(costume.height * r));
@@ -1238,7 +1238,8 @@ Game.prototype.opaqueBox = function (costume) {
         costume.alphaW = w;
         costume.alphaH = h;
         if (right < 0) return {left: costume.centerX, top: costume.centerY, right: costume.centerX, bottom: costume.centerY};
-        return {left: (left + 0.5) / r, top: (top + 0.5) / r, right: (right + 0.5) / r, bottom: (bottom + 0.5) / r};
+        return {left: (left / r) + 0.5, top: (top / r) + 0.5, right: ((right + 1) / r) - 0.5,
+            bottom: ((bottom + 1) / r) - 0.5};
     } catch (e) {
         // A page opened straight from a file cannot read its pictures' pixels.
         this.pixelsUnreadable = true;

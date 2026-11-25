@@ -427,7 +427,8 @@ export const registerTools = async (server, ctx, version = 0) => {
 
     const EXPORT_TARGETS = {
         weblab: 'Code.org Web Lab: HTML, CSS and JavaScript that runs the game in any web page',
-        python: 'Python: a pygame program that runs the game in a window (python main.py)'
+        python: 'Python: a pygame program that runs the game in a window (python main.py)',
+        gamelab: 'Code.org Game Lab: code.js to paste in, and the costumes as PNG animations to upload'
     };
     register('export_project', {
         title: 'Export as code',
