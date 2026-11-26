@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlipWarp Saver</title>
+  <style>
+    /* --- colours --- */
+    :root {
+      --flip-blue: #4c97ff;
+      --flip-dark: #1e1e2e;
+      --flip-light: #ffffff;
+      --flip-grey: #b8c0d8;
+      --flip-green: #59c08a;
+      --flip-red: #ff6b6b;
+    }
+
+    /* --- page --- */
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      box-sizing: border-box;
+      background: var(--flip-dark);
+      color: var(--flip-light);
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    main {
+      width: min(560px, 100%);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 44px;
+      color: var(--flip-blue);
+    }
+
+    .tagline {
+      margin: 4px 0 28px;
+      color: var(--flip-grey);
+    }
+
+    /* --- the paste button --- */
+    .paste-button {
+      padding: 18px 40px;
+      border: none;
+      border-radius: 10px;
+      background: var(--flip-blue);
+      color: var(--flip-light);
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #3373cc;
+    }
+
+    .paste-button:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #3373cc;
+    }
+
+    .hint {
+      color: var(--flip-grey);
+      font-size: 14px;
+    }
+
+    /* --- what happened --- */
+    .result {
+      margin-top: 24px;
+      padding: 16px 20px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      text-align: left;
+    }
+
+    .result[hidden] {
+      display: none;
+    }
+
+    .result.good {
+      border-left: 6px solid var(--flip-green);
+    }
+
+    .result.bad {
+      border-left: 6px solid var(--flip-red);
+    }
+
+    .result a {
+      color: var(--flip-blue);
+      font-weight: bold;
+    }
+
+    /* --- how it works --- */
+    .how {
+      margin-top: 32px;
+      text-align: left;
+      color: var(--flip-grey);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .how summary {
+      cursor: pointer;
+      color: var(--flip-light);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>FlipWarp Saver</h1>
+    <p class="tagline">Turns a project copied from FlipWarp in Web Lab into a real .sb3 file.</p>
+
+    <button type="button" class="paste-button" id="paste">Paste</button>
+    <p class="hint">or press Ctrl+V on this page (⌘V on a Mac)</p>
+
+    <section class="result" id="result" role="status" hidden></section>
+
+    <details class="how">
+      <summary>How to use it</summary>
+      <ol>
+        <li>In FlipWarp (in Web Lab), choose <strong>File &gt; Save to your computer…</strong>
+          and press <strong>Copy the project</strong>.</li>
+        <li>Come to this page and press <strong>Paste</strong>.</li>
+        <li>The .sb3 file downloads. To post it on Scratch, go to scratch.mit.edu,
+          make a new project, and use <strong>File &gt; Load from your computer</strong>.</li>
+      </ol>
+      <p>Everything happens in your browser: the project isn't sent anywhere.</p>
+    </details>
+  </main>
+
+  <script>
+    // The text FlipWarp copies: "FLIPWARP-SB3 name.sb3" on the first line,
+    // then the project in base64.
+    const result = document.getElementById('result');
+    let lastUrl = null;
+
+    const show = (kind, html) => {
+      result.hidden = false;
+      result.className = `result ${kind}`;
+      result.innerHTML = html;
+    };
+
+    const escapeHtml = text => text.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+
+    const fromBase64 = base64 => {
+      if (Uint8Array.fromBase64) return Uint8Array.fromBase64(base64);
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    };
+
+    const save = text => {
+      text = (text || '').trim();
+      let name = 'Project.sb3';
+      let base64 = text;
+      const header = text.match(/^FLIPWARP-SB3 ([^\r\n]*)\r?\n/);
+      if (header) {
+        name = header[1].trim() || name;
+        base64 = text.slice(header[0].length);
+      } else if (text.startsWith('data:')) {
+        base64 = text.slice(text.indexOf(',') + 1);
+      }
+      base64 = base64.replace(/\s+/g, '');
+      if (!/\.sb3$/i.test(name)) name += '.sb3';
+
+      let bytes;
+      try {
+        bytes = fromBase64(base64);
+      } catch (e) {
+        bytes = null;
+      }
+      // Every .sb3 is a zip file, and zip files start with "PK".
+      if (!text || !bytes || bytes.length < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
+        show('bad', '<strong>That isn\'t a FlipWarp project.</strong><br>' +
+          'Go back to FlipWarp, choose File &gt; Save to your computer…, press ' +
+          '<strong>Copy the project</strong>, then come back and paste again.');
+        return;
+      }
+
+      if (lastUrl) URL.revokeObjectURL(lastUrl);
+      lastUrl = URL.createObjectURL(new Blob([bytes], {type: 'application/x.scratch.sb3'}));
+      const link = document.createElement('a');
+      link.href = lastUrl;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      const size = Math.max(1, Math.round(bytes.length / 1024));
+      show('good', `<strong>Saved ${escapeHtml(name)}</strong> (${size} KB) to your Downloads.<br>` +
+        `<a href="${lastUrl}" download="${escapeHtml(name)}">Download it again</a><br><br>` +
+        'To post it: on scratch.mit.edu make a new project, then ' +
+        '<strong>File &gt; Load from your computer</strong> and pick this file.');
+    };
+
+    // The Paste button reads the clipboard (the browser may ask first).
+    document.getElementById('paste').addEventListener('click', async () => {
+      try {
+        save(await navigator.clipboard.readText());
+      } catch (e) {
+        show('bad', '<strong>The browser didn\'t let this page read the clipboard.</strong><br>' +
+          'Press Ctrl+V on this page instead.');
+      }
+    });
+
+    // Ctrl+V anywhere on the page.
+    document.addEventListener('paste', event => {
+      event.preventDefault();
+      save(event.clipboardData.getData('text'));
+    });
+  </script>
+</body>
+</html>
