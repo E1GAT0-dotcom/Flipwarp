@@ -11,6 +11,7 @@ import {writePythonGame} from './python.js';
 import {writeGameLabGame} from './gamelab.js';
 import {startHere} from './helper.js';
 import {stripJs, stripPython, stripCss} from './strip.js';
+import {jsUnits, pyUnits, packSource, fingerprintUnits, fingerprint} from './source.js';
 
 export const TARGETS = {
     weblab: {
@@ -286,6 +287,14 @@ canvas.stage {
 .list-length { text-align: center; padding: calc(2px * var(--k, 1)); }
 `;
 
+const BACK = `
+Back into Flipwarp
+------------------
+In Flipwarp, File > Import from Code.org brings this back as the Scratch project it was made from,
+with any changes you made to the code. Choose the code (or this whole folder, zipped) and any
+pictures and sounds you uploaded.
+`;
+
 const HOW_TO = {
     gamelab: (title, embedded, uploads) => `${title}, exported for Code.org Game Lab
 ${'='.repeat(title.length + 32)}
@@ -549,6 +558,7 @@ export const buildExport = async (source, target, title, runtimes, options = {})
     const gamelab = target === 'gamelab';
     const glCostumes = {};
     const glSounds = {};
+    const glSoundFiles = {};
 
     // Each costume and sound file, under a readable name.
     const files = {};
@@ -643,6 +653,7 @@ export const buildExport = async (source, target, title, runtimes, options = {})
                 }
                 const file = fileName(owner, sound.name, mp3 ? 'mp3' : sound.md5ext.split('.').pop());
                 glSounds[sound.md5ext] = file.replace(/\.[^.]+$/, '.mp3');
+                glSoundFiles[sound.md5ext] = file;
                 out.push([file, mp3 || data]);
                 if (!mp3) {
                     notes.push({where: owner, what: `the sound "${sound.name}" could not be made an MP3: convert ` +
@@ -655,14 +666,30 @@ export const buildExport = async (source, target, title, runtimes, options = {})
             out.push([file, data]);
         }
     }
+    // The project, carried inside the code for Import from Code.org. SVG costumes
+    // that the export turns into pictures are carried as they were, while they
+    // are small enough not to crowd out the pictures (in Game Lab).
+    const svgOriginals = {};
+    const converted = gamelab ? jobs.filter(j => j.costume.dataFormat === 'svg') :
+        python ? jobs.filter(j => j.png) : [];
+    const svgTotal = converted.reduce((sum, j) => sum + j.data.length, 0);
+    if (!gamelab || svgTotal <= 600000) {
+        for (const j of converted) svgOriginals[j.costume.md5ext] = new TextDecoder().decode(j.data);
+    }
+    const sourceOf = (assets, units, code) => ({v: 1, target, title: name, project, units, code, assets});
     if (gamelab) {
         // As many pictures as fit go inside code.js: shrunk a step at a time until
         // they all fit, then, if they still do not, the biggest are left to upload.
         const runtimeSize = String(runtimes.gamelab || '').length;
-        const codeSize = writeGameLabGame(parsed, glCostumes, glSounds, name).code.length;
+        const draft = writeGameLabGame(parsed, glCostumes, glSounds, name);
+        const codeSize = draft.code.length;
+        const assetGuess = {};
+        for (const md5 of Object.keys(svgOriginals)) assetGuess[md5] = {t: svgOriginals[md5]};
+        const sourceSize = (await packSource(sourceOf(assetGuess, [], ''))).length +
+            (draft.units.length * 120) + (jobs.length * 80) + 2000;
         // Room for the pictures, less a margin for the costumes' new sizes and the
-        // costumePictures function round them.
-        const room = GAMELAB_CODE_LIMIT - runtimeSize - codeSize - 60000;
+        // costumePictures function round them, and the project carried with them.
+        const room = GAMELAB_CODE_LIMIT - runtimeSize - codeSize - sourceSize - 60000;
         const cost = job => (Math.ceil(job.embed.data.length / 3) * 4) + job.animation.length + 40;
         const candidates = glJobs.filter(job => job.picture.ext !== 'svg');
         const chosen = new Set();
@@ -701,6 +728,7 @@ export const buildExport = async (source, target, title, runtimes, options = {})
                 glPictures.push([job.animation, dataUrl(`picture.${job.embed.ext}`, job.embed.data)]);
                 const resolution = job.picture.measure.resolution * job.embed.scale;
                 glCostumes[job.costume.md5ext].resolution = Math.round(resolution * 1e6) / 1e6;
+                job.embedded = true;
             } else {
                 out.push([job.file, job.picture.data]);
             }
@@ -719,6 +747,34 @@ export const buildExport = async (source, target, title, runtimes, options = {})
     const strip = python ? stripPython : stripJs;
     const runtime = strip(String(runtimes[target] || ''));
     const gameCode = strip(written.code);
+    // Where each costume and sound went: a file of the export as it was ({f}),
+    // the same picture at another scale ({f, r} or, inside Game Lab's code, {a, r}),
+    // or the SVG itself, carried here ({t}).
+    const assetMap = {};
+    for (const job of jobs) {
+        const md5 = job.costume.md5ext;
+        if (svgOriginals[md5]) assetMap[md5] = {t: svgOriginals[md5]};
+        else if (gamelab) {
+            const r = glCostumes[md5].resolution;
+            if (job.embedded) assetMap[md5] = {a: job.animation, r};
+            else assetMap[md5] = job.picture.data === job.data ? {f: job.file} : {f: job.file, r};
+        } else if (files[md5]) {
+            const f = files[md5];
+            assetMap[md5] = typeof f === 'string' ? {f} : f.scale ? {f: f.file, r: f.scale} : {f: f.file};
+        }
+    }
+    for (const t of parsed.targets) {
+        for (const sound of t.sounds) {
+            const md5 = sound.md5ext;
+            if (assetMap[md5]) continue;
+            const f = gamelab ? glSoundFiles[md5] : files[md5] && (files[md5].file || files[md5]);
+            if (f) assetMap[md5] = {f};
+        }
+    }
+    const units = fingerprintUnits(written.units, python ? pyUnits(gameCode) : jsUnits(gameCode)) || [];
+    const packed = await packSource(sourceOf(assetMap, units, fingerprint(gameCode)));
+    const carried = python ? `\nFLIPWARP_SOURCE = "${packed}"\n` :
+        gamelab ? `\nvar FLIPWARP_SOURCE = "${packed}";\n` : `\nwindow.FLIPWARP_SOURCE = "${packed}";\n`;
     const uploadsOf = list => list.map(([file]) => ({name: file,
         kind: /\.(png|jpe?g|gif|svg)$/i.test(file) ? 'picture' : 'sound'}));
     if (gamelab) {
@@ -727,7 +783,7 @@ export const buildExport = async (source, target, title, runtimes, options = {})
             '\nfunction costumePictures() {\n    return {\n' +
             `${glPictures.map(([animation, url]) => `        ${JSON.stringify(animation)}: "${url}"`).join(',\n')}\n` +
             '    };\n}\n' : '';
-        const code = `${runtime}\n${gameCode}${picturesCode}`;
+        const code = `${runtime}\n${gameCode}${picturesCode}${carried}`;
         const assets = out.slice();
         const pictureUploads = uploadsOf(assets).filter(u => u.kind === 'picture');
         const soundUploads = uploadsOf(assets).filter(u => u.kind === 'sound');
@@ -763,13 +819,13 @@ export const buildExport = async (source, target, title, runtimes, options = {})
                 ]
             }))],
             ['code.js', textBytes(code)],
-            ['README.txt', textBytes(HOW_TO.gamelab(name, glPictures.length > 0, pictureUploads.length > 0) + report)]
+            ['README.txt', textBytes(HOW_TO.gamelab(name, glPictures.length > 0, pictureUploads.length > 0) + BACK + report)]
         );
     } else if (python) {
         out.unshift(
-            ['main.py', textBytes(gameCode)],
+            ['main.py', textBytes(gameCode + carried)],
             ['scratch_runtime.py', textBytes(runtime)],
-            ['README.txt', textBytes(HOW_TO.python(name) + report)]
+            ['README.txt', textBytes(HOW_TO.python(name) + BACK + report)]
         );
     } else {
         const escaped = name.replace(/[<>&"]/g, c => ({'<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;'}[c]));
@@ -777,7 +833,7 @@ export const buildExport = async (source, target, title, runtimes, options = {})
         const assetBytes = assets.reduce((sum, [, data]) => sum + data.length, 0);
         // Small enough to carry everything inside one page: nothing to upload.
         if (options.singleFile !== false && assetBytes <= SINGLE_FILE_LIMIT) {
-            const page = singlePage(escaped, parsed.options, runtime, gameCode, assets);
+            const page = singlePage(escaped, parsed.options, runtime, gameCode + carried, assets);
             out.length = 0;
             out.push(
                 ['START-HERE.html', textBytes(startHere({
@@ -796,12 +852,12 @@ export const buildExport = async (source, target, title, runtimes, options = {})
                     ]
                 }))],
                 ['index.html', textBytes(page)],
-                ['README.txt', textBytes(HOW_TO.weblabSingle(name) + report)]
+                ['README.txt', textBytes(HOW_TO.weblabSingle(name) + BACK + report)]
             );
         } else if (options.singleFile !== false) {
             // Too big for one page: the pictures and sounds in a few packs to upload at once.
             const packs = makePacks(assets);
-            const page = packedPage(escaped, parsed.options, runtime, gameCode, packs.map(([file]) => file));
+            const page = packedPage(escaped, parsed.options, runtime, gameCode + carried, packs.map(([file]) => file));
             const many = packs.length > 1;
             const packList = `<ul class="sounds">${packs.map(([file, data]) =>
                 `<li>${file} (${Math.max(1, Math.round(data.length / 1024 / 1024 * 10) / 10)} MB)</li>`).join('')}</ul>`;
@@ -837,7 +893,7 @@ export const buildExport = async (source, target, title, runtimes, options = {})
                 }))],
                 ['index.html', textBytes(page)],
                 ...packs,
-                ['README.txt', textBytes(HOW_TO.weblabPacked(name, packs.map(([file]) => file)) + report)]
+                ['README.txt', textBytes(HOW_TO.weblabPacked(name, packs.map(([file]) => file)) + BACK + report)]
             );
         } else {
             const pageText = PAGE(escaped, parsed.options.width, parsed.options.height);
@@ -849,7 +905,7 @@ export const buildExport = async (source, target, title, runtimes, options = {})
                         {label: 'index.html', name: 'index.html', text: pageText},
                         {label: 'style.css', name: 'style.css', text: stripCss(STYLE)},
                         {label: 'scratch-runtime.js', name: 'scratch-runtime.js', text: runtime},
-                        {label: 'game.js', name: 'game.js', text: gameCode}
+                        {label: 'game.js', name: 'game.js', text: gameCode + carried}
                     ],
                     uploads: uploadsOf(assets),
                     steps: [
@@ -867,8 +923,8 @@ export const buildExport = async (source, target, title, runtimes, options = {})
                 ['index.html', textBytes(pageText)],
                 ['style.css', textBytes(stripCss(STYLE))],
                 ['scratch-runtime.js', textBytes(runtime)],
-                ['game.js', textBytes(gameCode)],
-                ['README.txt', textBytes(HOW_TO.weblab(name) + report)]
+                ['game.js', textBytes(gameCode + carried)],
+                ['README.txt', textBytes(HOW_TO.weblab(name) + BACK + report)]
             );
         }
     }

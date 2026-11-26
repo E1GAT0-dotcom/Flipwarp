@@ -60,6 +60,9 @@ export const writeWebGame = (project, files, title) => {
     const name = makeNamer();
     const out = [];
     const emit = line => out.push(line);
+    // Each script and custom block as it is written, in order: the export carries
+    // them so that an import can tell which ones were changed.
+    const units = [];
 
     // Constants for each sprite, and for each custom block a function.
     const spriteVar = new Map();
@@ -451,6 +454,7 @@ export const writeWebGame = (project, files, title) => {
             const fn = ['function* (me, warp = false) {', ...lines, '}'];
             const v = spriteVar.get(target);
             const head = (call, comment) => {
+                units.push({target: target.isStage ? null : target.name, top: hat.id});
                 emit(`// ${comment}`);
                 emit(`${v}.${call}${fn[0]}`);
                 for (const l of fn.slice(1, -1)) emit(l);
@@ -493,6 +497,8 @@ export const writeWebGame = (project, files, title) => {
             ['me', 'warp'].forEach(p => paramName(p));
             proc.argNames.forEach(argName => params.set(argName, paramName(camel(argName) || 'value')));
             emit(`// define ${proc.proccode.replace(/%[snb]/g, '( )')}${proc.warp ? ' (run without screen refresh)' : ''}`);
+            units.push({target: target.isStage ? null : target.name, top: proc.id, fn: proc.fn,
+                proccode: proc.proccode, params: [...params.values()]});
             emit(`function* ${proc.fn}(${['me', 'warp', ...params.values()].join(', ')}) {`);
             if (proc.warp) emit('    warp = true;');
             for (const l of block(proc.body, 1, params)) emit(l);
@@ -641,7 +647,7 @@ export const writeWebGame = (project, files, title) => {
     for (const t of project.targets) {
         if (t.variables.some(v => v.cloud)) note(t.name, 'cloud variables are ordinary variables in the export');
     }
-    return {code: out.join('\n'), notes};
+    return {code: out.join('\n'), notes, units};
 };
 
 export {MENU_TARGETS};
