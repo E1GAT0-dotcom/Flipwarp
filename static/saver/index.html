@@ -3,144 +3,166 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FlipWarp Saver</title>
+  <title>Flipwarp Saver</title>
   <style>
-    /* --- colours --- */
+    /* --- FlipWarp's theme colours (light; dark below) --- */
     :root {
-      --flip-blue: #4c97ff;
-      --flip-dark: #1e1e2e;
-      --flip-light: #ffffff;
-      --flip-grey: #b8c0d8;
-      --flip-green: #59c08a;
-      --flip-red: #ff6b6b;
+      --accent: #00b300;
+      --page: hsla(215, 100%, 95%, 1);
+      --modal: #ffffff;
+      --modal-header: var(--accent);
+      --text: hsla(225, 15%, 40%, 1);
+      --border: hsla(0, 0%, 0%, 0.15);
+      --warn: #ff8c1a;
+    }
+
+    :root[data-theme="dark"] {
+      --page: #111111;
+      --modal: #111111;
+      --modal-header: #333333;
+      --text: #eeeeee;
+      --border: #ffffff26;
     }
 
     /* --- page --- */
     body {
       margin: 0;
       min-height: 100vh;
+      background: var(--page);
+      color: var(--text);
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 0.875rem;
+    }
+
+    /* the green bar along the top, like FlipWarp's menu bar */
+    .menu-bar {
+      height: 3rem;
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      background: var(--accent);
+      color: #ffffff;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+
+    /* --- the window, like FlipWarp's own windows --- */
+    .modal {
+      width: min(600px, calc(100% - 2rem));
+      margin: 50px auto;
+      border: 4px solid var(--border);
+      border-radius: 0.5rem;
+      overflow: hidden;
+      background: var(--modal);
+    }
+
+    .modal-header {
+      margin: 0;
+      height: 3.125rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
-      box-sizing: border-box;
-      background: var(--flip-dark);
-      color: var(--flip-light);
-      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    }
-
-    main {
-      width: min(560px, 100%);
-      text-align: center;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 44px;
-      color: var(--flip-blue);
-    }
-
-    .tagline {
-      margin: 4px 0 28px;
-      color: var(--flip-grey);
-    }
-
-    /* --- the paste button --- */
-    .paste-button {
-      padding: 18px 40px;
-      border: none;
-      border-radius: 10px;
-      background: var(--flip-blue);
-      color: var(--flip-light);
-      font-size: 24px;
+      background: var(--modal-header);
+      color: #ffffff;
       font-weight: bold;
+      font-size: 1rem;
+    }
+
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.5rem 2.25rem;
+    }
+
+    .modal-body p {
+      margin: 0;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    /* FlipWarp's button */
+    .button {
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 0.25rem;
+      background: var(--accent);
+      color: #ffffff;
+      font: inherit;
+      font-weight: 600;
+      font-size: 0.85rem;
       cursor: pointer;
-      box-shadow: 0 4px 0 #3373cc;
-    }
-
-    .paste-button:active {
-      transform: translateY(3px);
-      box-shadow: 0 1px 0 #3373cc;
-    }
-
-    .hint {
-      color: var(--flip-grey);
-      font-size: 14px;
     }
 
     /* --- what happened --- */
-    .result {
-      margin-top: 24px;
-      padding: 16px 20px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.08);
-      text-align: left;
-    }
-
     .result[hidden] {
       display: none;
     }
 
-    .result.good {
-      border-left: 6px solid var(--flip-green);
+    .result {
+      padding: 0.5rem;
+      border: 2px solid var(--border);
+      border-radius: 0.5rem;
     }
 
     .result.bad {
-      border-left: 6px solid var(--flip-red);
+      border-color: var(--warn);
     }
 
     .result a {
-      color: var(--flip-blue);
+      color: var(--accent);
       font-weight: bold;
-    }
-
-    /* --- how it works --- */
-    .how {
-      margin-top: 32px;
-      text-align: left;
-      color: var(--flip-grey);
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .how summary {
-      cursor: pointer;
-      color: var(--flip-light);
     }
   </style>
 </head>
 <body>
-  <main>
-    <h1>FlipWarp Saver</h1>
-    <p class="tagline">Turns a project copied from FlipWarp in Web Lab into a real .sb3 file.</p>
+  <header class="menu-bar">Flipwarp</header>
 
-    <button type="button" class="paste-button" id="paste">Paste</button>
-    <p class="hint">or press Ctrl+V on this page (⌘V on a Mac)</p>
-
-    <section class="result" id="result" role="status" hidden></section>
-
-    <details class="how">
-      <summary>How to use it</summary>
-      <ol>
-        <li>In FlipWarp (in Web Lab), choose <strong>File &gt; Save to your computer…</strong>
-          and press <strong>Copy the project</strong>.</li>
-        <li>Come to this page and press <strong>Paste</strong>.</li>
-        <li>The .sb3 file downloads. To post it on Scratch, go to scratch.mit.edu,
-          make a new project, and use <strong>File &gt; Load from your computer</strong>.</li>
-      </ol>
-      <p>Everything happens in your browser: the project isn't sent anywhere.</p>
-    </details>
+  <main class="modal">
+    <h1 class="modal-header">Save Project</h1>
+    <div class="modal-body">
+      <p>Paste a project copied with File &gt; Save to your computer in FlipWarp.</p>
+      <div class="actions">
+        <span>or press Ctrl+V</span>
+        <button type="button" class="button" id="paste">Paste</button>
+      </div>
+      <div class="result" id="result" role="status" hidden></div>
+    </div>
   </main>
 
   <script>
-    // The text FlipWarp copies: "FLIPWARP-SB3 name.sb3" on the first line,
-    // then the project in base64.
+    // Same theme as FlipWarp on this site (its "tw:theme" setting).
+    (function () {
+      var accents = {purple: '#855cd6', blue: '#4c97ff', red: '#ff4c4c', green: '#00b300'};
+      var gui = '';
+      try {
+        var setting = localStorage.getItem('tw:theme');
+        if (setting === 'light' || setting === 'dark') gui = setting;
+        else if (setting) {
+          var parsed = JSON.parse(setting);
+          if (accents[parsed.accent]) document.documentElement.style.setProperty('--accent', accents[parsed.accent]);
+          if (parsed.gui === 'light' || parsed.gui === 'dark') gui = parsed.gui;
+        }
+      } catch (e) {
+        // no setting yet
+      }
+      if (!gui) gui = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', gui);
+    }());
+
+    // The copied text: "FLIPWARP-SB3 name.sb3" on the first line, then the
+    // project in base64. It is turned back into the file here, in the browser.
     const result = document.getElementById('result');
     let lastUrl = null;
 
-    const show = (kind, html) => {
+    const show = (ok, html) => {
       result.hidden = false;
-      result.className = `result ${kind}`;
+      result.className = ok ? 'result' : 'result bad';
       result.innerHTML = html;
     };
 
@@ -176,9 +198,7 @@
       }
       // Every .sb3 is a zip file, and zip files start with "PK".
       if (!text || !bytes || bytes.length < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
-        show('bad', '<strong>That isn\'t a FlipWarp project.</strong><br>' +
-          'Go back to FlipWarp, choose File &gt; Save to your computer…, press ' +
-          '<strong>Copy the project</strong>, then come back and paste again.');
+        show(false, 'That isn\'t a copied FlipWarp project.');
         return;
       }
 
@@ -191,11 +211,8 @@
       link.click();
       link.remove();
 
-      const size = Math.max(1, Math.round(bytes.length / 1024));
-      show('good', `<strong>Saved ${escapeHtml(name)}</strong> (${size} KB) to your Downloads.<br>` +
-        `<a href="${lastUrl}" download="${escapeHtml(name)}">Download it again</a><br><br>` +
-        'To post it: on scratch.mit.edu make a new project, then ' +
-        '<strong>File &gt; Load from your computer</strong> and pick this file.');
+      show(true, `Downloaded ${escapeHtml(name)}. ` +
+        `<a href="${lastUrl}" download="${escapeHtml(name)}">Download again</a>`);
     };
 
     // The Paste button reads the clipboard (the browser may ask first).
@@ -203,8 +220,7 @@
       try {
         save(await navigator.clipboard.readText());
       } catch (e) {
-        show('bad', '<strong>The browser didn\'t let this page read the clipboard.</strong><br>' +
-          'Press Ctrl+V on this page instead.');
+        show(false, 'The browser blocked the clipboard. Press Ctrl+V instead.');
       }
     });
 
