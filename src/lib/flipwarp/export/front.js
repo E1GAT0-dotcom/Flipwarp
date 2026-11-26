@@ -238,6 +238,7 @@ export const readProject = project => {
                     return slots[i] === '%b' ? 'boolean' : 'value';
                 });
                 procedures.push({
+                    id,
                     proccode: String(mutation.proccode || ''),
                     argNames,
                     argIds,

@@ -693,6 +693,18 @@ class MenuBar extends React.Component {
                                         >
                                             {this.props.intl.formatMessage(sharedMessages.loadFromComputerTitle)}
                                         </MenuItem>
+                                        {this.props.onStartSelectingCodeOrgImport && (
+                                            <MenuItem
+                                                onClick={this.props.onStartSelectingCodeOrgImport}
+                                            >
+                                                <FormattedMessage
+                                                    defaultMessage="Import from Code.org..."
+                                                    // eslint-disable-next-line max-len
+                                                    description="Menu bar item to import a Code.org Game Lab program, or a game Flipwarp exported as code, as a Scratch project"
+                                                    id="flipwarp.menuBar.importCodeOrg"
+                                                />
+                                            </MenuItem>
+                                        )}
                                         <SB3Downloader
                                             showSaveFilePicker={this.props.showSaveFilePicker}
                                         >
@@ -1239,6 +1251,7 @@ MenuBar.propTypes = {
     onSetTimeTravelMode: PropTypes.func,
     onShare: PropTypes.func,
     onStartSelectingFileUpload: PropTypes.func,
+    onStartSelectingCodeOrgImport: PropTypes.func,
     onToggleLoginOpen: PropTypes.func,
     projectId: PropTypes.string,
     projectTitle: PropTypes.string,

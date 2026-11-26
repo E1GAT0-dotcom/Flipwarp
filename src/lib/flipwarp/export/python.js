@@ -66,6 +66,9 @@ export const writePythonGame = (project, files, title) => {
     const name = makeNamer();
     const out = [];
     const emit = line => out.push(line);
+    // Each script and custom block as it is written, in order: the export carries
+    // them so that an import can tell which ones were changed.
+    const units = [];
 
     const spriteVar = new Map();
     for (const t of project.targets) spriteVar.set(t, t.isStage ? 'stage' : name(t.name));
@@ -467,6 +470,7 @@ export const writePythonGame = (project, files, title) => {
                 return;
             }
             const lines = block(script.body, 1, null);
+            units.push({target: target.isStage ? null : target.name, top: hat.id});
             emit(`# ${comment}`);
             emit(`@${decorator}`);
             emit(`def ${name(`${prefix}_${base}`)}(me, warp=False):`);
@@ -482,6 +486,8 @@ export const writePythonGame = (project, files, title) => {
             ['me', 'warp'].forEach(p => paramName(p));
             proc.argNames.forEach(argName => params.set(argName, paramName(snake(argName) || 'value')));
             emit(`# define ${proc.proccode.replace(/%[snb]/g, '( )')}${proc.warp ? ' (run without screen refresh)' : ''}`);
+            units.push({target: target.isStage ? null : target.name, top: proc.id, fn: proc.fn,
+                proccode: proc.proccode, params: [...params.values()]});
             emit('@custom_block');
             emit(`def ${proc.fn}(${['me', 'warp', ...params.values()].join(', ')}):`);
             const lines = block(proc.body, 1, params);
@@ -637,5 +643,5 @@ export const writePythonGame = (project, files, title) => {
     for (const t of project.targets) {
         if (t.variables.some(v => v.cloud)) note(t.name, 'cloud variables are ordinary variables in the export');
     }
-    return {code: out.join('\n'), notes};
+    return {code: out.join('\n'), notes, units};
 };

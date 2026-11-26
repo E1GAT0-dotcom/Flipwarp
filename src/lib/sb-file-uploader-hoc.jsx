@@ -24,6 +24,8 @@ import {
 import {
     closeFileMenu
 } from '../reducers/menus';
+import {importChosenFiles, showImportNotes, IMPORT_ACCEPT} from './flipwarp/import/editor.js';
+import {showExportProgress} from './flipwarp/export/index.js';
 
 /**
  * Higher Order Component to provide behavior for loading local project files into editor.
@@ -43,6 +45,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                 'getProjectTitleFromFilename',
                 'handleFinishedLoadingUpload',
                 'handleStartSelectingFileUpload',
+                'handleStartSelectingCodeOrgImport',
                 'handleChange',
                 'onload',
                 'removeFileObjects'
@@ -62,6 +65,43 @@ const SBFileUploaderHOC = function (WrappedComponent) {
         handleStartSelectingFileUpload () {
             this.expectingFileUploadFinish = true;
             this.createFileObjects(); // go to step 2
+        }
+        // Flipwarp: File > Import from Code.org. The files chosen are made into an
+        // .sb3, which then goes through steps 3 to 7 like any file loaded.
+        handleStartSelectingCodeOrgImport () {
+            this.removeFileObjects();
+            this.props.closeFileMenu();
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.accept = IMPORT_ACCEPT;
+            input.style = 'display: none;';
+            input.onchange = async () => {
+                const chosen = Array.from(input.files || []);
+                input.remove();
+                if (!chosen.length) return;
+                const bar = showExportProgress('Importing from Code.org');
+                bar.update('Reading the code', 0.3);
+                let imported;
+                try {
+                    imported = await importChosenFiles(chosen);
+                } catch (e) {
+                    log.error(e);
+                    bar.close();
+                    // eslint-disable-next-line no-alert
+                    alert(`This could not be imported: ${e && e.message ? e.message : e}`);
+                    return;
+                }
+                bar.close();
+                this.importNotes = imported.notes;
+                this.importTitle = imported.title;
+                this.expectingFileUploadFinish = true;
+                this.fileReader = new FileReader();
+                this.fileReader.onload = this.onload;
+                this.handleChange({target: {files: [imported.file]}});
+            };
+            document.body.appendChild(input);
+            input.click();
         }
         // step 2: create a FileReader and an <input> element, and issue a
         // pseudo-click to it. That will open the file chooser dialog.
@@ -207,6 +247,10 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                         }
                         this.props.vm.renderer.draw();
                         loadingSuccess = true;
+                        if (this.importNotes) {
+                            showImportNotes(`Imported "${this.importTitle}". What did not come across:`,
+                                this.importNotes);
+                        }
                     })
                     .catch(error => {
                         log.error(error);
@@ -230,6 +274,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
             this.inputElement = null;
             this.fileReader = null;
             this.fileToUpload = null;
+            this.importNotes = null;
         }
         render () {
             const {
@@ -254,6 +299,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                 <React.Fragment>
                     <WrappedComponent
                         onStartSelectingFileUpload={this.handleStartSelectingFileUpload}
+                        onStartSelectingCodeOrgImport={this.handleStartSelectingCodeOrgImport}
                         {...componentProps}
                     />
                 </React.Fragment>
